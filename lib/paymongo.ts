@@ -1,0 +1,90 @@
+const BASE_URL = 'https://api.paymongo.com/v1'
+
+function authHeader() {
+  const key = process.env.PAYMONGO_SECRET_KEY!
+  return `Basic ${Buffer.from(`${key}:`).toString('base64')}`
+}
+
+export interface LineItem {
+  name: string
+  amount: number
+  quantity: number
+  image_url?: string
+}
+
+export interface CheckoutCustomer {
+  name: string
+  email: string
+  phone?: string
+}
+
+export async function createCheckoutSession({
+  lineItems,
+  customer,
+  successUrl,
+  cancelUrl,
+  orderId,
+}: {
+  lineItems: LineItem[]
+  customer: CheckoutCustomer
+  successUrl: string
+  cancelUrl: string
+  orderId: string
+}) {
+  const res = await fetch(`${BASE_URL}/checkout_sessions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: authHeader(),
+    },
+    body: JSON.stringify({
+      data: {
+        attributes: {
+          billing: {
+            name: customer.name,
+            email: customer.email,
+            phone: customer.phone,
+          },
+          line_items: lineItems.map((item) => ({
+            currency: 'PHP',
+            amount: Math.round(item.amount * 100), // convert to centavos
+            name: item.name,
+            quantity: item.quantity,
+            images: item.image_url ? [item.image_url] : [],
+          })),
+          payment_method_types: ['card', 'gcash', 'paymaya'],
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          description: `Order #${orderId.slice(0, 8).toUpperCase()}`,
+          metadata: { order_id: orderId },
+        },
+      },
+    }),
+  })
+
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.errors?.[0]?.detail ?? 'PayMongo error')
+  return data.data
+}
+
+export function verifyWebhookSignature(
+  rawBody: string,
+  signatureHeader: string,
+  secret: string
+): boolean {
+  const parts = Object.fromEntries(
+    signatureHeader.split(',').map((p) => p.split('='))
+  )
+  const timestamp = parts['t']
+  const signature = parts['te'] ?? parts['li']
+
+  if (!timestamp || !signature) return false
+
+  const crypto = require('crypto')
+  const computed = crypto
+    .createHmac('sha256', secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex')
+
+  return computed === signature
+}
