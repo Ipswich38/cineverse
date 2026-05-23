@@ -3,17 +3,21 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, CreditCard, Loader2, LockKeyhole, Truck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useCart, cartTotal } from '@/lib/cart-store'
 import { toast } from 'sonner'
+import { STORE, formatMoney } from '@/lib/storefront'
 
 export default function CheckoutPage() {
   const { items, clearCart } = useCart()
   const total = cartTotal(items)
+  const shipping = total >= STORE.freeShippingThreshold ? 0 : 120
+  const payableTotal = total + shipping
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -51,15 +55,23 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold mb-8">Checkout</h1>
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <Link href="/" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-stone-950">
+        <ArrowLeft className="h-4 w-4" />
+        Continue shopping
+      </Link>
+      <div className="mb-8">
+        <p className="text-sm font-semibold text-emerald-700">Secure checkout</p>
+        <h1 className="mt-1 text-3xl font-semibold text-stone-950">Complete your order</h1>
+        <p className="mt-2 text-sm text-stone-500">Customer details are saved with the order before PayMongo payment.</p>
+      </div>
 
-      <div className="grid md:grid-cols-5 gap-10">
-        <form onSubmit={handleSubmit} className="md:col-span-3 space-y-5">
-          <div>
-            <h2 className="font-semibold text-lg mb-4">Shipping Information</h2>
-            <div className="space-y-4">
-              <div>
+      <div className="grid gap-8 lg:grid-cols-5">
+        <form onSubmit={handleSubmit} className="space-y-5 lg:col-span-3">
+          <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-stone-950">Shipping Information</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
@@ -91,7 +103,7 @@ export default function CheckoutPage() {
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <Label htmlFor="address">Delivery Address</Label>
                 <Input
                   id="address"
@@ -104,14 +116,21 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-700">
-            You will be redirected to PayMongo to complete your payment securely via GCash, Maya, or Credit/Debit Card.
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex gap-3 rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-800">
+              <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>You will be redirected to PayMongo to pay via GCash, Maya, card, or other enabled methods.</p>
+            </div>
+            <div className="flex gap-3 rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">
+              <Truck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+              <p>{shipping === 0 ? 'Free shipping is unlocked for this order.' : `Add ${formatMoney(STORE.freeShippingThreshold - total)} more for free shipping.`}</p>
+            </div>
           </div>
 
           <Button
             type="submit"
             size="lg"
-            className="w-full bg-black hover:bg-gray-800 text-white"
+            className="h-11 w-full bg-stone-950 text-white hover:bg-stone-800"
             disabled={loading}
           >
             {loading ? (
@@ -120,18 +139,21 @@ export default function CheckoutPage() {
                 Processing...
               </>
             ) : (
-              `Pay ₱${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+              <>
+                <CreditCard className="h-4 w-4" />
+                Pay {formatMoney(payableTotal)}
+              </>
             )}
           </Button>
         </form>
 
-        <div className="md:col-span-2">
-          <div className="bg-white rounded-xl border p-6 space-y-4 sticky top-24">
-            <h2 className="font-semibold">Order Summary</h2>
+        <div className="lg:col-span-2">
+          <div className="sticky top-28 space-y-4 rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold text-stone-950">Order Summary</h2>
             <div className="space-y-3">
               {items.map((item) => (
                 <div key={item.id} className="flex gap-3">
-                  <div className="relative h-14 w-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-stone-100">
                     <Image
                       src={item.image_url}
                       alt={item.name}
@@ -139,20 +161,31 @@ export default function CheckoutPage() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium line-clamp-1">{item.name}</p>
-                    <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-1 text-sm font-semibold text-stone-950">{item.name}</p>
+                    <p className="text-xs text-stone-500">Qty: {item.quantity}</p>
                   </div>
-                  <p className="text-sm font-medium">
-                    ₱{(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                  <p className="text-sm font-medium text-stone-950">
+                    {formatMoney(item.price * item.quantity)}
                   </p>
                 </div>
               ))}
             </div>
             <Separator />
-            <div className="flex justify-between font-bold">
+            <div className="space-y-2 text-sm text-stone-500">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>{formatMoney(total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Shipping</span>
+                <span>{shipping === 0 ? 'Free' : formatMoney(shipping)}</span>
+              </div>
+            </div>
+            <Separator />
+            <div className="flex justify-between text-lg font-semibold text-stone-950">
               <span>Total</span>
-              <span>₱{total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+              <span>{formatMoney(payableTotal)}</span>
             </div>
           </div>
         </div>

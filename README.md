@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Store Template
 
-## Getting Started
+Client-ready ecommerce storefront built with Next.js 16, Supabase, Vercel, and PayMongo Hosted Checkout.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router
+- Supabase Postgres for products, orders, and order items
+- PayMongo Checkout Sessions for hosted payments
+- Zustand cart persisted in the browser
+- Tailwind CSS and shadcn-style UI components
+
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy the environment file:
+
+```bash
+cp .env.local.example .env.local
+```
+
+3. Fill in `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+PAYMONGO_SECRET_KEY=sk_test_xxxxxxxxxxxx
+PAYMONGO_WEBHOOK_SECRET=whsec_xxxxxxxxxxxx
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+4. Run `supabase/schema.sql` in your Supabase SQL editor.
+
+5. Start the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## PayMongo Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a webhook in the PayMongo dashboard:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```text
+https://your-domain.com/api/webhook/paymongo
+```
 
-## Learn More
+For local webhook testing, expose your local server with a tunnel and use the tunnel URL. The webhook secret from PayMongo must be saved as `PAYMONGO_WEBHOOK_SECRET`.
 
-To learn more about Next.js, take a look at the following resources:
+The checkout route creates pending orders before redirecting customers to PayMongo. The webhook marks orders as paid after PayMongo confirms the checkout payment.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Production Checklist
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Run the Supabase schema in the production Supabase project.
+- Add all environment variables in Vercel.
+- Set `NEXT_PUBLIC_BASE_URL` to the production domain with no trailing slash.
+- Use PayMongo live keys only after sandbox checkout and webhook tests pass.
+- Register the production webhook URL in PayMongo live mode.
+- Replace demo products, branding, contact details, policy links, and product images.
+- Confirm stock counts and fulfillment process with the client before launch.
 
-## Deploy on Vercel
+## Verification
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run lint
+npm run build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+
+Orders and order items are intentionally server-only in Supabase RLS. The browser can read active products, but it should not be allowed to create orders, change order status, or write order items directly with the public anon key.

@@ -26,7 +26,23 @@ export interface Order {
   created_at: string
 }
 
+function hasRealValue(value: string | undefined) {
+  return Boolean(value && !value.toLowerCase().includes('placeholder') && !value.toLowerCase().startsWith('your-'))
+}
+
+export function hasSupabaseConfig() {
+  return hasRealValue(process.env.NEXT_PUBLIC_SUPABASE_URL) && hasRealValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+}
+
+export function hasSupabaseAdminConfig() {
+  return hasSupabaseConfig() && hasRealValue(process.env.SUPABASE_SERVICE_ROLE_KEY)
+}
+
 function getSupabase() {
+  if (!hasSupabaseConfig()) {
+    throw new Error('Missing Supabase public configuration')
+  }
+
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -34,6 +50,10 @@ function getSupabase() {
 }
 
 function getSupabaseAdmin() {
+  if (!hasSupabaseAdminConfig()) {
+    throw new Error('Missing Supabase admin configuration')
+  }
+
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!

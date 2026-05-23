@@ -1,7 +1,10 @@
+import { createHmac, timingSafeEqual } from 'crypto'
+
 const BASE_URL = 'https://api.paymongo.com/v1'
 
 function authHeader() {
-  const key = process.env.PAYMONGO_SECRET_KEY!
+  const key = process.env.PAYMONGO_SECRET_KEY
+  if (!key) throw new Error('Missing PAYMONGO_SECRET_KEY')
   return `Basic ${Buffer.from(`${key}:`).toString('base64')}`
 }
 
@@ -73,18 +76,32 @@ export function verifyWebhookSignature(
   secret: string
 ): boolean {
   const parts = Object.fromEntries(
-    signatureHeader.split(',').map((p) => p.split('='))
+    signatureHeader.split(',').map((part) => {
+      const [key, ...value] = part.trim().split('=')
+      return [key, value.join('=')]
+    })
   )
   const timestamp = parts['t']
-  const signature = parts['te'] ?? parts['li']
+  const signatures = [parts['te'], parts['li']].filter(Boolean)
 
-  if (!timestamp || !signature) return false
+  if (!timestamp || signatures.length === 0) return false
 
-  const crypto = require('crypto')
-  const computed = crypto
-    .createHmac('sha256', secret)
+  const timestampSeconds = Number(timestamp)
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  if (!Number.isFinite(timestampSeconds) || Math.abs(nowSeconds - timestampSeconds) > 300) {
+    return false
+  }
+
+  const computed = createHmac('sha256', secret)
     .update(`${timestamp}.${rawBody}`)
     .digest('hex')
 
-  return computed === signature
+  return signatures.some((signature) => {
+    const computedBuffer = Buffer.from(computed, 'hex')
+    const signatureBuffer = Buffer.from(signature, 'hex')
+    return (
+      computedBuffer.length === signatureBuffer.length &&
+      timingSafeEqual(computedBuffer, signatureBuffer)
+    )
+  })
 }

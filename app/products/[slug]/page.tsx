@@ -1,119 +1,118 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useParams, notFound } from 'next/navigation'
 import Image from 'next/image'
-import { ShoppingCart, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { ArrowLeft, CheckCircle2, ShieldCheck, Truck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { supabase, type Product } from '@/lib/supabase'
-import { useCart } from '@/lib/cart-store'
-import { toast } from 'sonner'
+import ProductActions from '@/components/product-actions'
+import { hasSupabaseConfig, supabase, type Product } from '@/lib/supabase'
+import { DEMO_PRODUCTS, PRODUCT_HIGHLIGHTS, formatMoney } from '@/lib/storefront'
 
-export default function ProductPage() {
-  const { slug } = useParams<{ slug: string }>()
-  const [product, setProduct] = useState<Product | null>(null)
-  const [loading, setLoading] = useState(true)
-  const { addItem } = useCart()
+export const dynamic = 'force-dynamic'
 
-  useEffect(() => {
-    async function fetchProduct() {
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('slug', slug)
-        .eq('is_active', true)
-        .single()
+async function getProduct(slug: string) {
+  if (!hasSupabaseConfig()) {
+    return DEMO_PRODUCTS.find((item) => item.slug === slug) ?? null
+  }
 
-      setProduct(data)
-      setLoading(false)
-    }
-    fetchProduct()
-  }, [slug])
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .single()
 
-  if (loading) {
+  if (error || !data) {
+    return DEMO_PRODUCTS.find((item) => item.slug === slug) ?? null
+  }
+
+  return data as Product
+}
+
+export default async function ProductPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  const product = await getProduct(slug)
+
+  if (!product) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-10 animate-pulse">
-        <div className="grid md:grid-cols-2 gap-10">
-          <div className="aspect-square bg-gray-200 rounded-xl" />
-          <div className="space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-3/4" />
-            <div className="h-6 bg-gray-200 rounded w-1/4" />
-            <div className="h-24 bg-gray-200 rounded" />
-          </div>
-        </div>
+      <div className="mx-auto max-w-2xl px-4 py-24 text-center">
+        <h1 className="text-2xl font-semibold text-stone-950">Product not found</h1>
+        <p className="mt-2 text-stone-500">This item may be unavailable or inactive.</p>
+        <Link href="/#products" className="mt-6 inline-flex h-10 items-center rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800">
+          Back to products
+        </Link>
       </div>
     )
   }
 
-  if (!product) return notFound()
-
-  function handleAddToCart() {
-    if (!product) return
-    addItem({
-      id: product.id,
-      name: product.name,
-      slug: product.slug,
-      price: product.price,
-      image_url: product.image_url,
-    })
-    toast.success(`${product.name} added to cart`)
-  }
-
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-10">
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-8"
+        className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-stone-950"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to products
       </Link>
 
-      <div className="grid md:grid-cols-2 gap-10">
-        <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
+      <div className="grid gap-10 lg:grid-cols-2">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-stone-100">
           <Image
             src={product.image_url}
             alt={product.name}
             fill
             className="object-cover"
+            priority
           />
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           <div>
-            <Badge variant="outline" className="mb-2">
+            <Badge variant="outline" className="mb-3 border-emerald-200 bg-emerald-50 text-emerald-800">
               {product.category}
             </Badge>
-            <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
+            <h1 className="text-4xl font-semibold tracking-normal text-stone-950">{product.name}</h1>
           </div>
 
-          <p className="text-3xl font-bold">
-            ₱{product.price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-          </p>
+          <p className="text-3xl font-semibold">{formatMoney(product.price)}</p>
 
-          <p className="text-gray-600 leading-relaxed">{product.description}</p>
+          <p className="max-w-xl leading-7 text-stone-600">{product.description}</p>
 
-          <div className="text-sm text-gray-400">
+          <div className="text-sm">
             {product.stock > 0 ? (
-              <span className="text-green-600 font-medium">
+              <span className="inline-flex items-center gap-2 font-medium text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
                 In stock ({product.stock} available)
               </span>
             ) : (
-              <span className="text-red-500 font-medium">Out of stock</span>
+              <span className="font-medium text-red-500">Out of stock</span>
             )}
           </div>
 
-          <Button
-            size="lg"
-            onClick={handleAddToCart}
-            disabled={product.stock === 0}
-            className="bg-black hover:bg-gray-800 text-white mt-2"
-          >
-            <ShoppingCart className="h-5 w-5 mr-2" />
-            Add to Cart
-          </Button>
+          <ProductActions product={product} />
+
+          <div className="grid gap-3 border-y border-stone-200 py-5 sm:grid-cols-3">
+            {PRODUCT_HIGHLIGHTS.map(({ icon: Icon, label, value }) => (
+              <div key={label}>
+                <Icon className="mb-2 h-5 w-5 text-emerald-700" />
+                <p className="text-sm font-semibold text-stone-950">{label}</p>
+                <p className="mt-1 text-xs leading-5 text-stone-500">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3 text-sm text-stone-600 sm:grid-cols-2">
+            <div className="flex gap-3 rounded-lg bg-stone-50 p-4">
+              <Truck className="h-5 w-5 shrink-0 text-emerald-700" />
+              <p>Free delivery unlocks above ₱1,500.</p>
+            </div>
+            <div className="flex gap-3 rounded-lg bg-stone-50 p-4">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-700" />
+              <p>Checkout redirects to a secure PayMongo payment page.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
