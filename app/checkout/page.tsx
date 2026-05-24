@@ -98,7 +98,7 @@ export default function CheckoutPage() {
         Continue shopping
       </Link>
       <div className="mb-8">
-        <p className="text-sm font-semibold text-emerald-700">Secure checkout</p>
+        <p className="text-sm font-semibold text-sky-700">Secure checkout</p>
         <h1 className="mt-1 text-3xl font-semibold text-stone-950">Complete your order</h1>
         <p className="mt-2 text-sm text-stone-500">Shipping, billing, payment preference, and fulfillment details are captured before PayMongo payment.</p>
       </div>
@@ -108,7 +108,7 @@ export default function CheckoutPage() {
           <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-stone-950">1. Contact and Shipping</h2>
-              <Truck className="h-5 w-5 text-emerald-700" />
+              <Truck className="h-5 w-5 text-sky-700" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
@@ -148,7 +148,7 @@ export default function CheckoutPage() {
               {DELIVERY_OPTIONS.map((option) => {
                 const fee = option.id === 'standard' && total >= STORE.freeShippingThreshold ? 0 : option.fee
                 return (
-                  <label key={option.id} className={`cursor-pointer rounded-lg border p-4 transition-colors ${deliveryId === option.id ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200 bg-white hover:border-stone-300'}`}>
+                  <label key={option.id} className={`cursor-pointer rounded-lg border p-4 transition-colors ${deliveryId === option.id ? 'border-sky-500 bg-sky-50' : 'border-stone-200 bg-white hover:border-stone-300'}`}>
                     <input
                       type="radio"
                       name="delivery"
@@ -177,7 +177,7 @@ export default function CheckoutPage() {
                 type="checkbox"
                 checked={billingSame}
                 onChange={(e) => setBillingSame(e.target.checked)}
-                className="h-4 w-4 accent-emerald-700"
+                className="h-4 w-4 accent-sky-700"
               />
               Billing address is the same as shipping address.
             </label>
@@ -199,7 +199,7 @@ export default function CheckoutPage() {
                     className="sr-only"
                   />
                   <span className="flex gap-3">
-                    <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                    <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" />
                     <span>
                       <span className="block text-sm font-semibold text-stone-950">{method.label}</span>
                       <span className="mt-1 block text-xs leading-5 text-stone-500">{method.description}</span>
@@ -210,15 +210,15 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-950">
+          <div className="rounded-lg border border-sky-100 bg-sky-50 p-4">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-sky-950">
               <PackageCheck className="h-4 w-4" />
               After payment workflow
             </div>
             <div className="grid gap-3 sm:grid-cols-4">
               {ORDER_STATUS_STEPS.map(({ icon: Icon, label, sub }) => (
                 <div key={label} className="rounded-md bg-white p-3">
-                  <Icon className="mb-2 h-4 w-4 text-emerald-700" />
+                  <Icon className="mb-2 h-4 w-4 text-sky-700" />
                   <p className="text-xs font-semibold text-stone-950">{label}</p>
                   <p className="mt-1 text-[11px] leading-4 text-stone-500">{sub}</p>
                 </div>

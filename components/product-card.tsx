@@ -66,14 +66,14 @@ export default function ProductCard({ product }: { product: Product }) {
               <Badge className="bg-amber-500 text-xs text-white">Only {product.stock} left</Badge>
             )}
             {product.badge && product.stock > 5 && (
-              <Badge className="bg-emerald-600 text-xs text-white">{product.badge}</Badge>
+              <Badge className="bg-sky-600 text-xs text-white">{product.badge}</Badge>
             )}
           </div>
         </div>
 
         <div className="flex flex-1 flex-col p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{product.category}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">{product.category}</p>
             <div className="flex items-center gap-1 text-xs text-stone-500">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
               4.8
@@ -91,7 +91,7 @@ export default function ProductCard({ product }: { product: Product }) {
               )}
             </span>
             {product.stock > 0 && (
-              <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">In stock</span>
+              <span className="rounded-full bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700">In stock</span>
             )}
           </div>
         </div>

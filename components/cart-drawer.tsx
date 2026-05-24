@@ -45,7 +45,7 @@ export default function CartDrawer() {
             <div className="border-b border-stone-100 px-5 py-4">
               <div className="mb-2 flex items-center justify-between gap-3 text-sm">
                 <span className="flex items-center gap-2 font-medium text-stone-950">
-                  <Truck className="h-4 w-4 text-emerald-700" />
+                  <Truck className="h-4 w-4 text-sky-700" />
                   Free shipping
                 </span>
                 <span className="text-stone-500">
@@ -53,7 +53,7 @@ export default function CartDrawer() {
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-stone-100">
-                <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${progress}%` }} />
+                <div className="h-full rounded-full bg-sky-600 transition-all" style={{ width: `${progress}%` }} />
               </div>
             </div>
 
@@ -107,17 +107,17 @@ export default function CartDrawer() {
               ))}
 
               {recommendations.length > 0 && (
-                <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+                <div className="rounded-lg border border-sky-100 bg-sky-50 p-3">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-emerald-950">Smart add-ons</p>
-                      <p className="text-xs text-emerald-800">
+                      <p className="text-sm font-semibold text-sky-950">Smart add-ons</p>
+                      <p className="text-xs text-sky-800">
                         {remainingForFreeShipping > 0
                           ? `Add one to get closer to free shipping.`
                           : 'Frequently bought with your cart.'}
                       </p>
                     </div>
-                    <ShoppingCart className="h-4 w-4 text-emerald-700" />
+                    <ShoppingCart className="h-4 w-4 text-sky-700" />
                   </div>
                   <div className="space-y-2">
                     {recommendations.map((product) => (

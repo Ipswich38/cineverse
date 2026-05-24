@@ -14,15 +14,15 @@ export default function Navbar() {
   return (
     <>
       {/* Announcement bar */}
-      <div className="bg-emerald-700 px-4 py-2 text-center text-xs font-medium tracking-wide text-white">
-        FREE SHIPPING over ₱1,500 · Secure payments via PayMongo · Demo-ready checkout
+      <div className="bg-sky-700 px-4 py-2 text-center text-xs font-medium tracking-wide text-white">
+        FREE SHIPPING over ₱5,000 · Secure payments via PayMongo · Production checkout flow
       </div>
 
       <header className="sticky top-0 z-50 border-b border-stone-200 bg-white/95 shadow-sm backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-950 text-sm font-bold text-white">
-              L
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-950 text-sm font-bold text-sky-300 ring-1 ring-sky-400/30">
+              W
             </div>
             <span className="text-lg font-semibold tracking-normal text-stone-950">{STORE.name}</span>
           </Link>
@@ -57,7 +57,7 @@ export default function Navbar() {
               <ShoppingCart className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
               {count > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-400 px-1 text-xs font-bold text-stone-950">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-400 px-1 text-xs font-bold text-stone-950">
                   {count}
                 </span>
               )}

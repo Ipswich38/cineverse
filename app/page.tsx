@@ -48,27 +48,27 @@ export default async function HomePage() {
       <section className="relative min-h-[680px] overflow-hidden bg-stone-950 text-white">
         <div
           className="absolute inset-0 bg-cover bg-center opacity-45"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1800&q=85')" }}
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=1800&q=85')" }}
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(12,10,9,.96)_0%,rgba(12,10,9,.74)_43%,rgba(12,10,9,.22)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,.96)_0%,rgba(12,74,110,.76)_46%,rgba(14,165,233,.20)_100%)]" />
         <div className="relative mx-auto grid min-h-[680px] max-w-6xl items-center gap-10 px-4 py-16 lg:grid-cols-[1.05fr_.95fr]">
           <div className="max-w-2xl">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-stone-100 backdrop-blur">
               <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
-              Client-ready storefront template
+              Waevpoint aerial systems store
             </div>
             <h1 className="max-w-2xl text-4xl font-semibold leading-[1.05] tracking-normal text-white sm:text-5xl md:text-6xl">
-              A polished online shop your client can picture going live.
+              Drone gear for creators, pilots, and field teams.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-stone-200 sm:text-lg">
-              {STORE.name} pairs premium merchandising, a smooth cart, and secure PayMongo checkout in a clean e-commerce experience built for Philippine buyers.
+              {STORE.name} brings drones, batteries, propellers, filters, and field kits into one direct checkout experience for Philippine pilots and aerial teams.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="#products"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-white px-6 text-sm font-semibold text-stone-950 transition-colors hover:bg-stone-100"
               >
-                Shop Collection
+                Shop Drone Gear
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
@@ -107,7 +107,7 @@ export default async function HomePage() {
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-4 px-4 py-5 md:grid-cols-4">
           {TRUST_POINTS.map(({ icon: Icon, label, sub }) => (
             <div key={label} className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
                 <Icon className="h-5 w-5" />
               </div>
               <div>
@@ -123,11 +123,11 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-4 py-12">
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-emerald-700">Shop by category</p>
-              <h2 className="mt-1 text-2xl font-semibold text-stone-950">Built for quick browsing</h2>
+              <p className="text-sm font-semibold text-sky-700">Shop by category</p>
+              <h2 className="mt-1 text-2xl font-semibold text-stone-950">Built around real flight workflows</h2>
             </div>
             <div className="hidden items-center gap-2 text-sm text-stone-500 sm:flex">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 text-sky-600" />
               Stock-aware catalog
             </div>
           </div>
@@ -139,7 +139,7 @@ export default async function HomePage() {
                 className="group rounded-lg border border-stone-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
               >
                 <div className="mb-8 flex items-center justify-between">
-                  <PackageCheck className="h-5 w-5 text-emerald-700" />
+                  <PackageCheck className="h-5 w-5 text-sky-700" />
                   <ArrowRight className="h-4 w-4 text-stone-300 transition-transform group-hover:translate-x-1 group-hover:text-stone-950" />
                 </div>
                 <h3 className="font-semibold text-stone-950">{category}</h3>
@@ -154,18 +154,18 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-4 py-14">
           <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-sm font-semibold text-emerald-700">Latest drop</p>
-              <h2 className="mt-1 text-3xl font-semibold text-stone-950">All Products</h2>
-              <p className="mt-2 text-sm text-stone-500">{products.length} products available for the demo catalog</p>
+              <p className="text-sm font-semibold text-sky-700">Flight-ready catalog</p>
+              <h2 className="mt-1 text-3xl font-semibold text-stone-950">All Drone Products</h2>
+              <p className="mt-2 text-sm text-stone-500">{products.length} products available for the Waevpoint catalog</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="flex h-10 items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 text-sm text-stone-500">
                 <Search className="h-4 w-4" />
-                Search-ready catalog
+                Search-ready drone catalog
               </div>
               <div className="flex h-10 items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 text-sm text-stone-500">
                 <SlidersHorizontal className="h-4 w-4" />
-                Filters can map to categories
+                Filter by mission type
               </div>
             </div>
           </div>
@@ -185,18 +185,18 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="bg-emerald-700 text-white">
+      <section className="bg-sky-700 text-white">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 py-12 md:flex-row md:items-center">
           <div>
-            <p className="text-sm font-semibold text-emerald-100">Launch offer</p>
+            <p className="text-sm font-semibold text-sky-100">Launch offer</p>
             <h2 className="mt-1 text-3xl font-semibold">Free shipping over {formatMoney(STORE.freeShippingThreshold)}</h2>
-            <p className="mt-2 max-w-2xl text-emerald-50">
-              A practical promo banner for client demos, campaigns, and seasonal offers.
+            <p className="mt-2 max-w-2xl text-sky-50">
+              Stock up on batteries, propellers, filters, and field kits before your next flight.
             </p>
           </div>
           <Link
             href="#products"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-50"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-sky-800 transition-colors hover:bg-sky-50"
           >
             Browse Products
             <ArrowRight className="h-4 w-4" />

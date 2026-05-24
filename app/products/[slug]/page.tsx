@@ -91,7 +91,7 @@ export default async function ProductPage({
 
         <div className="flex flex-col gap-5">
           <div>
-            <Badge variant="outline" className="mb-3 border-emerald-200 bg-emerald-50 text-emerald-800">
+            <Badge variant="outline" className="mb-3 border-sky-200 bg-sky-50 text-sky-800">
               {product.category}
             </Badge>
             <h1 className="text-4xl font-semibold tracking-normal text-stone-950">{product.name}</h1>
@@ -108,7 +108,7 @@ export default async function ProductPage({
 
           <div className="text-sm">
             {product.stock > 0 ? (
-              <span className="inline-flex items-center gap-2 font-medium text-emerald-700">
+              <span className="inline-flex items-center gap-2 font-medium text-sky-700">
                 <CheckCircle2 className="h-4 w-4" />
                 In stock ({product.stock} available)
               </span>
@@ -122,7 +122,7 @@ export default async function ProductPage({
           <div className="grid gap-3 border-y border-stone-200 py-5 sm:grid-cols-3">
             {PRODUCT_HIGHLIGHTS.map(({ icon: Icon, label, value }) => (
               <div key={label}>
-                <Icon className="mb-2 h-5 w-5 text-emerald-700" />
+                <Icon className="mb-2 h-5 w-5 text-sky-700" />
                 <p className="text-sm font-semibold text-stone-950">{label}</p>
                 <p className="mt-1 text-xs leading-5 text-stone-500">{value}</p>
               </div>
@@ -131,11 +131,11 @@ export default async function ProductPage({
 
           <div className="grid gap-3 text-sm text-stone-600 sm:grid-cols-2">
             <div className="flex gap-3 rounded-lg bg-stone-50 p-4">
-              <Truck className="h-5 w-5 shrink-0 text-emerald-700" />
-              <p>Free delivery unlocks above ₱1,500.</p>
+              <Truck className="h-5 w-5 shrink-0 text-sky-700" />
+              <p>Free delivery unlocks above ₱5,000.</p>
             </div>
             <div className="flex gap-3 rounded-lg bg-stone-50 p-4">
-              <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-700" />
+              <ShieldCheck className="h-5 w-5 shrink-0 text-sky-700" />
               <p>Checkout redirects to a secure PayMongo payment page.</p>
             </div>
           </div>
@@ -146,7 +146,7 @@ export default async function ProductPage({
         <section className="mt-16">
           <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-emerald-700">Recommended with this item</p>
+              <p className="text-sm font-semibold text-sky-700">Recommended with this item</p>
               <h2 className="text-2xl font-semibold text-stone-950">Complete the order</h2>
             </div>
             <p className="max-w-md text-sm text-stone-500">

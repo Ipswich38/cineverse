@@ -26,7 +26,7 @@ const statusStyles: Record<FulfillmentStatus, string> = {
   ready_to_ship: 'bg-blue-100 text-blue-800',
   picked_up: 'bg-indigo-100 text-indigo-800',
   shipped: 'bg-violet-100 text-violet-800',
-  delivered: 'bg-emerald-100 text-emerald-800',
+  delivered: 'bg-sky-100 text-sky-800',
   returned: 'bg-red-100 text-red-800',
 }
 
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
           <Button type="submit" className="mt-5 h-10 w-full bg-stone-950 text-white hover:bg-stone-800">
             Enter Dashboard
           </Button>
-          <p className="mt-3 text-xs text-stone-400">For client demo only. Replace with Supabase Auth before launch.</p>
+          <p className="mt-3 text-xs text-stone-400">Prototype access only. Replace with Supabase Auth before public launch.</p>
         </form>
       </main>
     )
@@ -109,7 +109,7 @@ export default function AdminDashboard() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-emerald-700">Operations Console</p>
+            <p className="text-sm font-semibold text-sky-700">Operations Console</p>
             <h1 className="mt-1 text-3xl font-semibold text-stone-950">Admin Inventory & Fulfillment</h1>
             <p className="mt-2 max-w-2xl text-sm text-stone-500">
               Track paid orders, stock movement, low inventory, and courier progress from payment to delivery.
@@ -123,22 +123,22 @@ export default function AdminDashboard() {
 
         <div className="mb-6 grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border border-stone-200 bg-white p-4">
-            <BarChart3 className="mb-3 h-5 w-5 text-emerald-700" />
+            <BarChart3 className="mb-3 h-5 w-5 text-sky-700" />
             <p className="text-2xl font-semibold text-stone-950">{orders.length}</p>
             <p className="text-sm text-stone-500">Total orders</p>
           </div>
           <div className="rounded-lg border border-stone-200 bg-white p-4">
-            <PackageCheck className="mb-3 h-5 w-5 text-emerald-700" />
+            <PackageCheck className="mb-3 h-5 w-5 text-sky-700" />
             <p className="text-2xl font-semibold text-stone-950">{activeOrders.length}</p>
             <p className="text-sm text-stone-500">Active fulfillment</p>
           </div>
           <div className="rounded-lg border border-stone-200 bg-white p-4">
-            <Box className="mb-3 h-5 w-5 text-emerald-700" />
+            <Box className="mb-3 h-5 w-5 text-sky-700" />
             <p className="text-2xl font-semibold text-stone-950">{lowStock.length}</p>
             <p className="text-sm text-stone-500">Low-stock SKUs</p>
           </div>
           <div className="rounded-lg border border-stone-200 bg-white p-4">
-            <CheckCircle2 className="mb-3 h-5 w-5 text-emerald-700" />
+            <CheckCircle2 className="mb-3 h-5 w-5 text-sky-700" />
             <p className="text-2xl font-semibold text-stone-950">{formatMoney(paidOrders.reduce((sum, order) => sum + order.total_amount, 0))}</p>
             <p className="text-sm text-stone-500">Paid demo revenue</p>
           </div>
@@ -159,7 +159,7 @@ export default function AdminDashboard() {
                   <button
                     key={order.id}
                     onClick={() => setSelectedOrderId(order.id)}
-                    className={`grid w-full gap-3 p-4 text-left transition-colors md:grid-cols-[130px_1fr_160px_140px] md:items-center ${selectedOrder?.id === order.id ? 'bg-emerald-50' : 'hover:bg-stone-50'}`}
+                    className={`grid w-full gap-3 p-4 text-left transition-colors md:grid-cols-[130px_1fr_160px_140px] md:items-center ${selectedOrder?.id === order.id ? 'bg-sky-50' : 'hover:bg-stone-50'}`}
                   >
                     <div>
                       <p className="text-sm font-semibold text-stone-950">{order.id}</p>
@@ -211,7 +211,7 @@ export default function AdminDashboard() {
                         <td className="px-4 py-3 text-stone-950">{formatMoney(product.price)}</td>
                         <td className="px-4 py-3 font-semibold text-stone-950">{product.stock}</td>
                         <td className="px-4 py-3">
-                          <Badge className={product.stock <= 5 ? 'bg-red-100 text-red-700' : product.stock <= 8 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}>
+                          <Badge className={product.stock <= 5 ? 'bg-red-100 text-red-700' : product.stock <= 8 ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}>
                             {product.stock <= 5 ? 'Reorder now' : product.stock <= 8 ? 'Watch' : 'Healthy'}
                           </Badge>
                         </td>
@@ -231,7 +231,7 @@ export default function AdminDashboard() {
                     <h2 className="font-semibold text-stone-950">{selectedOrder.id}</h2>
                     <p className="text-sm text-stone-500">{selectedOrder.customer_name}</p>
                   </div>
-                  <Badge className={selectedOrder.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-700'}>
+                  <Badge className={selectedOrder.status === 'paid' ? 'bg-sky-100 text-sky-800' : 'bg-stone-100 text-stone-700'}>
                     {selectedOrder.status}
                   </Badge>
                 </div>
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
 
             <div className="rounded-lg border border-stone-200 bg-white p-4">
               <div className="mb-4 flex items-center gap-2">
-                <Truck className="h-5 w-5 text-emerald-700" />
+                <Truck className="h-5 w-5 text-sky-700" />
                 <h2 className="font-semibold text-stone-950">Inventory Movement</h2>
               </div>
               <div className="space-y-3">

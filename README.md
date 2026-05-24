@@ -1,6 +1,6 @@
-# Store Template
+# Waevpoint Online Store
 
-Client-ready ecommerce storefront built with Next.js 16, Supabase, Vercel, and PayMongo Hosted Checkout.
+Production-positioned drone ecommerce storefront for Waevpoint, built with Next.js 16, Supabase, Vercel, and PayMongo Hosted Checkout.
 
 ## Stack
 
@@ -48,7 +48,7 @@ npm run dev
 Create a webhook in the PayMongo dashboard:
 
 ```text
-https://your-domain.com/api/webhook/paymongo
+https://store.waevpoint.quest/api/webhook/paymongo
 ```
 
 For local webhook testing, expose your local server with a tunnel and use the tunnel URL. The webhook secret from PayMongo must be saved as `PAYMONGO_WEBHOOK_SECRET`.
@@ -73,16 +73,16 @@ Open `/admin` to view the operations console.
 Demo password: demo-admin
 ```
 
-The prototype admin shows order movement, inventory levels, low-stock signals, and fulfillment status controls. It uses demo data until Supabase credentials are configured. Before production launch, replace the demo password gate with Supabase Auth and restrict admin actions with server-side authorization.
+The admin shows order movement, inventory levels, low-stock signals, and fulfillment status controls. It uses seeded/sample inventory data until live inventory is finalized. Before production launch, replace the demo password gate with Supabase Auth and restrict admin actions with server-side authorization.
 
 ## Production Checklist
 
 - Run the Supabase schema in the production Supabase project.
 - Add all environment variables in Vercel.
-- Set `NEXT_PUBLIC_BASE_URL` to the production domain with no trailing slash.
+- Set `NEXT_PUBLIC_BASE_URL` to `https://store.waevpoint.quest` with no trailing slash.
 - Use PayMongo live keys only after sandbox checkout and webhook tests pass.
 - Register the production webhook URL in PayMongo live mode.
-- Replace demo products, branding, contact details, policy links, and product images.
+- Replace any remaining sample stock counts, policy links, and final product images.
 - Confirm stock counts and fulfillment process with the client before launch.
 
 ## Verification
