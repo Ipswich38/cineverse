@@ -9,6 +9,8 @@ export interface CartItem {
   slug: string
   price: number
   image_url: string
+  category?: string
+  tags?: string[]
   quantity: number
 }
 

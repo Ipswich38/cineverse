@@ -3,8 +3,9 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, ShieldCheck, Truck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import ProductActions from '@/components/product-actions'
+import ProductCard from '@/components/product-card'
 import { hasSupabaseConfig, supabase, type Product } from '@/lib/supabase'
-import { DEMO_PRODUCTS, PRODUCT_HIGHLIGHTS, formatMoney } from '@/lib/storefront'
+import { DEMO_PRODUCTS, PRODUCT_HIGHLIGHTS, formatMoney, getProductRecommendations } from '@/lib/storefront'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,13 +28,31 @@ async function getProduct(slug: string) {
   return data as Product
 }
 
+async function getProducts() {
+  if (!hasSupabaseConfig()) {
+    return DEMO_PRODUCTS
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+
+  if (error || !data?.length) {
+    return DEMO_PRODUCTS
+  }
+
+  return data as Product[]
+}
+
 export default async function ProductPage({
   params,
 }: {
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const product = await getProduct(slug)
+  const [product, products] = await Promise.all([getProduct(slug), getProducts()])
 
   if (!product) {
     return (
@@ -46,6 +65,8 @@ export default async function ProductPage({
       </div>
     )
   }
+
+  const recommendations = getProductRecommendations(product, products)
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -76,7 +97,12 @@ export default async function ProductPage({
             <h1 className="text-4xl font-semibold tracking-normal text-stone-950">{product.name}</h1>
           </div>
 
-          <p className="text-3xl font-semibold">{formatMoney(product.price)}</p>
+          <div className="flex items-end gap-3">
+            <p className="text-3xl font-semibold">{formatMoney(product.price)}</p>
+            {product.compare_at_price && product.compare_at_price > product.price && (
+              <p className="pb-1 text-sm text-stone-400 line-through">{formatMoney(product.compare_at_price)}</p>
+            )}
+          </div>
 
           <p className="max-w-xl leading-7 text-stone-600">{product.description}</p>
 
@@ -115,6 +141,25 @@ export default async function ProductPage({
           </div>
         </div>
       </div>
+
+      {recommendations.length > 0 && (
+        <section className="mt-16">
+          <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-emerald-700">Recommended with this item</p>
+              <h2 className="text-2xl font-semibold text-stone-950">Complete the order</h2>
+            </div>
+            <p className="max-w-md text-sm text-stone-500">
+              Recommendations are scored by category, shared tags, bundle fit, and add-on price.
+            </p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {recommendations.map((item) => (
+              <ProductCard key={item.id} product={item} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

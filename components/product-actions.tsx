@@ -16,6 +16,8 @@ export default function ProductActions({ product }: { product: Product }) {
       slug: product.slug,
       price: product.price,
       image_url: product.image_url,
+      category: product.category,
+      tags: product.tags ?? [],
     })
     toast.success(`${product.name} added to cart`)
   }

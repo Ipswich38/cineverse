@@ -6,6 +6,7 @@ import type { Product } from '@/lib/supabase'
 
 const FREE_SHIPPING_THRESHOLD = 1500
 const STANDARD_SHIPPING_FEE = 120
+const EXPRESS_SHIPPING_FEE = 220
 const MAX_ITEM_QUANTITY = 99
 
 interface CheckoutCustomer {
@@ -13,6 +14,12 @@ interface CheckoutCustomer {
   email: string
   phone: string
   address: string
+}
+
+interface CheckoutDetails {
+  billingAddress?: string
+  deliveryMethod?: 'standard' | 'express'
+  paymentMethod?: 'paymongo_all' | 'gcash' | 'card'
 }
 
 function normalizeCustomer(customer: CheckoutCustomer) {
@@ -48,6 +55,11 @@ function validateCheckoutInput(customer: CheckoutCustomer, items: CartItem[]) {
   return normalizedCustomer
 }
 
+function getShippingFee(subtotal: number, deliveryMethod: CheckoutDetails['deliveryMethod']) {
+  if (deliveryMethod === 'express') return EXPRESS_SHIPPING_FEE
+  return subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE
+}
+
 export async function POST(req: NextRequest) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
@@ -59,13 +71,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Checkout needs real Supabase keys before accepting orders' }, { status: 503 })
     }
 
-    const { customer, items }: { customer: CheckoutCustomer; items: CartItem[] } = await req.json()
+    const { customer, checkout, items }: { customer: CheckoutCustomer; checkout?: CheckoutDetails; items: CartItem[] } = await req.json()
     const normalizedCustomer = validateCheckoutInput(customer, items)
+    const deliveryMethod = checkout?.deliveryMethod === 'express' ? 'express' : 'standard'
+    const paymentMethod = checkout?.paymentMethod ?? 'paymongo_all'
+    const billingAddress = checkout?.billingAddress?.trim() || normalizedCustomer.address
 
     const productIds = [...new Set(items.map((item) => item.id))]
     const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
-      .select('id, name, slug, price, image_url, stock, is_active')
+      .select('id, name, slug, price, image_url, stock, category, tags, is_active')
       .in('id', productIds)
       .eq('is_active', true)
 
@@ -92,7 +107,7 @@ export async function POST(req: NextRequest) {
     }
 
     const subtotal = pricedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE
+    const shippingFee = getShippingFee(subtotal, deliveryMethod)
     const total = subtotal + shippingFee
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -102,8 +117,13 @@ export async function POST(req: NextRequest) {
         customer_email: normalizedCustomer.email,
         customer_phone: normalizedCustomer.phone,
         customer_address: normalizedCustomer.address,
+        billing_address: billingAddress,
         total_amount: total,
+        shipping_fee: shippingFee,
+        shipping_method: deliveryMethod,
+        payment_method: paymentMethod,
         status: 'pending',
+        fulfillment_status: 'awaiting_payment',
       })
       .select()
       .single()
@@ -132,7 +152,7 @@ export async function POST(req: NextRequest) {
         })),
         ...(shippingFee > 0
           ? [{
-              name: 'Standard Shipping',
+              name: deliveryMethod === 'express' ? 'Express Shipping' : 'Standard Shipping',
               amount: shippingFee,
               quantity: 1,
             }]

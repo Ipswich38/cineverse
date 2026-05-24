@@ -55,6 +55,16 @@ For local webhook testing, expose your local server with a tunnel and use the tu
 
 The checkout route creates pending orders before redirecting customers to PayMongo. The webhook marks orders as paid after PayMongo confirms the checkout payment.
 
+## Commerce Flow
+
+- Product catalog supports sale pricing, badges, categories, and tags for merchandising.
+- Product pages show related recommendations based on category, shared tags, add-on price, and bundle fit.
+- Cart and checkout include smart add-ons to increase basket size and help customers reach free shipping.
+- Checkout captures contact details, shipping address, delivery method, billing address, and payment preference before PayMongo redirect.
+- Paid PayMongo webhooks move orders from `pending` to `paid`, set fulfillment to `to_pack`, and call `decrement_inventory_for_order`.
+- Fulfillment statuses are modeled as `awaiting_payment`, `to_pack`, `packing`, `ready_to_ship`, `picked_up`, `shipped`, `delivered`, and `returned`.
+- Inventory deduction is idempotent through `inventory_deducted_at`, so duplicate payment webhooks do not subtract stock twice.
+
 ## Production Checklist
 
 - Run the Supabase schema in the production Supabase project.

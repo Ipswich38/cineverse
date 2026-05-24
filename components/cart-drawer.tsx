@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Minus, Plus, ShoppingBag, Trash2, Truck } from 'lucide-react'
+import { Minus, Plus, ShoppingBag, ShoppingCart, Trash2, Truck } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
   Sheet,
@@ -11,13 +11,14 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { useCart, cartTotal } from '@/lib/cart-store'
-import { STORE, formatMoney } from '@/lib/storefront'
+import { DEMO_PRODUCTS, STORE, formatMoney, getCartRecommendations } from '@/lib/storefront'
 
 export default function CartDrawer() {
-  const { items, isOpen, closeCart, removeItem, updateQuantity } = useCart()
+  const { items, isOpen, closeCart, removeItem, updateQuantity, addItem } = useCart()
   const total = cartTotal(items)
   const remainingForFreeShipping = Math.max(STORE.freeShippingThreshold - total, 0)
   const progress = Math.min((total / STORE.freeShippingThreshold) * 100, 100)
+  const recommendations = getCartRecommendations(items, DEMO_PRODUCTS, 2)
 
   return (
     <Sheet open={isOpen} onOpenChange={closeCart}>
@@ -104,6 +105,51 @@ export default function CartDrawer() {
                   </div>
                 </div>
               ))}
+
+              {recommendations.length > 0 && (
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-950">Smart add-ons</p>
+                      <p className="text-xs text-emerald-800">
+                        {remainingForFreeShipping > 0
+                          ? `Add one to get closer to free shipping.`
+                          : 'Frequently bought with your cart.'}
+                      </p>
+                    </div>
+                    <ShoppingCart className="h-4 w-4 text-emerald-700" />
+                  </div>
+                  <div className="space-y-2">
+                    {recommendations.map((product) => (
+                      <div key={product.id} className="flex items-center gap-3 rounded-md bg-white p-2">
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-stone-100">
+                          <Image src={product.image_url} alt={product.name} fill className="object-cover" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-1 text-xs font-semibold text-stone-950">{product.name}</p>
+                          <p className="text-xs text-stone-500">{formatMoney(product.price)}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 shrink-0 bg-white text-xs"
+                          onClick={() => addItem({
+                            id: product.id,
+                            name: product.name,
+                            slug: product.slug,
+                            price: product.price,
+                            image_url: product.image_url,
+                            category: product.category,
+                            tags: product.tags ?? [],
+                          })}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4 border-t border-stone-100 p-5">

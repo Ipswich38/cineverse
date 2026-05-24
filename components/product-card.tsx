@@ -21,6 +21,8 @@ export default function ProductCard({ product }: { product: Product }) {
       slug: product.slug,
       price: product.price,
       image_url: product.image_url,
+      category: product.category,
+      tags: product.tags ?? [],
     })
     toast.success(`${product.name} added to cart`)
   }
@@ -63,6 +65,9 @@ export default function ProductCard({ product }: { product: Product }) {
             {product.stock > 0 && product.stock <= 5 && (
               <Badge className="bg-amber-500 text-xs text-white">Only {product.stock} left</Badge>
             )}
+            {product.badge && product.stock > 5 && (
+              <Badge className="bg-emerald-600 text-xs text-white">{product.badge}</Badge>
+            )}
           </div>
         </div>
 
@@ -77,7 +82,14 @@ export default function ProductCard({ product }: { product: Product }) {
           <h3 className="line-clamp-1 text-sm font-semibold text-stone-950">{product.name}</h3>
           <p className="mt-1 line-clamp-2 min-h-9 text-xs leading-5 text-stone-500">{product.description}</p>
           <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-            <span className="font-semibold text-stone-950">{formatMoney(product.price)}</span>
+            <span>
+              <span className="font-semibold text-stone-950">{formatMoney(product.price)}</span>
+              {product.compare_at_price && product.compare_at_price > product.price && (
+                <span className="ml-2 text-xs text-stone-400 line-through">
+                  {formatMoney(product.compare_at_price)}
+                </span>
+              )}
+            </span>
             {product.stock > 0 && (
               <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">In stock</span>
             )}
