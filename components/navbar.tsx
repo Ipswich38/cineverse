@@ -37,6 +37,9 @@ export default function Navbar() {
             <Link href="/checkout" className="transition-colors hover:text-stone-950">
               Checkout
             </Link>
+            <Link href="/admin" className="transition-colors hover:text-stone-950">
+              Admin
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -76,6 +79,7 @@ export default function Navbar() {
             <Link href="/#products" onClick={() => setMenuOpen(false)}>Products</Link>
             <Link href="/#categories" onClick={() => setMenuOpen(false)}>Categories</Link>
             <Link href="/checkout" onClick={() => setMenuOpen(false)}>Checkout</Link>
+            <Link href="/admin" onClick={() => setMenuOpen(false)}>Admin</Link>
           </div>
         )}
       </header>

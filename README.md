@@ -65,6 +65,16 @@ The checkout route creates pending orders before redirecting customers to PayMon
 - Fulfillment statuses are modeled as `awaiting_payment`, `to_pack`, `packing`, `ready_to_ship`, `picked_up`, `shipped`, `delivered`, and `returned`.
 - Inventory deduction is idempotent through `inventory_deducted_at`, so duplicate payment webhooks do not subtract stock twice.
 
+## Admin Prototype
+
+Open `/admin` to view the operations console.
+
+```text
+Demo password: demo-admin
+```
+
+The prototype admin shows order movement, inventory levels, low-stock signals, and fulfillment status controls. It uses demo data until Supabase credentials are configured. Before production launch, replace the demo password gate with Supabase Auth and restrict admin actions with server-side authorization.
+
 ## Production Checklist
 
 - Run the Supabase schema in the production Supabase project.
