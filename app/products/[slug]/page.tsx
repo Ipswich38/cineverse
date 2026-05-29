@@ -1,15 +1,15 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, ShieldCheck, Truck } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ShieldCheck, Store } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import ProductActions from '@/components/product-actions'
+import ListingBooking from '@/components/listing-booking'
 import ProductCard from '@/components/product-card'
 import { hasSupabaseConfig, supabase, type Product } from '@/lib/supabase'
 import { DEMO_PRODUCTS, PRODUCT_HIGHLIGHTS, formatMoney, getProductRecommendations } from '@/lib/storefront'
 
 export const dynamic = 'force-dynamic'
 
-async function getProduct(slug: string) {
+async function getListing(slug: string) {
   if (!hasSupabaseConfig()) {
     return DEMO_PRODUCTS.find((item) => item.slug === slug) ?? null
   }
@@ -28,10 +28,8 @@ async function getProduct(slug: string) {
   return data as Product
 }
 
-async function getProducts() {
-  if (!hasSupabaseConfig()) {
-    return DEMO_PRODUCTS
-  }
+async function getListings() {
+  if (!hasSupabaseConfig()) return DEMO_PRODUCTS
 
   const { data, error } = await supabase
     .from('products')
@@ -39,121 +37,104 @@ async function getProducts() {
     .eq('is_active', true)
     .order('created_at', { ascending: false })
 
-  if (error || !data?.length) {
-    return DEMO_PRODUCTS
-  }
-
+  if (error || !data?.length) return DEMO_PRODUCTS
   return data as Product[]
 }
 
-export default async function ProductPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
+export default async function ListingPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const [product, products] = await Promise.all([getProduct(slug), getProducts()])
+  const [product, listings] = await Promise.all([getListing(slug), getListings()])
 
   if (!product) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-24 text-center">
-        <h1 className="text-2xl font-semibold text-stone-950">Product not found</h1>
-        <p className="mt-2 text-stone-500">This item may be unavailable or inactive.</p>
-        <Link href="/#products" className="mt-6 inline-flex h-10 items-center rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800">
-          Back to products
+        <h1 className="text-2xl font-semibold text-[#1d1d1f]">Listing not found</h1>
+        <p className="mt-2 text-[#6e6e73]">This gear may be unavailable or inactive.</p>
+        <Link href="/#gear" className="mt-6 inline-flex h-10 items-center rounded-lg bg-[#1d1d1f] px-4 text-sm font-semibold text-white hover:bg-[#1d1d1f]/85">
+          Browse gear
         </Link>
       </div>
     )
   }
 
-  const recommendations = getProductRecommendations(product, products)
+  const recommendations = getProductRecommendations(product, listings)
+  const ownerFirst = product.owner_name?.split(' ')[0]
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <Link
-        href="/"
-        className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-stone-950"
-      >
+      <Link href="/#gear" className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-[#6e6e73] hover:text-[#1d1d1f]">
         <ArrowLeft className="h-4 w-4" />
-        Back to products
+        Browse gear
       </Link>
 
-      <div className="grid gap-10 lg:grid-cols-2">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-stone-100">
-          <Image
-            src={product.image_url}
-            alt={product.name}
-            fill
-            className="object-cover"
-            priority
-          />
-        </div>
+      <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr]">
+        {/* Left: image + details */}
+        <div>
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#f5f5f7]">
+            <Image src={product.image_url} alt={product.name} fill className="object-cover" priority />
+          </div>
 
-        <div className="flex flex-col gap-5">
-          <div>
-            <Badge variant="outline" className="mb-3 border-sky-200 bg-sky-50 text-sky-800">
+          <div className="mt-6">
+            <Badge variant="outline" className="mb-3 border-[#0071e3]/20 bg-[#0071e3]/5 text-[#0071e3]">
               {product.category}
             </Badge>
-            <h1 className="text-4xl font-semibold tracking-normal text-stone-950">{product.name}</h1>
-          </div>
+            <h1 className="text-[32px] font-semibold tracking-[-0.01em] text-[#1d1d1f]">{product.name}</h1>
 
-          <div className="flex items-end gap-3">
-            <p className="text-3xl font-semibold">{formatMoney(product.price)}</p>
-            {product.compare_at_price && product.compare_at_price > product.price && (
-              <p className="pb-1 text-sm text-stone-400 line-through">{formatMoney(product.compare_at_price)}</p>
-            )}
-          </div>
-
-          <p className="max-w-xl leading-7 text-stone-600">{product.description}</p>
-
-          <div className="text-sm">
-            {product.stock > 0 ? (
-              <span className="inline-flex items-center gap-2 font-medium text-sky-700">
-                <CheckCircle2 className="h-4 w-4" />
-                In stock ({product.stock} available)
-              </span>
-            ) : (
-              <span className="font-medium text-red-500">Out of stock</span>
-            )}
-          </div>
-
-          <ProductActions product={product} />
-
-          <div className="grid gap-3 border-y border-stone-200 py-5 sm:grid-cols-3">
-            {PRODUCT_HIGHLIGHTS.map(({ icon: Icon, label, value }) => (
-              <div key={label}>
-                <Icon className="mb-2 h-5 w-5 text-sky-700" />
-                <p className="text-sm font-semibold text-stone-950">{label}</p>
-                <p className="mt-1 text-xs leading-5 text-stone-500">{value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-3 text-sm text-stone-600 sm:grid-cols-2">
-            <div className="flex gap-3 rounded-lg bg-stone-50 p-4">
-              <Truck className="h-5 w-5 shrink-0 text-sky-700" />
-              <p>Free delivery unlocks above ₱5,000.</p>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-[22px] font-semibold text-[#1d1d1f]">{formatMoney(product.price)}</span>
+              <span className="text-[14px] text-[#6e6e73]">/day</span>
             </div>
-            <div className="flex gap-3 rounded-lg bg-stone-50 p-4">
-              <ShieldCheck className="h-5 w-5 shrink-0 text-sky-700" />
-              <p>Checkout redirects to a secure PayMongo payment page.</p>
+
+            {product.owner_name && (
+              <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3 py-1.5 text-[13px] text-[#1d1d1f]">
+                <Store className="h-3.5 w-3.5 text-[#6e6e73]" />
+                Owned by <span className="font-semibold">{ownerFirst}</span>
+              </p>
+            )}
+
+            <p className="mt-5 max-w-xl leading-7 text-[#3a3a3c]">{product.description}</p>
+
+            <div className="mt-5 text-sm">
+              {product.stock > 0 ? (
+                <span className="inline-flex items-center gap-2 font-medium text-[#0071e3]">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {product.stock} unit(s) available
+                </span>
+              ) : (
+                <span className="font-medium text-[#ff3b30]">Fully booked</span>
+              )}
+            </div>
+
+            <div className="mt-6 grid gap-3 border-y border-black/[0.06] py-5 sm:grid-cols-3">
+              {PRODUCT_HIGHLIGHTS.map(({ icon: Icon, label, value }) => (
+                <div key={label}>
+                  <Icon className="mb-2 h-5 w-5 text-[#0071e3]" />
+                  <p className="text-sm font-semibold text-[#1d1d1f]">{label}</p>
+                  <p className="mt-1 text-xs leading-5 text-[#6e6e73]">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex gap-3 rounded-xl bg-[#f5f5f7] p-4 text-sm text-[#3a3a3c]">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-[#0071e3]" />
+              <p>Reserve with a 30% downpayment via PayMongo. The balance is settled directly with the owner on handover.</p>
             </div>
           </div>
+        </div>
+
+        {/* Right: sticky booking panel */}
+        <div className="lg:sticky lg:top-20 lg:self-start">
+          <ListingBooking product={product} />
         </div>
       </div>
 
       {recommendations.length > 0 && (
         <section className="mt-16">
-          <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-sky-700">Recommended with this item</p>
-              <h2 className="text-2xl font-semibold text-stone-950">Complete the order</h2>
-            </div>
-            <p className="max-w-md text-sm text-stone-500">
-              Recommendations are scored by category, shared tags, bundle fit, and add-on price.
-            </p>
+          <div className="mb-6">
+            <p className="text-sm font-semibold text-[#0071e3]">Pairs well for your shoot</p>
+            <h2 className="text-2xl font-semibold text-[#1d1d1f]">Complete the kit</h2>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {recommendations.map((item) => (
               <ProductCard key={item.id} product={item} />
             ))}

@@ -4,62 +4,56 @@ import Navbar from '@/components/navbar'
 import CartDrawer from '@/components/cart-drawer'
 import { Toaster } from '@/components/ui/sonner'
 import Link from 'next/link'
-import { Mail, MapPin, MessageCircle, ShieldCheck } from 'lucide-react'
 import { STORE } from '@/lib/storefront'
 
 export const metadata: Metadata = {
-  title: `${STORE.name} - Official Online Shop`,
-  description: `${STORE.tagline} Secure checkout via PayMongo.`,
+  title: STORE.name,
+  description: `${STORE.tagline} Reserve with a 30% downpayment via PayMongo.`,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-stone-50 font-sans text-stone-950">
+    <html lang="en" className="h-full">
+      <body className="flex min-h-full flex-col bg-white font-sans text-[#1d1d1f]">
         <Navbar />
         <CartDrawer />
         <main className="flex-1">{children}</main>
 
-        <footer className="mt-0 bg-stone-950 text-stone-400">
-          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 py-12 md:grid-cols-4">
+        <footer className="bg-[#1d1d1f] text-white/50">
+          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 px-5 py-14 md:grid-cols-4">
             <div className="col-span-2 md:col-span-1">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500 text-sm font-bold text-white">W</div>
-                <span className="font-semibold text-white">{STORE.name}</span>
-              </div>
-              <p className="text-sm leading-relaxed">
-                {STORE.tagline} Built with direct checkout, customer details, inventory movement, and order tracking foundations.
-              </p>
+              <p className="mb-3 text-[15px] font-semibold text-white">{STORE.shortName}</p>
+              <p className="text-[13px] leading-relaxed">{STORE.tagline}</p>
+              <p className="mt-4 text-[12px]">{STORE.location}</p>
+              <p className="text-[12px]">{STORE.email}</p>
             </div>
             <div>
-              <p className="mb-3 text-sm font-semibold text-white">Shop</p>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/#products" className="transition-colors hover:text-white">All Drone Products</Link></li>
-                <li><Link href="/#categories" className="transition-colors hover:text-white">Categories</Link></li>
-                <li><Link href="/#products" className="transition-colors hover:text-white">New Arrivals</Link></li>
-              </ul>
-            </div>
-            <div>
-              <p className="mb-3 text-sm font-semibold text-white">Help</p>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/#products" className="transition-colors hover:text-white">Shipping Policy</Link></li>
-                <li><Link href="/#products" className="transition-colors hover:text-white">Returns</Link></li>
+              <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/30">Rent</p>
+              <ul className="space-y-3 text-[13px]">
+                <li><Link href="/#gear" className="transition-colors hover:text-white">Browse Gear</Link></li>
+                <li><Link href="/#how" className="transition-colors hover:text-white">How it works</Link></li>
                 <li><Link href="/checkout" className="transition-colors hover:text-white">Checkout</Link></li>
               </ul>
             </div>
             <div>
-              <p className="mb-3 text-sm font-semibold text-white">Contact</p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {STORE.location}</li>
-                <li className="flex items-center gap-2"><Mail className="h-4 w-4" /> {STORE.email}</li>
-                <li className="flex items-center gap-2"><MessageCircle className="h-4 w-4" /> Facebook</li>
-                <li className="flex items-center gap-2"><MessageCircle className="h-4 w-4" /> Instagram</li>
+              <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/30">Support</p>
+              <ul className="space-y-3 text-[13px]">
+                <li><Link href="/#how" className="transition-colors hover:text-white">Reservations</Link></li>
+                <li><Link href="/#how" className="transition-colors hover:text-white">Downpayments</Link></li>
+                <li><Link href="/admin" className="transition-colors hover:text-white">Owner admin</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/30">Connect</p>
+              <ul className="space-y-3 text-[13px]">
+                <li><a href="#" className="transition-colors hover:text-white">Facebook</a></li>
+                <li><a href="#" className="transition-colors hover:text-white">Instagram</a></li>
               </ul>
             </div>
           </div>
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 border-t border-white/10 px-4 py-4 text-xs sm:flex-row">
-            <p>© {new Date().getFullYear()} {STORE.name}. All rights reserved.</p>
-            <p className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-sky-400" /> Payments secured by <span className="font-medium text-white">PayMongo</span></p>
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 border-t border-white/[0.08] px-5 py-5 text-[12px] sm:flex-row">
+            <p>© {new Date().getFullYear()} {STORE.shortName}. All rights reserved.</p>
+            <p>Payments secured by <span className="font-medium text-white">PayMongo</span></p>
           </div>
         </footer>
 

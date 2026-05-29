@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { verifyWebhookSignature } from '@/lib/paymongo'
+import { hasPaymongoWebhookConfig, verifyWebhookSignature } from '@/lib/paymongo'
+import { notifyCustomerBookingPaid, notifyOwnersBookingPaid } from '@/lib/notifications'
+import type { Order, OrderItem } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
   const signature = req.headers.get('paymongo-signature') ?? ''
 
-  const secret = process.env.PAYMONGO_WEBHOOK_SECRET
-  if (!secret) {
+  if (!hasPaymongoWebhookConfig()) {
     console.error('[webhook] Missing PAYMONGO_WEBHOOK_SECRET')
-    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
   }
+  const secret = process.env.PAYMONGO_WEBHOOK_SECRET!
 
   if (!verifyWebhookSignature(rawBody, signature, secret)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
@@ -55,17 +57,40 @@ export async function POST(req: NextRequest) {
         paid_at: new Date().toISOString(),
       })
       .eq('paymongo_session_id', checkoutId)
-      .select('id')
+      .eq('status', 'pending') // idempotent: only act on the first paid event
+      .select('*')
       .single()
 
-    if (error) console.error('[webhook] update failed:', error.message)
+    if (error) {
+      // No pending booking matched (already processed, or unknown session) — ack and move on.
+      console.warn('[webhook] no pending booking for session:', checkoutId, error.message)
+      return NextResponse.json({ received: true })
+    }
 
-    if (!error && order?.id) {
-      const { error: inventoryError } = await supabaseAdmin.rpc('decrement_inventory_for_order', {
-        target_order_id: order.id,
-      })
+    if (order?.id) {
+      const { data: itemsData, error: itemsError } = await supabaseAdmin
+        .from('order_items')
+        .select('*')
+        .eq('order_id', order.id)
 
-      if (inventoryError) console.error('[webhook] inventory update failed:', inventoryError.message)
+      if (itemsError) console.error('[webhook] fetch items failed:', itemsError.message)
+
+      const booking = order as Order
+      const items = (itemsData as OrderItem[] | null) ?? []
+
+      // Confirm to the renter and hand off contact details to each gear owner.
+      try {
+        await Promise.all([
+          notifyCustomerBookingPaid(booking, items),
+          notifyOwnersBookingPaid(booking, items),
+        ])
+        await supabaseAdmin
+          .from('orders')
+          .update({ owner_notified_at: new Date().toISOString() })
+          .eq('id', order.id)
+      } catch (notifyErr) {
+        console.error('[webhook] notification failed:', notifyErr)
+      }
     }
   }
 

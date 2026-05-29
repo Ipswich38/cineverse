@@ -1,21 +1,32 @@
 import { createClient } from '@supabase/supabase-js'
 
+// A Product is a rental LISTING: equipment offered by an owner, priced per day.
+// `price` = daily rental rate (₱/day). `stock` = units available to rent.
 export interface Product {
   id: string
   name: string
   slug: string
   description: string
-  price: number
+  price: number // daily rental rate
   compare_at_price?: number | null
   image_url: string
-  stock: number
+  stock: number // units available
   category: string
   tags?: string[] | null
   badge?: string | null
   is_active: boolean
+  reorder_threshold?: number
   created_at: string
+  // Equipment owner (notification-only; no login). Contact shared with renter after downpayment.
+  owner_name?: string | null
+  owner_email?: string | null
+  owner_phone?: string | null
+  // Smart add-on: optionally hire an operator to run this gear on the shoot.
+  operator_available?: boolean | null
+  operator_day_rate?: number | null
 }
 
+// An Order is a BOOKING: a rental reservation paid via a 30% downpayment.
 export interface Order {
   id: string
   customer_name: string
@@ -23,7 +34,18 @@ export interface Order {
   customer_phone: string
   customer_address: string
   billing_address?: string | null
-  total_amount: number
+  // Rental specifics
+  shoot_start_date?: string | null
+  rental_days?: number | null
+  notes?: string | null
+  subtotal?: number | null // rental subtotal (gear only)
+  operator_total?: number | null // operator fees across the booking
+  total_amount: number // full rental total (gear + operators)
+  downpayment_pct?: number | null
+  downpayment_amount?: number | null // amount charged now via PayMongo
+  balance_amount?: number | null // settled with owner on handover
+  owner_notified_at?: string | null
+  // Legacy fulfillment fields kept for the admin dashboard (unused by rentals)
   shipping_fee?: number | null
   shipping_method?: string | null
   payment_method?: string | null
@@ -38,6 +60,24 @@ export interface Order {
   shipped_at?: string | null
   delivered_at?: string | null
   created_at: string
+}
+
+export interface OrderItem {
+  id: string
+  order_id: string
+  product_id: string | null
+  product_name: string
+  quantity: number // units rented
+  days: number // rental duration in days
+  daily_rate: number
+  unit_price: number // mirror of daily_rate (legacy)
+  with_operator: boolean
+  operator_day_rate?: number | null
+  operator_fee: number
+  line_total: number
+  owner_name?: string | null
+  owner_email?: string | null
+  owner_phone?: string | null
 }
 
 function hasRealValue(value: string | undefined) {

@@ -1,25 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hasSupabaseAdminConfig, supabaseAdmin } from '@/lib/supabase'
-import { createCheckoutSession } from '@/lib/paymongo'
+import { createCheckoutSession, hasPaymongoConfig, resolvePaymentMethodTypes } from '@/lib/paymongo'
+import { DOWNPAYMENT_PCT } from '@/lib/cart-store'
 import type { CartItem } from '@/lib/cart-store'
 import type { Product } from '@/lib/supabase'
 
-const FREE_SHIPPING_THRESHOLD = 1500
-const STANDARD_SHIPPING_FEE = 120
-const EXPRESS_SHIPPING_FEE = 220
 const MAX_ITEM_QUANTITY = 99
+const MAX_DAYS = 365
 
 interface CheckoutCustomer {
   name: string
   email: string
   phone: string
-  address: string
 }
 
 interface CheckoutDetails {
-  billingAddress?: string
-  deliveryMethod?: 'standard' | 'express'
-  paymentMethod?: 'paymongo_all' | 'gcash' | 'card'
+  shootStartDate?: string
+  notes?: string
+  paymentMethod?: 'paymongo_all' | 'gcash' | 'maya' | 'grab_pay' | 'card'
 }
 
 function normalizeCustomer(customer: CheckoutCustomer) {
@@ -27,15 +25,14 @@ function normalizeCustomer(customer: CheckoutCustomer) {
     name: customer.name?.trim(),
     email: customer.email?.trim().toLowerCase(),
     phone: customer.phone?.trim(),
-    address: customer.address?.trim(),
   }
 }
 
 function validateCheckoutInput(customer: CheckoutCustomer, items: CartItem[]) {
   const normalizedCustomer = normalizeCustomer(customer)
 
-  if (!normalizedCustomer.name || !normalizedCustomer.email || !normalizedCustomer.phone || !normalizedCustomer.address) {
-    throw new Error('Please complete all customer fields')
+  if (!normalizedCustomer.name || !normalizedCustomer.email || !normalizedCustomer.phone) {
+    throw new Error('Please complete your name, email, and phone')
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedCustomer.email)) {
@@ -43,21 +40,19 @@ function validateCheckoutInput(customer: CheckoutCustomer, items: CartItem[]) {
   }
 
   if (!items?.length) {
-    throw new Error('Cart is empty')
+    throw new Error('Your cart is empty')
   }
 
   for (const item of items) {
     if (!item.id || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > MAX_ITEM_QUANTITY) {
-      throw new Error('Cart contains an invalid item quantity')
+      throw new Error('Cart contains an invalid quantity')
+    }
+    if (!Number.isInteger(item.days) || item.days < 1 || item.days > MAX_DAYS) {
+      throw new Error('Cart contains an invalid rental duration')
     }
   }
 
   return normalizedCustomer
-}
-
-function getShippingFee(subtotal: number, deliveryMethod: CheckoutDetails['deliveryMethod']) {
-  if (deliveryMethod === 'express') return EXPRESS_SHIPPING_FEE
-  return subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE
 }
 
 export async function POST(req: NextRequest) {
@@ -68,47 +63,73 @@ export async function POST(req: NextRequest) {
     }
 
     if (!hasSupabaseAdminConfig()) {
-      return NextResponse.json({ error: 'Checkout needs real Supabase keys before accepting orders' }, { status: 503 })
+      return NextResponse.json({ error: 'Checkout needs real Supabase keys before accepting bookings' }, { status: 503 })
+    }
+
+    if (!hasPaymongoConfig()) {
+      return NextResponse.json({ error: 'Checkout needs a real PayMongo secret key before accepting payments' }, { status: 503 })
     }
 
     const { customer, checkout, items }: { customer: CheckoutCustomer; checkout?: CheckoutDetails; items: CartItem[] } = await req.json()
     const normalizedCustomer = validateCheckoutInput(customer, items)
-    const deliveryMethod = checkout?.deliveryMethod === 'express' ? 'express' : 'standard'
     const paymentMethod = checkout?.paymentMethod ?? 'paymongo_all'
-    const billingAddress = checkout?.billingAddress?.trim() || normalizedCustomer.address
+    const shootStartDate = checkout?.shootStartDate?.trim() || null
+    const notes = checkout?.notes?.trim() || null
 
+    // Re-fetch listings and price everything server-side (never trust client amounts).
     const productIds = [...new Set(items.map((item) => item.id))]
     const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
-      .select('id, name, slug, price, image_url, stock, category, tags, is_active')
+      .select('id, name, slug, price, image_url, stock, category, tags, is_active, owner_name, owner_email, owner_phone, operator_available, operator_day_rate')
       .in('id', productIds)
       .eq('is_active', true)
 
     if (productsError) throw new Error(productsError.message)
 
     const productsById = new Map((products as Product[] | null)?.map((product) => [product.id, product]) ?? [])
+
     const pricedItems = items.map((item) => {
       const product = productsById.get(item.id)
       if (!product) throw new Error(`${item.name} is no longer available`)
-      if (product.stock < item.quantity) throw new Error(`${product.name} only has ${product.stock} left`)
+      if (product.stock < item.quantity) throw new Error(`${product.name} only has ${product.stock} unit(s) available`)
+
+      const dailyRate = Number(product.price)
+      const days = item.days
+      const quantity = item.quantity
+      const rental = dailyRate * quantity * days
+
+      const withOperator = Boolean(item.withOperator && product.operator_available)
+      const operatorDayRate = withOperator ? Number(product.operator_day_rate ?? 0) : 0
+      const operatorFee = withOperator ? operatorDayRate * days : 0
 
       return {
-        id: product.id,
-        name: product.name,
-        slug: product.slug,
-        price: Number(product.price),
-        image_url: product.image_url,
-        quantity: item.quantity,
+        product_id: product.id,
+        product_name: product.name,
+        quantity,
+        days,
+        daily_rate: dailyRate,
+        unit_price: dailyRate,
+        with_operator: withOperator,
+        operator_day_rate: withOperator ? operatorDayRate : null,
+        operator_fee: operatorFee,
+        line_total: rental + operatorFee,
+        owner_name: product.owner_name ?? null,
+        owner_email: product.owner_email ?? null,
+        owner_phone: product.owner_phone ?? null,
+        rental,
       }
     })
 
     if (pricedItems.length !== items.length) {
-      return NextResponse.json({ error: 'Cart contains unavailable products' }, { status: 400 })
+      return NextResponse.json({ error: 'Cart contains unavailable gear' }, { status: 400 })
     }
 
-    const subtotal = pricedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const shippingFee = getShippingFee(subtotal, deliveryMethod)
-    const total = subtotal + shippingFee
+    const subtotal = pricedItems.reduce((sum, item) => sum + item.rental, 0)
+    const operatorTotal = pricedItems.reduce((sum, item) => sum + item.operator_fee, 0)
+    const total = subtotal + operatorTotal
+    const downpayment = Math.round(total * DOWNPAYMENT_PCT)
+    const balance = total - downpayment
+    const maxDays = Math.max(...pricedItems.map((item) => item.days))
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
@@ -116,11 +137,15 @@ export async function POST(req: NextRequest) {
         customer_name: normalizedCustomer.name,
         customer_email: normalizedCustomer.email,
         customer_phone: normalizedCustomer.phone,
-        customer_address: normalizedCustomer.address,
-        billing_address: billingAddress,
+        shoot_start_date: shootStartDate,
+        rental_days: maxDays,
+        notes,
+        subtotal,
+        operator_total: operatorTotal,
         total_amount: total,
-        shipping_fee: shippingFee,
-        shipping_method: deliveryMethod,
+        downpayment_pct: DOWNPAYMENT_PCT,
+        downpayment_amount: downpayment,
+        balance_amount: balance,
         payment_method: paymentMethod,
         status: 'pending',
         fulfillment_status: 'awaiting_payment',
@@ -133,39 +158,47 @@ export async function POST(req: NextRequest) {
     const { error: orderItemsError } = await supabaseAdmin.from('order_items').insert(
       pricedItems.map((item) => ({
         order_id: order.id,
-        product_id: item.id,
-        product_name: item.name,
+        product_id: item.product_id,
+        product_name: item.product_name,
         quantity: item.quantity,
-        unit_price: item.price,
+        days: item.days,
+        daily_rate: item.daily_rate,
+        unit_price: item.unit_price,
+        with_operator: item.with_operator,
+        operator_day_rate: item.operator_day_rate,
+        operator_fee: item.operator_fee,
+        line_total: item.line_total,
+        owner_name: item.owner_name,
+        owner_email: item.owner_email,
+        owner_phone: item.owner_phone,
       }))
     )
 
     if (orderItemsError) throw new Error(orderItemsError.message)
 
+    // PayMongo charges only the 30% downpayment now. The full breakdown lives on the booking.
+    const ref = order.id.slice(0, 8).toUpperCase()
+    const gearSummary = pricedItems
+      .map((item) => `${item.product_name} ×${item.quantity} (${item.days}d)${item.with_operator ? ' +op' : ''}`)
+      .join(', ')
+
     const session = await createCheckoutSession({
       lineItems: [
-        ...pricedItems.map((item) => ({
-          name: item.name,
-          amount: item.price,
-          quantity: item.quantity,
-          image_url: item.image_url,
-        })),
-        ...(shippingFee > 0
-          ? [{
-              name: deliveryMethod === 'express' ? 'Express Shipping' : 'Standard Shipping',
-              amount: shippingFee,
-              quantity: 1,
-            }]
-          : []),
+        {
+          name: `Reservation downpayment (30%) — Booking #${ref}`,
+          amount: downpayment,
+          quantity: 1,
+        },
       ],
       customer: {
         name: normalizedCustomer.name,
         email: normalizedCustomer.email,
         phone: normalizedCustomer.phone,
       },
-      successUrl: `${baseUrl}/order-success`,
+      successUrl: `${baseUrl}/order-success?ref=${order.id}`,
       cancelUrl: `${baseUrl}/checkout`,
       orderId: order.id,
+      paymentMethodTypes: resolvePaymentMethodTypes(paymentMethod),
     })
 
     const { error: sessionUpdateError } = await supabaseAdmin
@@ -175,14 +208,11 @@ export async function POST(req: NextRequest) {
 
     if (sessionUpdateError) throw new Error(sessionUpdateError.message)
 
-    return NextResponse.json({ checkoutUrl: session.attributes.checkout_url })
+    return NextResponse.json({ checkoutUrl: session.attributes.checkout_url, ref, gearSummary })
   } catch (err) {
     console.error('[checkout]', err)
     const message = err instanceof Error ? err.message : 'Internal error'
-    const status = /cart|available|stock|left|email|customer|quantity|fields/i.test(message) ? 400 : 500
-    return NextResponse.json(
-      { error: message },
-      { status }
-    )
+    const status = /cart|available|stock|unit|email|name|phone|duration|empty/i.test(message) ? 400 : 500
+    return NextResponse.json({ error: message }, { status })
   }
 }

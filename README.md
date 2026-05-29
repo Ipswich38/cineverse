@@ -1,12 +1,19 @@
-# Waevpoint Online Store
+# CineVerse Rentals
 
-Production-positioned drone ecommerce storefront for Waevpoint, built with Next.js 16, Supabase, Vercel, and PayMongo Hosted Checkout.
+A peer-to-peer **production gear rental marketplace** for the Philippine film/entertainment
+industry — built with Next.js 16, Supabase, Vercel, and PayMongo Hosted Checkout.
+
+CineVerse holds no inventory. Equipment belongs to independent **owners**. Renters browse gear,
+pick a rental duration, optionally hire an **operator**, and reserve with a **30% downpayment**.
+On payment, the owner is notified with the renter's contact details to coordinate handover and
+settle the balance.
 
 ## Stack
 
 - Next.js App Router
-- Supabase Postgres for products, orders, and order items
-- PayMongo Checkout Sessions for hosted payments
+- Supabase Postgres for listings, bookings, and booking items
+- PayMongo Checkout Sessions for the downpayment (GCash, Maya, GrabPay, card)
+- Notification adapters (email + SMS) — provider-agnostic, env-gated
 - Zustand cart persisted in the browser
 - Tailwind CSS and shadcn-style UI components
 
@@ -32,10 +39,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 PAYMONGO_SECRET_KEY=sk_test_xxxxxxxxxxxx
 PAYMONGO_WEBHOOK_SECRET=whsec_xxxxxxxxxxxx
+# Notifications (provider TBD — leave placeholders to no-op safely)
+EMAIL_PROVIDER_API_KEY=your-email-api-key
+SMS_PROVIDER_API_KEY=your-sms-api-key
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-4. Run `supabase/schema.sql` in your Supabase SQL editor.
+4. Run the database SQL in your Supabase SQL editor:
+   - **Fresh project:** run `supabase/schema.sql` (rental marketplace + demo film gear).
+   - **Existing product-store DB:** run `supabase/add-rental-marketplace.sql` to add the new
+     columns without dropping data.
+   - Inventory admin tables: `supabase/add-inventory-management.sql`.
 
 5. Start the app:
 
@@ -45,45 +59,48 @@ npm run dev
 
 ## PayMongo Setup
 
-Create a webhook in the PayMongo dashboard:
+See **`docs/PAYMONGO_SETUP.md`** for the full guide (keys, enabling GCash/Maya/GrabPay/card,
+registering the webhook, testing).
 
-```text
-https://store.waevpoint.quest/api/webhook/paymongo
-```
+Webhook URL: `https://YOUR-DOMAIN/api/webhook/paymongo`. The checkout route creates a pending
+booking, then redirects the renter to pay the **30% downpayment**. The webhook marks the booking
+paid and fires the renter confirmation + owner handoff.
 
-For local webhook testing, expose your local server with a tunnel and use the tunnel URL. The webhook secret from PayMongo must be saved as `PAYMONGO_WEBHOOK_SECRET`.
+## Notifications
 
-The checkout route creates pending orders before redirecting customers to PayMongo. The webhook marks orders as paid after PayMongo confirms the checkout payment.
+`lib/notifications.ts` provides `sendEmail` and `sendSms` adapters. With no provider keys they
+safely no-op (and log), so the whole flow works in development. To go live, fill the env vars and
+implement the marked fetch calls — suggested: **Resend** (email) and **Semaphore** (PH SMS).
 
-## Commerce Flow
+On a paid downpayment the webhook sends:
+- **Renter:** booking confirmation (email + SMS) with downpayment, balance, and shoot date.
+- **Each owner:** their booked gear + the renter's contact info to coordinate handover.
 
-- Product catalog supports sale pricing, badges, categories, and tags for merchandising.
-- Product pages show related recommendations based on category, shared tags, add-on price, and bundle fit.
-- Cart and checkout include smart add-ons to increase basket size and help customers reach free shipping.
-- Checkout captures contact details, shipping address, delivery method, billing address, and payment preference before PayMongo redirect.
-- Paid PayMongo webhooks move orders from `pending` to `paid`, set fulfillment to `to_pack`, and call `decrement_inventory_for_order`.
-- Fulfillment statuses are modeled as `awaiting_payment`, `to_pack`, `packing`, `ready_to_ship`, `picked_up`, `shipped`, `delivered`, and `returned`.
-- Inventory deduction is idempotent through `inventory_deducted_at`, so duplicate payment webhooks do not subtract stock twice.
+## Rental Flow
+
+- Listings are priced per day; each carries its owner's contact + an optional operator day-rate.
+- Listing pages let the renter set **duration (days)**, **units**, and toggle a **trained operator**,
+  with a live price + 30% downpayment preview.
+- Smart recommendations suggest complementary gear for the shoot (camera → lens/light/grip/audio).
+- Checkout captures contact, shoot date, and notes, then charges the **30% downpayment** via PayMongo.
+- The order-success page renders a **downpayment invoice** (gear, operators, total, balance due).
+- Pricing is always recomputed server-side in `/api/checkout` — client amounts are never trusted.
 
 ## Admin Prototype
 
-Open `/admin` to view the operations console.
-
-```text
-Demo password: demo-admin
-```
-
-The admin shows order movement, inventory levels, low-stock signals, and fulfillment status controls. It uses seeded/sample inventory data until live inventory is finalized. Before production launch, replace the demo password gate with Supabase Auth and restrict admin actions with server-side authorization.
+Open `/admin` to view the operations console (listings + bookings). It manages the same Supabase
+tables (`products` = listings, `orders` = bookings). Before production, replace the demo password
+gate with Supabase Auth and restrict admin actions with server-side authorization.
 
 ## Production Checklist
 
-- Run the Supabase schema in the production Supabase project.
+- Run the Supabase schema (or migration) in the production project.
 - Add all environment variables in Vercel.
-- Set `NEXT_PUBLIC_BASE_URL` to `https://store.waevpoint.quest` with no trailing slash.
+- Set `NEXT_PUBLIC_BASE_URL` to your domain with no trailing slash.
 - Use PayMongo live keys only after sandbox checkout and webhook tests pass.
 - Register the production webhook URL in PayMongo live mode.
-- Replace any remaining sample stock counts, policy links, and final product images.
-- Confirm stock counts and fulfillment process with the client before launch.
+- Choose + wire the email/SMS providers (or keep the no-op stubs intentionally).
+- Replace demo listings, owner contacts, branding, and images with the client's real data.
 
 ## Verification
 
@@ -94,4 +111,7 @@ npm run build
 
 ## Notes
 
-Orders and order items are intentionally server-only in Supabase RLS. The browser can read active products, but it should not be allowed to create orders, change order status, or write order items directly with the public anon key.
+Bookings and booking items are server-only in Supabase RLS. The browser can read active listings,
+but it must not create bookings, change status, or write booking items with the public anon key.
+Owner contact details are stored on listings/booking items but only surfaced to the renter (via
+the post-payment notification) after the downpayment clears.
