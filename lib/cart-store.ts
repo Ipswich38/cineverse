@@ -6,6 +6,11 @@ import { persist } from 'zustand/middleware'
 // Fixed reservation downpayment: renter pays 30% now, settles the balance with the owner on handover.
 export const DOWNPAYMENT_PCT = 0.3
 
+// Managed logistics: CineVerse picks up from each owner, delivers to the renter, then collects
+// and returns it. Charged per distinct owner (each is a separate round-trip pickup/return).
+export const LOGISTICS_FEE_PER_OWNER = 600
+export type LogisticsMethod = 'self' | 'managed'
+
 export interface CartItem {
   id: string
   name: string
@@ -131,3 +136,10 @@ export const cartBalance = (items: CartItem[]) =>
 
 export const cartCount = (items: CartItem[]) =>
   items.reduce((sum, item) => sum + item.quantity, 0)
+
+// Distinct equipment owners in the cart (each is a separate pickup/return for managed logistics).
+export const cartOwnerCount = (items: CartItem[]) =>
+  new Set(items.map((item) => item.ownerName || item.id)).size
+
+export const cartLogisticsFee = (items: CartItem[]) =>
+  cartOwnerCount(items) * LOGISTICS_FEE_PER_OWNER

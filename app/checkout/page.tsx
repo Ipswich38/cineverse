@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, CalendarRange, Loader2, LockKeyhole, UserCog } from 'lucide-react'
+import { ArrowLeft, CalendarRange, Loader2, LockKeyhole, PackageCheck, Truck, UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,10 @@ import {
   cartTotal,
   cartDownpayment,
   cartBalance,
+  cartLogisticsFee,
+  cartOwnerCount,
   itemLineTotal,
+  type LogisticsMethod,
 } from '@/lib/cart-store'
 import { toast } from 'sonner'
 import { PAYMENT_METHODS, formatMoney } from '@/lib/storefront'
@@ -26,12 +29,17 @@ export default function CheckoutPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<(typeof PAYMENT_METHODS)[number]['id']>('paymongo_all')
+  const [logisticsMethod, setLogisticsMethod] = useState<LogisticsMethod>('self')
 
   const subtotal = cartSubtotal(items)
   const operatorTotal = cartOperatorTotal(items)
   const total = cartTotal(items)
-  const downpayment = cartDownpayment(items)
+  const downpayment = cartDownpayment(items) // 30% of gear + operator
   const balance = cartBalance(items)
+  const ownerCount = cartOwnerCount(items)
+  const managedFee = cartLogisticsFee(items)
+  const logisticsFee = logisticsMethod === 'managed' ? managedFee : 0
+  const payNow = downpayment + logisticsFee
 
   const [form, setForm] = useState({ name: '', email: '', phone: '', shootStartDate: '', notes: '' })
 
@@ -48,7 +56,7 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer: { name: form.name, email: form.email, phone: form.phone },
-          checkout: { shootStartDate: form.shootStartDate, notes: form.notes, paymentMethod },
+          checkout: { shootStartDate: form.shootStartDate, notes: form.notes, logisticsMethod, paymentMethod },
           items,
         }),
       })
@@ -61,6 +69,23 @@ export default function CheckoutPage() {
     }
   }
 
+  const logisticsOptions: { id: LogisticsMethod; label: string; desc: string; price: string; icon: typeof Truck }[] = [
+    {
+      id: 'self',
+      label: 'I’ll handle pickup & return',
+      desc: `Coordinate pickup and return directly with the ${ownerCount > 1 ? `${ownerCount} owners` : 'owner'}. No extra cost.`,
+      price: 'Free',
+      icon: PackageCheck,
+    },
+    {
+      id: 'managed',
+      label: 'CineVerse managed delivery',
+      desc: `We pick up from ${ownerCount > 1 ? `all ${ownerCount} owners` : 'the owner'}, deliver to you, then collect and return after your shoot.`,
+      price: `+${formatMoney(managedFee)}`,
+      icon: Truck,
+    },
+  ]
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <Link href="/#gear" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#6b7280] hover:text-[#111827]">
@@ -70,7 +95,7 @@ export default function CheckoutPage() {
       <div className="mb-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a8843e]">Secure reservation</p>
         <h1 className="mt-1 text-3xl font-semibold text-[#111827]">Reserve your gear</h1>
-        <p className="mt-2 text-sm text-[#6b7280]">Pay a 30% downpayment now. The owner contacts you to coordinate handover and the balance.</p>
+        <p className="mt-2 text-sm text-[#6b7280]">Pay a 30% downpayment now (plus delivery, if chosen). The balance is settled with the owner on handover.</p>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-5">
@@ -108,14 +133,47 @@ export default function CheckoutPage() {
               </div>
               <div>
                 <Label htmlFor="notes">Notes for the owner (optional)</Label>
-                <Input id="notes" placeholder="Pickup location, production name, special requests" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                <Input id="notes" placeholder="Pickup/delivery address, production name, special requests" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
             </div>
           </div>
 
+          {/* Logistics */}
+          <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-[#111827]">3. Pickup &amp; return</h2>
+              <Truck className="h-5 w-5 text-[#C5A059]" />
+            </div>
+            <div className="grid gap-3">
+              {logisticsOptions.map((opt) => (
+                <label key={opt.id} className={`cursor-pointer rounded-xl border p-4 transition-colors ${logisticsMethod === opt.id ? 'border-[#C5A059] bg-[#f6efdf]' : 'border-black/[0.08] hover:border-black/20'}`}>
+                  <input
+                    type="radio"
+                    name="logisticsMethod"
+                    value={opt.id}
+                    checked={logisticsMethod === opt.id}
+                    onChange={() => setLogisticsMethod(opt.id)}
+                    className="sr-only"
+                  />
+                  <span className="flex items-start gap-3">
+                    <opt.icon className="mt-0.5 h-4 w-4 shrink-0 text-[#C5A059]" />
+                    <span className="flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-[#111827]">{opt.label}</span>
+                        <span className="text-sm font-semibold text-[#111827]">{opt.price}</span>
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-[#6b7280]">{opt.desc}</span>
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] leading-5 text-[#6b7280]">Managed delivery is billed at {formatMoney(600)} round-trip per owner and collected upfront.</p>
+          </div>
+
           {/* Payment */}
           <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
-            <h2 className="mb-4 text-lg font-semibold text-[#111827]">3. Payment method</h2>
+            <h2 className="mb-4 text-lg font-semibold text-[#111827]">4. Payment method</h2>
             <div className="grid gap-3">
               {PAYMENT_METHODS.map((method) => (
                 <label key={method.id} className={`cursor-pointer rounded-xl border p-4 transition-colors ${paymentMethod === method.id ? 'border-[#C5A059] bg-[#f6efdf]' : 'border-black/[0.08] hover:border-black/20'}`}>
@@ -143,7 +201,7 @@ export default function CheckoutPage() {
             {loading ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting to PayMongo...</>
             ) : (
-              <><LockKeyhole className="h-4 w-4" /> Pay downpayment {formatMoney(downpayment)}</>
+              <><LockKeyhole className="h-4 w-4" /> Pay now {formatMoney(payNow)}</>
             )}
           </Button>
         </form>
@@ -177,12 +235,17 @@ export default function CheckoutPage() {
               <div className="flex justify-between"><span>Gear rental</span><span>{formatMoney(subtotal)}</span></div>
               {operatorTotal > 0 && <div className="flex justify-between"><span>Operators</span><span>{formatMoney(operatorTotal)}</span></div>}
               <div className="flex justify-between font-semibold text-[#111827]"><span>Rental total</span><span>{formatMoney(total)}</span></div>
+              <div className="flex justify-between"><span>30% gear downpayment</span><span>{formatMoney(downpayment)}</span></div>
+              <div className="flex justify-between">
+                <span>Managed delivery {logisticsFee > 0 && ownerCount > 1 ? `(${ownerCount} owners)` : ''}</span>
+                <span>{logisticsFee > 0 ? formatMoney(logisticsFee) : '—'}</span>
+              </div>
               <div className="flex justify-between"><span>Balance due to owner</span><span>{formatMoney(balance)}</span></div>
             </div>
             <Separator />
             <div className="flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-3 text-lg font-semibold text-[#111827]">
-              <span>Pay now (30%)</span>
-              <span>{formatMoney(downpayment)}</span>
+              <span>Pay now</span>
+              <span>{formatMoney(payNow)}</span>
             </div>
           </div>
         </div>

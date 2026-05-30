@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hasSupabaseAdminConfig, supabaseAdmin } from '@/lib/supabase'
 import { createCheckoutSession, hasPaymongoConfig, resolvePaymentMethodTypes } from '@/lib/paymongo'
-import { DOWNPAYMENT_PCT } from '@/lib/cart-store'
-import type { CartItem } from '@/lib/cart-store'
+import { DOWNPAYMENT_PCT, LOGISTICS_FEE_PER_OWNER } from '@/lib/cart-store'
+import type { CartItem, LogisticsMethod } from '@/lib/cart-store'
 import type { Product } from '@/lib/supabase'
 
 const MAX_ITEM_QUANTITY = 99
@@ -17,6 +17,7 @@ interface CheckoutCustomer {
 interface CheckoutDetails {
   shootStartDate?: string
   notes?: string
+  logisticsMethod?: LogisticsMethod
   paymentMethod?: 'paymongo_all' | 'gcash' | 'maya' | 'grab_pay' | 'card'
 }
 
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest) {
     const { customer, checkout, items }: { customer: CheckoutCustomer; checkout?: CheckoutDetails; items: CartItem[] } = await req.json()
     const normalizedCustomer = validateCheckoutInput(customer, items)
     const paymentMethod = checkout?.paymentMethod ?? 'paymongo_all'
+    const logisticsMethod: LogisticsMethod = checkout?.logisticsMethod === 'managed' ? 'managed' : 'self'
     const shootStartDate = checkout?.shootStartDate?.trim() || null
     const notes = checkout?.notes?.trim() || null
 
@@ -127,8 +129,13 @@ export async function POST(req: NextRequest) {
     const subtotal = pricedItems.reduce((sum, item) => sum + item.rental, 0)
     const operatorTotal = pricedItems.reduce((sum, item) => sum + item.operator_fee, 0)
     const total = subtotal + operatorTotal
-    const downpayment = Math.round(total * DOWNPAYMENT_PCT)
-    const balance = total - downpayment
+    const gearDownpayment = Math.round(total * DOWNPAYMENT_PCT)
+    // Managed logistics: ₱600 round-trip per distinct owner (each is a separate pickup/return).
+    const ownerCount = new Set(pricedItems.map((item) => item.owner_email || item.owner_name || item.product_id)).size
+    const logisticsFee = logisticsMethod === 'managed' ? LOGISTICS_FEE_PER_OWNER * ownerCount : 0
+    // Renter pays the gear downpayment plus the full logistics fee now; balance (gear) is owed to the owner.
+    const downpayment = gearDownpayment + logisticsFee
+    const balance = total - gearDownpayment
     const maxDays = Math.max(...pricedItems.map((item) => item.days))
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -146,6 +153,8 @@ export async function POST(req: NextRequest) {
         downpayment_pct: DOWNPAYMENT_PCT,
         downpayment_amount: downpayment,
         balance_amount: balance,
+        logistics_method: logisticsMethod,
+        logistics_fee: logisticsFee,
         payment_method: paymentMethod,
         status: 'pending',
         fulfillment_status: 'awaiting_payment',
@@ -186,9 +195,16 @@ export async function POST(req: NextRequest) {
       lineItems: [
         {
           name: `Reservation downpayment (30%) — Booking #${ref}`,
-          amount: downpayment,
+          amount: gearDownpayment,
           quantity: 1,
         },
+        ...(logisticsFee > 0
+          ? [{
+              name: `Managed logistics (round-trip${ownerCount > 1 ? ` ×${ownerCount} owners` : ''})`,
+              amount: logisticsFee,
+              quantity: 1,
+            }]
+          : []),
       ],
       customer: {
         name: normalizedCustomer.name,

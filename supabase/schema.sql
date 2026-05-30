@@ -47,6 +47,9 @@ CREATE TABLE orders (
   downpayment_pct NUMERIC(4,3) DEFAULT 0.300,
   downpayment_amount NUMERIC(10,2) DEFAULT 0 CHECK (downpayment_amount >= 0),
   balance_amount NUMERIC(10,2) DEFAULT 0 CHECK (balance_amount >= 0),
+  -- Logistics: 'self' (renter coordinates with owner) or 'managed' (CineVerse pickup/delivery/return for a fee)
+  logistics_method TEXT DEFAULT 'self' CHECK (logistics_method IN ('self', 'managed')),
+  logistics_fee NUMERIC(10,2) DEFAULT 0 CHECK (logistics_fee >= 0),
   payment_method TEXT DEFAULT 'paymongo_all',
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'failed', 'cancelled')),
   -- Legacy fulfillment columns retained for the admin dashboard (unused by rentals)

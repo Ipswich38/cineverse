@@ -85,12 +85,18 @@ export async function notifyCustomerBookingPaid(order: Order, items: OrderItem[]
     .map((it) => `• ${it.product_name} ×${it.quantity} for ${it.days} day(s)${it.with_operator ? ' + operator' : ''}`)
     .join('\n')
 
+  const managed = order.logistics_method === 'managed'
+  const logisticsLine = managed
+    ? `\nCineVerse managed delivery (${formatMoney(order.logistics_fee ?? 0)}) is included — our logistics team will coordinate pickup, delivery, and return with you.`
+    : `\nYou chose to handle pickup & return yourself — the gear owner(s) will reach out to coordinate.`
+
   const summary =
     `Booking #${ref} reserved!\n\n${lines}\n\n` +
     `Downpayment paid: ${formatMoney(order.downpayment_amount ?? 0)}\n` +
+    (managed ? `  · includes managed delivery: ${formatMoney(order.logistics_fee ?? 0)}\n` : '') +
     `Balance due to owners on handover: ${formatMoney(order.balance_amount ?? 0)}\n` +
     (order.shoot_start_date ? `Shoot date: ${order.shoot_start_date}\n` : '') +
-    `\nThe gear owner(s) will reach out to coordinate pickup and handover.`
+    logisticsLine
 
   await Promise.all([
     sendEmail({ to: order.customer_email, subject: `CineVerse booking #${ref} confirmed`, text: summary }),
@@ -112,6 +118,11 @@ export async function notifyOwnersBookingPaid(order: Order, items: OrderItem[]) 
     byOwner.set(key, entry)
   }
 
+  const managed = order.logistics_method === 'managed'
+  const logisticsLine = managed
+    ? `The renter chose CineVerse managed delivery — our logistics team will contact you to schedule pickup of your gear and handle delivery to the renter and the return to you.`
+    : `The renter will coordinate pickup and return with you directly.`
+
   await Promise.all(
     [...byOwner.values()].map((owner) => {
       const text =
@@ -119,7 +130,8 @@ export async function notifyOwnersBookingPaid(order: Order, items: OrderItem[]) 
         `${owner.lines.join('\n')}\n\n` +
         `Booking value (your gear): ${formatMoney(owner.gearTotal)}\n` +
         (order.shoot_start_date ? `Shoot date: ${order.shoot_start_date}\n` : '') +
-        `\nThe renter has paid their downpayment. Please coordinate pickup, handover, and the remaining balance directly.\n\n` +
+        `\nThe renter has paid their downpayment. ${logisticsLine}\n` +
+        `Please arrange the remaining balance with the renter.\n\n` +
         `Renter contact:\n` +
         `Name: ${order.customer_name}\n` +
         `Phone: ${order.customer_phone}\n` +

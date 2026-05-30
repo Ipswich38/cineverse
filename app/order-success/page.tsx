@@ -79,18 +79,33 @@ export default async function OrderSuccessPage({
             ))}
           </div>
 
-          <div className="mt-4 space-y-1.5 text-sm text-[#6b7280]">
-            <div className="flex justify-between"><span>Gear rental</span><span>{formatMoney(booking.order.subtotal ?? 0)}</span></div>
-            {(booking.order.operator_total ?? 0) > 0 && (
-              <div className="flex justify-between"><span>Operators</span><span>{formatMoney(booking.order.operator_total ?? 0)}</span></div>
-            )}
-            <div className="flex justify-between font-semibold text-[#111827]"><span>Rental total</span><span>{formatMoney(booking.order.total_amount)}</span></div>
-            <div className="flex justify-between"><span>Balance due to owner on handover</span><span>{formatMoney(booking.order.balance_amount ?? 0)}</span></div>
-          </div>
-          <div className="mt-3 flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
-            <span>Downpayment {booking.order.status === 'paid' ? 'paid' : 'due'} (30%)</span>
-            <span>{formatMoney(booking.order.downpayment_amount ?? 0)}</span>
-          </div>
+          {(() => {
+            const logisticsFee = booking.order.logistics_fee ?? 0
+            const payNow = booking.order.downpayment_amount ?? 0
+            const gearDown = payNow - logisticsFee
+            const managed = booking.order.logistics_method === 'managed'
+            return (
+              <>
+                <div className="mt-4 space-y-1.5 text-sm text-[#6b7280]">
+                  <div className="flex justify-between"><span>Gear rental</span><span>{formatMoney(booking.order.subtotal ?? 0)}</span></div>
+                  {(booking.order.operator_total ?? 0) > 0 && (
+                    <div className="flex justify-between"><span>Operators</span><span>{formatMoney(booking.order.operator_total ?? 0)}</span></div>
+                  )}
+                  <div className="flex justify-between font-semibold text-[#111827]"><span>Rental total</span><span>{formatMoney(booking.order.total_amount)}</span></div>
+                  <div className="flex justify-between"><span>30% gear downpayment</span><span>{formatMoney(gearDown)}</span></div>
+                  <div className="flex justify-between">
+                    <span>Pickup &amp; return</span>
+                    <span>{managed ? formatMoney(logisticsFee) : 'Self-handled'}</span>
+                  </div>
+                  <div className="flex justify-between"><span>Balance due to owner on handover</span><span>{formatMoney(booking.order.balance_amount ?? 0)}</span></div>
+                </div>
+                <div className="mt-3 flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
+                  <span>{booking.order.status === 'paid' ? 'Paid now' : 'Due now'}</span>
+                  <span>{formatMoney(payNow)}</span>
+                </div>
+              </>
+            )
+          })()}
         </div>
       )}
 

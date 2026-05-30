@@ -42,8 +42,11 @@ export interface Order {
   operator_total?: number | null // operator fees across the booking
   total_amount: number // full rental total (gear + operators)
   downpayment_pct?: number | null
-  downpayment_amount?: number | null // amount charged now via PayMongo
+  downpayment_amount?: number | null // amount charged now via PayMongo (gear downpayment + logistics)
   balance_amount?: number | null // settled with owner on handover
+  // Logistics: 'self' = renter coordinates pickup/return with owner; 'managed' = CineVerse handles it for a fee
+  logistics_method?: 'self' | 'managed' | null
+  logistics_fee?: number | null
   owner_notified_at?: string | null
   // Legacy fulfillment fields kept for the admin dashboard (unused by rentals)
   shipping_fee?: number | null
