@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, ShoppingBag, X } from 'lucide-react'
+import { ArrowUpRight, Menu, ShoppingBag, X } from 'lucide-react'
 import { useState } from 'react'
 import { useCart, cartCount } from '@/lib/cart-store'
 import { STORE } from '@/lib/storefront'
 
-const LINKS = [
+const LINKS: { href: string; label: string; external?: boolean }[] = [
   { href: '/#gear', label: 'Browse Gear' },
+  { href: STORE.crewUrl, label: 'Need A Crew', external: true },
   { href: '/about', label: 'About' },
   { href: '/checkout', label: 'Checkout' },
 ]
@@ -26,15 +27,26 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-9 md:flex">
-          {LINKS.map(({ href, label }) => (
-            <Link
-              key={label}
-              href={href}
-              className="text-[13px] font-medium text-[#111827]/70 transition-colors duration-150 hover:text-[#a8843e]"
-            >
-              {label}
-            </Link>
-          ))}
+          {LINKS.map(({ href, label, external }) =>
+            external ? (
+              <a
+                key={label}
+                href={href}
+                className="inline-flex items-center gap-0.5 text-[13px] font-semibold text-[#a8843e] transition-opacity duration-150 hover:opacity-80"
+              >
+                {label}
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </a>
+            ) : (
+              <Link
+                key={label}
+                href={href}
+                className="text-[13px] font-medium text-[#111827]/70 transition-colors duration-150 hover:text-[#a8843e]"
+              >
+                {label}
+              </Link>
+            )
+          )}
         </nav>
 
         <div className="flex items-center gap-3">
@@ -64,16 +76,28 @@ export default function Navbar() {
 
       {menuOpen && (
         <div className="border-t border-black/[0.06] bg-white/95 px-5 pb-5 pt-4 md:hidden">
-          {[...LINKS, { href: '/admin', label: 'Admin' }].map(({ href, label }) => (
-            <Link
-              key={label}
-              href={href}
-              onClick={() => setMenuOpen(false)}
-              className="flex h-11 items-center border-b border-black/[0.06] text-[15px] font-medium text-[#111827] last:border-0"
-            >
-              {label}
-            </Link>
-          ))}
+          {[...LINKS, { href: '/admin', label: 'Admin' }].map(({ href, label, external }) =>
+            external ? (
+              <a
+                key={label}
+                href={href}
+                onClick={() => setMenuOpen(false)}
+                className="flex h-11 items-center gap-1 border-b border-black/[0.06] text-[15px] font-semibold text-[#a8843e] last:border-0"
+              >
+                {label}
+                <ArrowUpRight className="h-4 w-4" />
+              </a>
+            ) : (
+              <Link
+                key={label}
+                href={href}
+                onClick={() => setMenuOpen(false)}
+                className="flex h-11 items-center border-b border-black/[0.06] text-[15px] font-medium text-[#111827] last:border-0"
+              >
+                {label}
+              </Link>
+            )
+          )}
         </div>
       )}
     </header>

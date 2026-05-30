@@ -9,6 +9,8 @@ export const STORE = {
   tagline: 'Rent production gear from owners across the Philippines — camera, lighting, grip, audio, and more.',
   email: 'hello@cineverse.store',
   location: 'Metro Manila, Philippines',
+  // Sister product: CineForce crew marketplace (hire crew for a project).
+  crewUrl: 'https://cineforce.vercel.app',
 }
 
 export const FEATURED_CATEGORIES = ['Camera', 'Action Cam', 'Lens', 'Lighting', 'Grip', 'Audio', 'Drone', 'Stabilizer', 'Monitor', 'Power']
