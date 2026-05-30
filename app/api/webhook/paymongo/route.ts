@@ -1,8 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { hasPaymongoWebhookConfig, verifyWebhookSignature } from '@/lib/paymongo'
-import { notifyCustomerBookingPaid, notifyOwnersBookingPaid } from '@/lib/notifications'
+import { notifyCustomerBookingPaid, notifyOwnersBookingPaid, notifyBalancePaid } from '@/lib/notifications'
+import { COMMISSION_PCT } from '@/lib/cart-store'
 import type { Order, OrderItem } from '@/lib/supabase'
+
+// On full funding, write one payout ledger row per owner (released to them after return).
+async function createPayouts(order: Order, items: OrderItem[]) {
+  const pct = order.commission_pct ?? COMMISSION_PCT
+  const byOwner = new Map<string, { name: string | null; email: string | null; phone: string | null; gear: number }>()
+  for (const it of items) {
+    const key = it.owner_email || it.owner_name || 'unknown'
+    const e = byOwner.get(key) ?? { name: it.owner_name ?? null, email: it.owner_email ?? null, phone: it.owner_phone ?? null, gear: 0 }
+    e.gear += Number(it.line_total)
+    byOwner.set(key, e)
+  }
+  const rows = [...byOwner.values()].map((o) => {
+    const commission = Math.round(o.gear * pct)
+    return {
+      order_id: order.id,
+      owner_name: o.name,
+      owner_email: o.email,
+      owner_phone: o.phone,
+      gear_total: o.gear,
+      commission,
+      amount: o.gear - commission,
+      status: 'pending' as const,
+    }
+  })
+  if (rows.length) await supabaseAdmin.from('payouts').insert(rows)
+}
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
@@ -48,7 +75,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing checkout session id' }, { status: 400 })
     }
 
-    const { data: order, error } = await supabaseAdmin
+    // 1) Reservation payment (30% + logistics) — first installment.
+    const { data: reservation } = await supabaseAdmin
       .from('orders')
       .update({
         status: 'paid',
@@ -57,41 +85,46 @@ export async function POST(req: NextRequest) {
         paid_at: new Date().toISOString(),
       })
       .eq('paymongo_session_id', checkoutId)
-      .eq('status', 'pending') // idempotent: only act on the first paid event
+      .eq('status', 'pending') // idempotent: only the first paid event acts
       .select('*')
       .single()
 
-    if (error) {
-      // No pending booking matched (already processed, or unknown session) — ack and move on.
-      console.warn('[webhook] no pending booking for session:', checkoutId, error.message)
+    if (reservation?.id) {
+      const { data: itemsData } = await supabaseAdmin.from('order_items').select('*').eq('order_id', reservation.id)
+      const booking = reservation as Order
+      const items = (itemsData as OrderItem[] | null) ?? []
+      try {
+        await Promise.all([notifyCustomerBookingPaid(booking, items), notifyOwnersBookingPaid(booking, items)])
+        await supabaseAdmin.from('orders').update({ owner_notified_at: new Date().toISOString() }).eq('id', reservation.id)
+      } catch (notifyErr) {
+        console.error('[webhook] reservation notify failed:', notifyErr)
+      }
       return NextResponse.json({ received: true })
     }
 
-    if (order?.id) {
-      const { data: itemsData, error: itemsError } = await supabaseAdmin
-        .from('order_items')
-        .select('*')
-        .eq('order_id', order.id)
+    // 2) Balance payment (70%) — second installment, fully funds the booking.
+    const { data: balanceOrder } = await supabaseAdmin
+      .from('orders')
+      .update({ balance_paid_at: new Date().toISOString(), balance_payment_id: paymentId ?? null })
+      .eq('balance_session_id', checkoutId)
+      .is('balance_paid_at', null) // idempotent
+      .select('*')
+      .single()
 
-      if (itemsError) console.error('[webhook] fetch items failed:', itemsError.message)
-
-      const booking = order as Order
+    if (balanceOrder?.id) {
+      const { data: itemsData } = await supabaseAdmin.from('order_items').select('*').eq('order_id', balanceOrder.id)
+      const booking = balanceOrder as Order
       const items = (itemsData as OrderItem[] | null) ?? []
-
-      // Confirm to the renter and hand off contact details to each gear owner.
       try {
-        await Promise.all([
-          notifyCustomerBookingPaid(booking, items),
-          notifyOwnersBookingPaid(booking, items),
-        ])
-        await supabaseAdmin
-          .from('orders')
-          .update({ owner_notified_at: new Date().toISOString() })
-          .eq('id', order.id)
-      } catch (notifyErr) {
-        console.error('[webhook] notification failed:', notifyErr)
+        await createPayouts(booking, items) // ledger rows owed to owners (released after return)
+        await notifyBalancePaid(booking, items)
+      } catch (balanceErr) {
+        console.error('[webhook] balance handling failed:', balanceErr)
       }
+      return NextResponse.json({ received: true })
     }
+
+    console.warn('[webhook] no matching booking for session:', checkoutId)
   }
 
   return NextResponse.json({ received: true })

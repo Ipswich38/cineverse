@@ -50,6 +50,14 @@ CREATE TABLE orders (
   -- Logistics: 'self' (renter coordinates with owner) or 'managed' (CineVerse pickup/delivery/return for a fee)
   logistics_method TEXT DEFAULT 'self' CHECK (logistics_method IN ('self', 'managed')),
   logistics_fee NUMERIC(10,2) DEFAULT 0 CHECK (logistics_fee >= 0),
+  -- Two-installment platform-collected payment: CineVerse collects 100% of the rental.
+  balance_session_id TEXT,
+  balance_payment_id TEXT,
+  balance_paid_at TIMESTAMPTZ,
+  commission_pct NUMERIC(4,3) DEFAULT 0.150,
+  platform_commission NUMERIC(10,2) DEFAULT 0,
+  owner_payout NUMERIC(10,2) DEFAULT 0,
+  damage_deposit NUMERIC(10,2) DEFAULT 0,
   payment_method TEXT DEFAULT 'paymongo_all',
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'failed', 'cancelled')),
   -- Legacy fulfillment columns retained for the admin dashboard (unused by rentals)
@@ -90,6 +98,24 @@ CREATE TABLE order_items (
   owner_phone TEXT
 );
 
+-- Payouts ledger: what CineVerse owes each owner once a booking is fully funded (released after return).
+CREATE TABLE payouts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+  owner_name TEXT,
+  owner_email TEXT,
+  owner_phone TEXT,
+  gear_total NUMERIC(10,2) NOT NULL CHECK (gear_total >= 0),
+  commission NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (commission >= 0),
+  amount NUMERIC(10,2) NOT NULL CHECK (amount >= 0),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid')),
+  paid_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX payouts_order_id_idx ON payouts(order_id);
+CREATE INDEX payouts_status_idx ON payouts(status, created_at DESC);
+CREATE INDEX orders_balance_session_id_idx ON orders(balance_session_id);
 CREATE INDEX orders_paymongo_session_id_idx ON orders(paymongo_session_id);
 CREATE INDEX orders_status_idx ON orders(status, created_at DESC);
 CREATE INDEX order_items_order_id_idx ON order_items(order_id);
@@ -100,6 +126,7 @@ CREATE INDEX products_category_idx ON products(category);
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payouts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Listings publicly readable" ON products
   FOR SELECT USING (is_active = true);

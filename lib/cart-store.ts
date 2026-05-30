@@ -11,6 +11,10 @@ export const DOWNPAYMENT_PCT = 0.3
 export const LOGISTICS_FEE_PER_OWNER = 600
 export type LogisticsMethod = 'self' | 'managed'
 
+// Platform commission retained from the owner payout (rental + operator). CineVerse collects
+// 100% of the rental from the renter (30% reservation + 70% balance), pays owners net of this.
+export const COMMISSION_PCT = 0.15
+
 export interface CartItem {
   id: string
   name: string

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hasSupabaseAdminConfig, supabaseAdmin } from '@/lib/supabase'
 import { createCheckoutSession, hasPaymongoConfig, resolvePaymentMethodTypes } from '@/lib/paymongo'
-import { DOWNPAYMENT_PCT, LOGISTICS_FEE_PER_OWNER } from '@/lib/cart-store'
+import { DOWNPAYMENT_PCT, LOGISTICS_FEE_PER_OWNER, COMMISSION_PCT } from '@/lib/cart-store'
 import type { CartItem, LogisticsMethod } from '@/lib/cart-store'
 import type { Product } from '@/lib/supabase'
 
@@ -133,9 +133,13 @@ export async function POST(req: NextRequest) {
     // Managed logistics: ₱600 round-trip per distinct owner (each is a separate pickup/return).
     const ownerCount = new Set(pricedItems.map((item) => item.owner_email || item.owner_name || item.product_id)).size
     const logisticsFee = logisticsMethod === 'managed' ? LOGISTICS_FEE_PER_OWNER * ownerCount : 0
-    // Renter pays the gear downpayment plus the full logistics fee now; balance (gear) is owed to the owner.
+    // Renter pays the gear downpayment plus the full logistics fee now; the 70% balance is
+    // collected later by CineVerse (not handed to the owner).
     const downpayment = gearDownpayment + logisticsFee
     const balance = total - gearDownpayment
+    // CineVerse collects 100% of the rental and pays the owner net of commission.
+    const commission = Math.round(total * COMMISSION_PCT)
+    const ownerPayout = total - commission
     const maxDays = Math.max(...pricedItems.map((item) => item.days))
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -155,6 +159,9 @@ export async function POST(req: NextRequest) {
         balance_amount: balance,
         logistics_method: logisticsMethod,
         logistics_fee: logisticsFee,
+        commission_pct: COMMISSION_PCT,
+        platform_commission: commission,
+        owner_payout: ownerPayout,
         payment_method: paymentMethod,
         status: 'pending',
         fulfillment_status: 'awaiting_payment',

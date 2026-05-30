@@ -39,8 +39,8 @@ export default async function OrderSuccessPage({
         <h1 className="text-3xl font-semibold text-[#111827]">Reservation received</h1>
         <p className="mx-auto mt-3 max-w-xl text-[#6b7280]">
           {booking?.order.status === 'paid'
-            ? 'Your 30% downpayment is confirmed. The gear owner(s) have been notified with your contact details.'
-            : 'Once PayMongo confirms your downpayment, the owner(s) will be notified with your contact details. A confirmation will be sent by email and SMS.'}
+            ? 'Your reservation is confirmed. Pay the remaining 70% balance securely through CineVerse before handover — we hold it and pay the owner after a clean return.'
+            : 'Once PayMongo confirms your reservation, the owner is notified and you can pay the balance through CineVerse. A confirmation is sent by email and SMS.'}
         </p>
         {shortRef && <p className="mt-3 text-sm font-medium text-[#111827]">Booking #{shortRef}</p>}
       </div>
@@ -97,12 +97,20 @@ export default async function OrderSuccessPage({
                     <span>Pickup &amp; return</span>
                     <span>{managed ? formatMoney(logisticsFee) : 'Self-handled'}</span>
                   </div>
-                  <div className="flex justify-between"><span>Balance due to owner on handover</span><span>{formatMoney(booking.order.balance_amount ?? 0)}</span></div>
+                  <div className="flex justify-between"><span>Balance (70%) — pay before handover</span><span>{formatMoney(booking.order.balance_amount ?? 0)}</span></div>
                 </div>
                 <div className="mt-3 flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
                   <span>{booking.order.status === 'paid' ? 'Paid now' : 'Due now'}</span>
                   <span>{formatMoney(payNow)}</span>
                 </div>
+                {booking.order.status === 'paid' && !booking.order.balance_paid_at && (booking.order.balance_amount ?? 0) > 0 && (
+                  <Link
+                    href={`/booking/${booking.order.id}`}
+                    className={buttonVariants({ className: 'mt-3 h-11 w-full bg-[#C5A059] text-[#111827] hover:bg-[#a8843e]' })}
+                  >
+                    Pay {formatMoney(booking.order.balance_amount ?? 0)} balance
+                  </Link>
+                )}
               </>
             )
           })()}

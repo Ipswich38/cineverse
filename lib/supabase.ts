@@ -42,8 +42,16 @@ export interface Order {
   operator_total?: number | null // operator fees across the booking
   total_amount: number // full rental total (gear + operators)
   downpayment_pct?: number | null
-  downpayment_amount?: number | null // amount charged now via PayMongo (gear downpayment + logistics)
-  balance_amount?: number | null // settled with owner on handover
+  downpayment_amount?: number | null // reservation charged now (30% gear + logistics)
+  balance_amount?: number | null // 70% balance collected by CineVerse before handover
+  balance_session_id?: string | null
+  balance_payment_id?: string | null
+  balance_paid_at?: string | null
+  // Platform economics (CineVerse collects 100% of rental, pays owner net of commission)
+  commission_pct?: number | null
+  platform_commission?: number | null
+  owner_payout?: number | null // total owed to owners = rental total − commission
+  damage_deposit?: number | null
   // Logistics: 'self' = renter coordinates pickup/return with owner; 'managed' = CineVerse handles it for a fee
   logistics_method?: 'self' | 'managed' | null
   logistics_fee?: number | null
@@ -62,6 +70,21 @@ export interface Order {
   packed_at?: string | null
   shipped_at?: string | null
   delivered_at?: string | null
+  created_at: string
+}
+
+// Ledger row: what CineVerse owes each owner for a fully-funded booking. Released after return.
+export interface Payout {
+  id: string
+  order_id: string
+  owner_name: string | null
+  owner_email: string | null
+  owner_phone: string | null
+  gear_total: number // owner's rental + operator subtotal
+  commission: number // CineVerse's cut
+  amount: number // gear_total − commission (paid to owner)
+  status: 'pending' | 'paid'
+  paid_at?: string | null
   created_at: string
 }
 

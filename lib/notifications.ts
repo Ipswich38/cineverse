@@ -78,7 +78,9 @@ function bookingRef(orderId: string) {
   return orderId.slice(0, 8).toUpperCase()
 }
 
-// Renter confirmation: downpayment received, booking reserved.
+const APP_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://www.cineverse.store'
+
+// Renter confirmation: reservation (30% + logistics) received; 70% balance collected by CineVerse.
 export async function notifyCustomerBookingPaid(order: Order, items: OrderItem[]) {
   const ref = bookingRef(order.id)
   const lines = items
@@ -86,29 +88,30 @@ export async function notifyCustomerBookingPaid(order: Order, items: OrderItem[]
     .join('\n')
 
   const managed = order.logistics_method === 'managed'
+  const balance = order.balance_amount ?? 0
+  const balanceLink = `${APP_URL}/booking/${order.id}`
   const logisticsLine = managed
-    ? `\nCineVerse managed delivery (${formatMoney(order.logistics_fee ?? 0)}) is included — our logistics team will coordinate pickup, delivery, and return with you.`
-    : `\nYou chose to handle pickup & return yourself — the gear owner(s) will reach out to coordinate.`
+    ? `\nCineVerse managed delivery (${formatMoney(order.logistics_fee ?? 0)}) is included — we'll coordinate pickup, delivery, and return with you.`
+    : `\nYou chose to handle pickup & return yourself — the gear owner(s) will coordinate the handover with you.`
 
   const summary =
     `Booking #${ref} reserved!\n\n${lines}\n\n` +
-    `Downpayment paid: ${formatMoney(order.downpayment_amount ?? 0)}\n` +
-    (managed ? `  · includes managed delivery: ${formatMoney(order.logistics_fee ?? 0)}\n` : '') +
-    `Balance due to owners on handover: ${formatMoney(order.balance_amount ?? 0)}\n` +
+    `Reservation paid: ${formatMoney(order.downpayment_amount ?? 0)}` +
+    (managed ? ` (incl. managed delivery ${formatMoney(order.logistics_fee ?? 0)})` : '') + `\n` +
+    `Remaining balance (70%): ${formatMoney(balance)}\n` +
+    `Pay your balance securely through CineVerse before handover:\n${balanceLink}\n` +
     (order.shoot_start_date ? `Shoot date: ${order.shoot_start_date}\n` : '') +
     logisticsLine
 
   await Promise.all([
     sendEmail({ to: order.customer_email, subject: `CineVerse booking #${ref} confirmed`, text: summary }),
-    sendSms({ to: order.customer_phone, message: `CineVerse: booking #${ref} reserved. Downpayment ${formatMoney(order.downpayment_amount ?? 0)} received. Owner will contact you to coordinate.` }),
+    sendSms({ to: order.customer_phone, message: `CineVerse: booking #${ref} reserved. Pay your ${formatMoney(balance)} balance before handover: ${balanceLink}` }),
   ])
 }
 
-// Owner notification: their gear was booked + the renter's contact info (the handoff).
-export async function notifyOwnersBookingPaid(order: Order, items: OrderItem[]) {
-  const ref = bookingRef(order.id)
-
-  // Group line items by owner (a booking can span multiple owners).
+// Group booking line items by owner with per-owner economics.
+function ownersFromItems(order: Order, items: OrderItem[]) {
+  const pct = order.commission_pct ?? 0.15
   const byOwner = new Map<string, { email: string; phone: string; lines: string[]; gearTotal: number }>()
   for (const it of items) {
     const key = it.owner_email || it.owner_name || 'unknown'
@@ -117,31 +120,71 @@ export async function notifyOwnersBookingPaid(order: Order, items: OrderItem[]) 
     entry.gearTotal += it.line_total
     byOwner.set(key, entry)
   }
+  return [...byOwner.values()].map((o) => {
+    const commission = Math.round(o.gearTotal * pct)
+    return { ...o, commission, payout: o.gearTotal - commission, pct }
+  })
+}
 
+// Owner notification at reservation: gear booked + their payout (paid by CineVerse after return).
+// Renter contact is shared only on self-pickup; on managed logistics CineVerse brokers everything.
+export async function notifyOwnersBookingPaid(order: Order, items: OrderItem[]) {
+  const ref = bookingRef(order.id)
   const managed = order.logistics_method === 'managed'
   const logisticsLine = managed
-    ? `The renter chose CineVerse managed delivery — our logistics team will contact you to schedule pickup of your gear and handle delivery to the renter and the return to you.`
+    ? `The renter chose CineVerse managed delivery — our logistics team will contact you to schedule pickup, and we handle delivery to the renter and the return to you.`
     : `The renter will coordinate pickup and return with you directly.`
 
   await Promise.all(
-    [...byOwner.values()].map((owner) => {
+    ownersFromItems(order, items).map((owner) => {
+      const contactBlock = managed
+        ? `CineVerse coordinates all pickup, delivery, and return — no logistics action needed from you.\n`
+        : `Renter contact (to coordinate pickup/return):\n` +
+          `Name: ${order.customer_name}\nPhone: ${order.customer_phone}\nEmail: ${order.customer_email}\n` +
+          (order.notes ? `Notes: ${order.notes}\n` : '')
+
       const text =
         `You have a new CineVerse booking (#${ref}).\n\n` +
         `${owner.lines.join('\n')}\n\n` +
-        `Booking value (your gear): ${formatMoney(owner.gearTotal)}\n` +
+        `Your gear subtotal: ${formatMoney(owner.gearTotal)}\n` +
+        `CineVerse commission (${Math.round(owner.pct * 100)}%): −${formatMoney(owner.commission)}\n` +
+        `Your payout: ${formatMoney(owner.payout)} — paid by CineVerse after the gear is returned.\n` +
         (order.shoot_start_date ? `Shoot date: ${order.shoot_start_date}\n` : '') +
-        `\nThe renter has paid their downpayment. ${logisticsLine}\n` +
-        `Please arrange the remaining balance with the renter.\n\n` +
-        `Renter contact:\n` +
-        `Name: ${order.customer_name}\n` +
-        `Phone: ${order.customer_phone}\n` +
-        `Email: ${order.customer_email}\n` +
-        (order.notes ? `Notes: ${order.notes}\n` : '')
+        `\n${logisticsLine}\n\n${contactBlock}`
 
       return Promise.all([
-        sendEmail({ to: owner.email, subject: `New CineVerse booking #${ref} — coordinate with renter`, text }),
-        sendSms({ to: owner.phone, message: `CineVerse: new booking #${ref}. Renter ${order.customer_name} (${order.customer_phone}) paid downpayment. Check email to coordinate.` }),
+        sendEmail({ to: owner.email, subject: `New CineVerse booking #${ref}`, text }),
+        sendSms({ to: owner.phone, message: `CineVerse: new booking #${ref}. Your payout ${formatMoney(owner.payout)} (after return). Check email for details.` }),
       ])
     })
   )
+}
+
+// Both sides once the 70% balance clears and the booking is fully funded.
+export async function notifyBalancePaid(order: Order, items: OrderItem[]) {
+  const ref = bookingRef(order.id)
+  const managed = order.logistics_method === 'managed'
+
+  const renterText =
+    `Booking #${ref} is fully paid — you're all set!\n\n` +
+    (managed
+      ? `We'll deliver your gear${order.shoot_start_date ? ` for your shoot on ${order.shoot_start_date}` : ''} and collect it after.`
+      : `Coordinate final pickup with the owner(s)${order.shoot_start_date ? ` for ${order.shoot_start_date}` : ''}.`)
+
+  const ownerSends = ownersFromItems(order, items).flatMap((owner) => {
+    const text =
+      `Booking #${ref} is now fully funded by the renter.\n\n` +
+      `Your payout of ${formatMoney(owner.payout)} will be released by CineVerse after the gear is returned.\n` +
+      (managed ? `CineVerse will handle pickup, delivery, and return.\n` : `Coordinate the handover with the renter as arranged.\n`)
+    return [
+      sendEmail({ to: owner.email, subject: `CineVerse booking #${ref} fully funded — payout scheduled`, text }),
+      sendSms({ to: owner.phone, message: `CineVerse: booking #${ref} fully funded. Payout ${formatMoney(owner.payout)} after return.` }),
+    ]
+  })
+
+  await Promise.all([
+    sendEmail({ to: order.customer_email, subject: `CineVerse booking #${ref} fully paid`, text: renterText }),
+    sendSms({ to: order.customer_phone, message: `CineVerse: booking #${ref} fully paid. You're all set!` }),
+    ...ownerSends,
+  ])
 }

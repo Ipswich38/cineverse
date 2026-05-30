@@ -22,6 +22,33 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS balance_amount NUMERIC(10,2) DEFAULT
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS owner_notified_at TIMESTAMPTZ;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_method TEXT DEFAULT 'self';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_fee NUMERIC(10,2) DEFAULT 0;
+
+-- Two-installment platform-collected payment + commission + payouts ledger.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS balance_session_id TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS balance_payment_id TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS balance_paid_at TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS commission_pct NUMERIC(4,3) DEFAULT 0.150;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS platform_commission NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS owner_payout NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS damage_deposit NUMERIC(10,2) DEFAULT 0;
+CREATE INDEX IF NOT EXISTS orders_balance_session_id_idx ON orders(balance_session_id);
+
+CREATE TABLE IF NOT EXISTS payouts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+  owner_name TEXT,
+  owner_email TEXT,
+  owner_phone TEXT,
+  gear_total NUMERIC(10,2) NOT NULL CHECK (gear_total >= 0),
+  commission NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (commission >= 0),
+  amount NUMERIC(10,2) NOT NULL CHECK (amount >= 0),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid')),
+  paid_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS payouts_order_id_idx ON payouts(order_id);
+CREATE INDEX IF NOT EXISTS payouts_status_idx ON payouts(status, created_at DESC);
+ALTER TABLE payouts ENABLE ROW LEVEL SECURITY;
 -- customer_address was NOT NULL in the product store; rentals coordinate handover directly.
 ALTER TABLE orders ALTER COLUMN customer_address DROP NOT NULL;
 

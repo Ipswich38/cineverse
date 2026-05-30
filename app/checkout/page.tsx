@@ -95,7 +95,7 @@ export default function CheckoutPage() {
       <div className="mb-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a8843e]">Secure reservation</p>
         <h1 className="mt-1 text-3xl font-semibold text-[#111827]">Reserve your gear</h1>
-        <p className="mt-2 text-sm text-[#6b7280]">Pay a 30% downpayment now (plus delivery, if chosen). The balance is settled with the owner on handover.</p>
+        <p className="mt-2 text-sm text-[#6b7280]">Pay a 30% reservation now (plus delivery, if chosen). The 70% balance is collected by CineVerse before handover — we hold it and pay the owner after a clean return.</p>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-5">
@@ -240,7 +240,7 @@ export default function CheckoutPage() {
                 <span>Managed delivery {logisticsFee > 0 && ownerCount > 1 ? `(${ownerCount} owners)` : ''}</span>
                 <span>{logisticsFee > 0 ? formatMoney(logisticsFee) : '—'}</span>
               </div>
-              <div className="flex justify-between"><span>Balance due to owner</span><span>{formatMoney(balance)}</span></div>
+              <div className="flex justify-between"><span>Balance (70%) — via CineVerse later</span><span>{formatMoney(balance)}</span></div>
             </div>
             <Separator />
             <div className="flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-3 text-lg font-semibold text-[#111827]">
