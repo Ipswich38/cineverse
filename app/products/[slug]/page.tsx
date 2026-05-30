@@ -117,7 +117,7 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
 
             <div className="mt-5 flex gap-3 rounded-xl bg-[#f3f4f6] p-4 text-sm text-[#3a3a3c]">
               <ShieldCheck className="h-5 w-5 shrink-0 text-[#C5A059]" />
-              <p>Reserve with a 30% downpayment via PayMongo. The balance is settled directly with the owner on handover.</p>
+              <p>Reserve with 30% via PayMongo; pay the balance through CineVerse before your shoot. We handle delivery, pickup, and return — and pay the owner after a clean return.</p>
             </div>
           </div>
         </div>

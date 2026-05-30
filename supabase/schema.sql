@@ -48,7 +48,7 @@ CREATE TABLE orders (
   downpayment_amount NUMERIC(10,2) DEFAULT 0 CHECK (downpayment_amount >= 0),
   balance_amount NUMERIC(10,2) DEFAULT 0 CHECK (balance_amount >= 0),
   -- Logistics: 'self' (renter coordinates with owner) or 'managed' (CineVerse pickup/delivery/return for a fee)
-  logistics_method TEXT DEFAULT 'self' CHECK (logistics_method IN ('self', 'managed')),
+  logistics_method TEXT DEFAULT 'managed' CHECK (logistics_method IN ('self', 'managed')),
   logistics_fee NUMERIC(10,2) DEFAULT 0 CHECK (logistics_fee >= 0),
   -- Two-installment platform-collected payment: CineVerse collects 100% of the rental.
   balance_session_id TEXT,

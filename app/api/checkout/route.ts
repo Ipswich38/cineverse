@@ -74,7 +74,8 @@ export async function POST(req: NextRequest) {
     const { customer, checkout, items }: { customer: CheckoutCustomer; checkout?: CheckoutDetails; items: CartItem[] } = await req.json()
     const normalizedCustomer = validateCheckoutInput(customer, items)
     const paymentMethod = checkout?.paymentMethod ?? 'paymongo_all'
-    const logisticsMethod: LogisticsMethod = checkout?.logisticsMethod === 'managed' ? 'managed' : 'self'
+    // CineVerse handles logistics on every booking (managed-only).
+    const logisticsMethod: LogisticsMethod = 'managed'
     const shootStartDate = checkout?.shootStartDate?.trim() || null
     const notes = checkout?.notes?.trim() || null
 
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
     const gearDownpayment = Math.round(total * DOWNPAYMENT_PCT)
     // Managed logistics: ₱600 round-trip per distinct owner (each is a separate pickup/return).
     const ownerCount = new Set(pricedItems.map((item) => item.owner_email || item.owner_name || item.product_id)).size
-    const logisticsFee = logisticsMethod === 'managed' ? LOGISTICS_FEE_PER_OWNER * ownerCount : 0
+    const logisticsFee = LOGISTICS_FEE_PER_OWNER * ownerCount
     // Renter pays the gear downpayment plus the full logistics fee now; the 70% balance is
     // collected later by CineVerse (not handed to the owner).
     const downpayment = gearDownpayment + logisticsFee

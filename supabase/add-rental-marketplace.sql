@@ -20,7 +20,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS downpayment_pct NUMERIC(4,3) DEFAULT
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS downpayment_amount NUMERIC(10,2) DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS balance_amount NUMERIC(10,2) DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS owner_notified_at TIMESTAMPTZ;
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_method TEXT DEFAULT 'self';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_method TEXT DEFAULT 'managed';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_fee NUMERIC(10,2) DEFAULT 0;
 
 -- Two-installment platform-collected payment + commission + payouts ledger.

@@ -135,7 +135,7 @@ export default function ListingBooking({ product }: { product: Product }) {
         {soldOut ? 'Fully booked' : 'Reserve equipment'}
       </Button>
       <p className="mt-3 text-center text-[11px] text-[#6b7280]">
-        Owner contact is shared after your downpayment is confirmed.
+        CineVerse handles delivery, pickup, and return — we coordinate everything end-to-end.
       </p>
     </div>
   )

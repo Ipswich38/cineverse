@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, CalendarRange, Loader2, LockKeyhole, PackageCheck, Truck, UserCog } from 'lucide-react'
+import { ArrowLeft, CalendarRange, Loader2, LockKeyhole, Truck, UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,7 +19,6 @@ import {
   cartLogisticsFee,
   cartOwnerCount,
   itemLineTotal,
-  type LogisticsMethod,
 } from '@/lib/cart-store'
 import { toast } from 'sonner'
 import { PAYMENT_METHODS, formatMoney } from '@/lib/storefront'
@@ -29,7 +28,6 @@ export default function CheckoutPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<(typeof PAYMENT_METHODS)[number]['id']>('paymongo_all')
-  const [logisticsMethod, setLogisticsMethod] = useState<LogisticsMethod>('self')
 
   const subtotal = cartSubtotal(items)
   const operatorTotal = cartOperatorTotal(items)
@@ -37,8 +35,8 @@ export default function CheckoutPage() {
   const downpayment = cartDownpayment(items) // 30% of gear + operator
   const balance = cartBalance(items)
   const ownerCount = cartOwnerCount(items)
-  const managedFee = cartLogisticsFee(items)
-  const logisticsFee = logisticsMethod === 'managed' ? managedFee : 0
+  // CineVerse handles logistics on every booking (₱600 round-trip per owner).
+  const logisticsFee = cartLogisticsFee(items)
   const payNow = downpayment + logisticsFee
 
   const [form, setForm] = useState({ name: '', email: '', phone: '', shootStartDate: '', notes: '' })
@@ -56,7 +54,7 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer: { name: form.name, email: form.email, phone: form.phone },
-          checkout: { shootStartDate: form.shootStartDate, notes: form.notes, logisticsMethod, paymentMethod },
+          checkout: { shootStartDate: form.shootStartDate, notes: form.notes, logisticsMethod: 'managed', paymentMethod },
           items,
         }),
       })
@@ -68,23 +66,6 @@ export default function CheckoutPage() {
       setLoading(false)
     }
   }
-
-  const logisticsOptions: { id: LogisticsMethod; label: string; desc: string; price: string; icon: typeof Truck }[] = [
-    {
-      id: 'self',
-      label: 'I’ll handle pickup & return',
-      desc: `Coordinate pickup and return directly with the ${ownerCount > 1 ? `${ownerCount} owners` : 'owner'}. No extra cost.`,
-      price: 'Free',
-      icon: PackageCheck,
-    },
-    {
-      id: 'managed',
-      label: 'CineVerse managed delivery',
-      desc: `We pick up from ${ownerCount > 1 ? `all ${ownerCount} owners` : 'the owner'}, deliver to you, then collect and return after your shoot.`,
-      price: `+${formatMoney(managedFee)}`,
-      icon: Truck,
-    },
-  ]
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -138,37 +119,25 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Logistics */}
+          {/* Logistics — CineVerse handles every booking */}
           <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-[#111827]">3. Pickup &amp; return</h2>
               <Truck className="h-5 w-5 text-[#C5A059]" />
             </div>
-            <div className="grid gap-3">
-              {logisticsOptions.map((opt) => (
-                <label key={opt.id} className={`cursor-pointer rounded-xl border p-4 transition-colors ${logisticsMethod === opt.id ? 'border-[#C5A059] bg-[#f6efdf]' : 'border-black/[0.08] hover:border-black/20'}`}>
-                  <input
-                    type="radio"
-                    name="logisticsMethod"
-                    value={opt.id}
-                    checked={logisticsMethod === opt.id}
-                    onChange={() => setLogisticsMethod(opt.id)}
-                    className="sr-only"
-                  />
-                  <span className="flex items-start gap-3">
-                    <opt.icon className="mt-0.5 h-4 w-4 shrink-0 text-[#C5A059]" />
-                    <span className="flex-1">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-[#111827]">{opt.label}</span>
-                        <span className="text-sm font-semibold text-[#111827]">{opt.price}</span>
-                      </span>
-                      <span className="mt-1 block text-xs leading-5 text-[#6b7280]">{opt.desc}</span>
-                    </span>
-                  </span>
-                </label>
-              ))}
+            <div className="flex items-start gap-3 rounded-xl border border-[#C5A059] bg-[#f6efdf] p-4">
+              <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[#C5A059]" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[#111827]">CineVerse handles delivery &amp; return</p>
+                  <p className="text-sm font-semibold text-[#111827]">{formatMoney(logisticsFee)}</p>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-[#6b7280]">
+                  We pick up from {ownerCount > 1 ? `all ${ownerCount} owners` : 'the owner'}, deliver to you, then collect and return after your shoot — fully insured and tracked.
+                </p>
+              </div>
             </div>
-            <p className="mt-3 text-[11px] leading-5 text-[#6b7280]">Managed delivery is billed at {formatMoney(600)} round-trip per owner and collected upfront.</p>
+            <p className="mt-3 text-[11px] leading-5 text-[#6b7280]">Billed at {formatMoney(600)} round-trip per owner, collected upfront. CineVerse manages all handovers end-to-end.</p>
           </div>
 
           {/* Payment */}
@@ -237,8 +206,8 @@ export default function CheckoutPage() {
               <div className="flex justify-between font-semibold text-[#111827]"><span>Rental total</span><span>{formatMoney(total)}</span></div>
               <div className="flex justify-between"><span>30% gear downpayment</span><span>{formatMoney(downpayment)}</span></div>
               <div className="flex justify-between">
-                <span>Managed delivery {logisticsFee > 0 && ownerCount > 1 ? `(${ownerCount} owners)` : ''}</span>
-                <span>{logisticsFee > 0 ? formatMoney(logisticsFee) : '—'}</span>
+                <span>Managed delivery {ownerCount > 1 ? `(${ownerCount} owners)` : ''}</span>
+                <span>{formatMoney(logisticsFee)}</span>
               </div>
               <div className="flex justify-between"><span>Balance (70%) — via CineVerse later</span><span>{formatMoney(balance)}</span></div>
             </div>

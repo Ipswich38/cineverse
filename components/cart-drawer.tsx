@@ -153,12 +153,13 @@ export default function CartDrawer() {
                 <div className="flex justify-between"><span>Gear rental</span><span>{formatMoney(subtotal)}</span></div>
                 {operatorTotal > 0 && <div className="flex justify-between"><span>Operators</span><span>{formatMoney(operatorTotal)}</span></div>}
                 <div className="flex justify-between font-semibold text-[#111827]"><span>Rental total</span><span>{formatMoney(total)}</span></div>
-                <div className="flex justify-between"><span>Balance with owner</span><span>{formatMoney(balance)}</span></div>
+                <div className="flex justify-between"><span>Balance (70%) — via CineVerse</span><span>{formatMoney(balance)}</span></div>
               </div>
               <div className="flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
                 <span>Pay now · 30%</span>
                 <span>{formatMoney(downpayment)}</span>
               </div>
+              <p className="text-center text-[11px] text-[#6b7280]">+ CineVerse delivery calculated at checkout</p>
               <Link
                 href="/checkout"
                 onClick={closeCart}
