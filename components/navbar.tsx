@@ -60,7 +60,7 @@ export default function Navbar() {
             <ShoppingBag className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Cart</span>
             {count > 0 && (
-              <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#C5A059] px-1 text-[10px] font-bold leading-none text-[#111827]">
+              <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#FFCC00] px-1 text-[10px] font-bold leading-none text-[#111827]">
                 {count}
               </span>
             )}

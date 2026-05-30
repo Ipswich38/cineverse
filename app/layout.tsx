@@ -26,10 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CartDrawer />
         <main className="flex-1">{children}</main>
 
-        <footer className="bg-[#111827] text-white/50">
+        <footer className="bg-[#0c0c0f] text-white/50">
           <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 px-5 py-14 md:grid-cols-4">
             <div className="col-span-2 md:col-span-1">
-              <p className="mb-3 text-[15px] font-semibold text-white">{STORE.shortName}</p>
+              <p className="text-[15px] font-bold tracking-tight text-white">{STORE.shortName}</p>
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#FFCC00]">{STORE.subBrand}</p>
               <p className="text-[13px] leading-relaxed">{STORE.tagline}</p>
               <p className="mt-4 text-[12px]">{STORE.location}</p>
               <p className="text-[12px]">{STORE.email}</p>
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div>
               <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/30">Connect</p>
               <ul className="space-y-3 text-[13px]">
+                <li><a href={STORE.crewUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#FFCC00] transition-opacity hover:opacity-80">Need A Crew ↗</a></li>
                 <li><a href="#" className="transition-colors hover:text-white">Facebook</a></li>
                 <li><a href="#" className="transition-colors hover:text-white">Instagram</a></li>
               </ul>

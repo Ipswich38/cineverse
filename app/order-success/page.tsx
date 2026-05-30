@@ -36,7 +36,7 @@ export default async function OrderSuccessPage({
       <ClearCart />
 
       <div className="text-center">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#C5A059]/10">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#FFCC00]/10">
           <CheckCircle2 className="h-12 w-12 text-[#C5A059]" />
         </div>
         <h1 className="text-3xl font-semibold text-[#111827]">{isPurchase ? 'Order confirmed' : 'Reservation received'}</h1>
@@ -95,7 +95,7 @@ export default async function OrderSuccessPage({
                 <div className="flex justify-between"><span>Delivery (one-way)</span><span>{formatMoney(booking.order.logistics_fee ?? 0)}</span></div>
                 {booking.order.customer_address && <div className="flex justify-between"><span>Deliver to</span><span className="max-w-[60%] truncate text-right">{booking.order.customer_address}</span></div>}
               </div>
-              <div className="mt-3 flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
+              <div className="mt-3 flex justify-between rounded-xl border-l-2 border-[#FFCC00] bg-[#FFF7DB] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
                 <span>{paid ? 'Paid' : 'Due now'}</span>
                 <span>{formatMoney(booking.order.downpayment_amount ?? 0)}</span>
               </div>
@@ -117,12 +117,12 @@ export default async function OrderSuccessPage({
                     <div className="flex justify-between"><span>Managed delivery</span><span>{formatMoney(logisticsFee)}</span></div>
                     <div className="flex justify-between"><span>Balance (70%) — pay before handover</span><span>{formatMoney(booking.order.balance_amount ?? 0)}</span></div>
                   </div>
-                  <div className="mt-3 flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
+                  <div className="mt-3 flex justify-between rounded-xl border-l-2 border-[#FFCC00] bg-[#FFF7DB] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
                     <span>{paid ? 'Paid now' : 'Due now'}</span>
                     <span>{formatMoney(payNow)}</span>
                   </div>
                   {paid && !booking.order.balance_paid_at && (booking.order.balance_amount ?? 0) > 0 && (
-                    <Link href={`/booking/${booking.order.id}`} className={buttonVariants({ className: 'mt-3 h-11 w-full bg-[#C5A059] text-[#111827] hover:bg-[#a8843e]' })}>
+                    <Link href={`/booking/${booking.order.id}`} className={buttonVariants({ className: 'mt-3 h-11 w-full bg-[#FFCC00] text-[#111827] hover:bg-[#E6B800]' })}>
                       Pay {formatMoney(booking.order.balance_amount ?? 0)} balance
                     </Link>
                   )}

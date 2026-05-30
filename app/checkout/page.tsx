@@ -143,7 +143,7 @@ export default function CheckoutPage() {
                 <h2 className="text-lg font-semibold text-[#111827]">3. Pickup &amp; return</h2>
                 <Truck className="h-5 w-5 text-[#C5A059]" />
               </div>
-              <div className="flex items-start gap-3 rounded-xl border border-[#C5A059] bg-[#f6efdf] p-4">
+              <div className="flex items-start gap-3 rounded-xl border border-[#FFCC00] bg-[#FFF7DB] p-4">
                 <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[#C5A059]" />
                 <div className="flex-1">
                   <div className="flex items-center justify-between gap-2">
@@ -163,7 +163,7 @@ export default function CheckoutPage() {
             <h2 className="mb-4 text-lg font-semibold text-[#111827]">{buy ? '3' : '4'}. Payment method</h2>
             <div className="grid gap-3">
               {PAYMENT_METHODS.map((method) => (
-                <label key={method.id} className={`cursor-pointer rounded-xl border p-4 transition-colors ${paymentMethod === method.id ? 'border-[#C5A059] bg-[#f6efdf]' : 'border-black/[0.08] hover:border-black/20'}`}>
+                <label key={method.id} className={`cursor-pointer rounded-xl border p-4 transition-colors ${paymentMethod === method.id ? 'border-[#FFCC00] bg-[#FFF7DB]' : 'border-black/[0.08] hover:border-black/20'}`}>
                   <input type="radio" name="paymentMethod" value={method.id} checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} className="sr-only" />
                   <span className="flex gap-3">
                     <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#C5A059]" />
@@ -177,7 +177,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <Button type="submit" size="lg" className="h-12 w-full bg-[#C5A059] text-[#111827] hover:bg-[#a8843e]" disabled={loading}>
+          <Button type="submit" size="lg" className="h-12 w-full bg-[#FFCC00] text-[#111827] hover:bg-[#E6B800]" disabled={loading}>
             {loading ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting to PayMongo...</>
             ) : (
@@ -227,7 +227,7 @@ export default function CheckoutPage() {
               </div>
             )}
             <Separator />
-            <div className="flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-3 text-lg font-semibold text-[#111827]">
+            <div className="flex justify-between rounded-xl border-l-2 border-[#FFCC00] bg-[#FFF7DB] px-3 py-3 text-lg font-semibold text-[#111827]">
               <span>{buy ? 'Total' : 'Pay now'}</span>
               <span>{formatMoney(payNow)}</span>
             </div>

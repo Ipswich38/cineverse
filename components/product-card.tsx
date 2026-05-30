@@ -63,7 +63,7 @@ export default function ProductCard({ product, mode = 'rent' }: { product: Produ
 
           {!buy && product.operator_available && !soldOut && (
             <div className="absolute right-3 top-3">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#f6efdf] px-2 py-1 text-[10px] font-semibold text-[#a8843e] shadow-sm">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF7DB] px-2 py-1 text-[10px] font-semibold text-[#a8843e] shadow-sm">
                 <UserCog className="h-3 w-3" />
                 Operator
               </span>
@@ -74,7 +74,7 @@ export default function ProductCard({ product, mode = 'rent' }: { product: Produ
             <div className="absolute inset-x-3 bottom-3 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
               <button
                 onClick={handleAdd}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#C5A059] text-[13px] font-semibold text-[#111827] shadow-lg transition-colors hover:bg-[#a8843e]"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#FFCC00] text-[13px] font-semibold text-[#111827] shadow-lg transition-colors hover:bg-[#E6B800]"
               >
                 {buy ? <ShoppingBag className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
                 Add to Cart

@@ -51,14 +51,6 @@ export default function StorefrontBrowser({ listings }: { listings: Product[] })
 
   return (
     <>
-      {/* Editorial intro */}
-      <div className="mb-6 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#C5A059]">Equipping your next vision</p>
-        <h1 className="mt-3 text-[30px] font-bold tracking-[-0.02em] text-[#111827] sm:text-[38px]">
-          Production-ready gear, ready when you are.
-        </h1>
-      </div>
-
       {/* Rent / Buy (in-app) · Hire (→ CineForce, new tab) */}
       <div className="mb-5 flex justify-center">
         <div className="inline-flex items-center rounded-full bg-[#f3f4f6] p-1">
@@ -105,7 +97,7 @@ export default function StorefrontBrowser({ listings }: { listings: Product[] })
             onClick={() => setCategory(c)}
             className={`h-9 rounded-full px-4 text-[13px] font-medium transition-all duration-200 ${
               category === c
-                ? 'bg-[#C5A059] text-[#111827] shadow-sm'
+                ? 'bg-[#FFCC00] text-[#111827] shadow-sm'
                 : 'bg-[#f3f4f6] text-[#111827]/70 hover:bg-[#ece9e2] hover:text-[#111827]'
             }`}
           >

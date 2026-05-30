@@ -11,19 +11,23 @@ export const metadata = {
 export default function AboutPage() {
   return (
     <>
-      {/* Hero */}
-      <section className="border-b border-black/[0.06]">
-        <div className="mx-auto max-w-4xl px-5 pb-12 pt-16 text-center sm:pt-24">
-          <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.02em] text-[#111827] sm:text-[56px]">
+      {/* Hero — dark cinematic (brand bridge with CineForce) */}
+      <section className="relative overflow-hidden bg-[#0c0c0f]">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{ background: 'radial-gradient(60% 120% at 50% -10%, rgba(255,204,0,0.10), transparent 70%)' }}
+        />
+        <div className="relative mx-auto max-w-4xl px-5 pb-16 pt-16 text-center sm:pt-24">
+          <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.02em] text-white sm:text-[56px]">
             Rent production gear,<br className="hidden sm:block" /> book an operator, shoot.
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-[16px] leading-relaxed text-[#6b7280]">
+          <p className="mx-auto mt-5 max-w-xl text-[16px] leading-relaxed text-white/55">
             {STORE.tagline} Reserve with a 30% downpayment — settle the balance with the owner on handover.
           </p>
           <div className="mt-8 flex justify-center">
             <Link
               href="/#gear"
-              className={buttonVariants({ size: 'lg', className: 'h-12 bg-[#C5A059] px-7 text-[#111827] hover:bg-[#a8843e]' })}
+              className={buttonVariants({ size: 'lg', className: 'h-12 bg-[#FFCC00] px-7 text-[#111827] hover:bg-[#E6B800]' })}
             >
               Browse gear
               <ArrowRight className="h-4 w-4" />

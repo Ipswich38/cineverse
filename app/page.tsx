@@ -22,9 +22,26 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Search + categories sit directly below the navbar */}
+      {/* Dark cinematic hero (brand bridge with CineForce) */}
+      <section className="relative overflow-hidden bg-[#0c0c0f]">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{ background: 'radial-gradient(60% 120% at 50% -10%, rgba(255,204,0,0.10), transparent 70%)' }}
+        />
+        <div className="relative mx-auto max-w-6xl px-5 py-14 text-center sm:py-20">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#FFCC00]">Equipping your next vision</p>
+          <h1 className="mx-auto mt-4 max-w-3xl text-[32px] font-bold leading-[1.08] tracking-[-0.02em] text-white sm:text-[46px]">
+            Production-ready gear, ready when you are.
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-white/55">
+            Rent or buy camera, lighting, grip, and audio from owners across the Philippines — and hire crew on CineForce.
+          </p>
+        </div>
+      </section>
+
+      {/* Search + categories + grid (light for conversion) */}
       <section className="bg-white">
-        <div className="mx-auto max-w-6xl px-5 pb-10 pt-8">
+        <div className="mx-auto max-w-6xl px-5 pb-10 pt-10">
           <StorefrontBrowser listings={listings} />
         </div>
       </section>

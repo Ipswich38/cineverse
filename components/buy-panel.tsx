@@ -35,7 +35,7 @@ export default function BuyPanel({ product }: { product: Product }) {
 
   return (
     <div className="rounded-3xl border border-black/[0.05] bg-white p-6 shadow-[0_10px_40px_-20px_rgba(17,24,39,0.25)]">
-      <div className="mb-5 flex items-center gap-2 rounded-xl bg-[#f6efdf] px-3 py-2.5">
+      <div className="mb-5 flex items-center gap-2 rounded-xl bg-[#FFF7DB] px-3 py-2.5">
         <ShieldCheck className="h-4 w-4 shrink-0 text-[#C5A059]" />
         <p className="text-[11px] font-medium text-[#111827]">Buy outright · Certified bench-tested · Paid securely via CineVerse</p>
       </div>
@@ -68,7 +68,7 @@ export default function BuyPanel({ product }: { product: Product }) {
         size="lg"
         onClick={handleAdd}
         disabled={soldOut}
-        className="mt-5 h-12 w-full bg-[#C5A059] text-[#111827] hover:bg-[#a8843e] disabled:opacity-40"
+        className="mt-5 h-12 w-full bg-[#FFCC00] text-[#111827] hover:bg-[#E6B800] disabled:opacity-40"
       >
         <ShoppingBag className="h-4 w-4" />
         {soldOut ? 'Sold out' : 'Buy this item'}

@@ -27,7 +27,7 @@ export default function PayBalanceButton({ bookingId, amount }: { bookingId: str
   }
 
   return (
-    <Button onClick={pay} disabled={loading} size="lg" className="h-12 w-full bg-[#C5A059] text-[#111827] hover:bg-[#a8843e]">
+    <Button onClick={pay} disabled={loading} size="lg" className="h-12 w-full bg-[#FFCC00] text-[#111827] hover:bg-[#E6B800]">
       {loading ? (
         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting to PayMongo...</>
       ) : (

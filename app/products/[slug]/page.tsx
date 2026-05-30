@@ -76,7 +76,7 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
           </div>
 
           <div className="mt-6">
-            <Badge variant="outline" className="mb-3 border-[#C5A059]/30 bg-[#f6efdf] text-[#a8843e]">
+            <Badge variant="outline" className="mb-3 border-[#FFCC00]/30 bg-[#FFF7DB] text-[#a8843e]">
               {product.category}
             </Badge>
             <h1 className="text-[32px] font-semibold tracking-[-0.01em] text-[#111827]">{product.name}</h1>

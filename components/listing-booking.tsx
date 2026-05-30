@@ -50,7 +50,7 @@ export default function ListingBooking({ product }: { product: Product }) {
   return (
     <div className="rounded-3xl border border-black/[0.05] bg-white p-6 shadow-[0_10px_40px_-20px_rgba(17,24,39,0.25)]">
       {/* Trust */}
-      <div className="mb-5 flex items-center gap-2 rounded-xl bg-[#f6efdf] px-3 py-2.5">
+      <div className="mb-5 flex items-center gap-2 rounded-xl bg-[#FFF7DB] px-3 py-2.5">
         <ShieldCheck className="h-4 w-4 shrink-0 text-[#C5A059]" />
         <p className="text-[11px] font-medium text-[#111827]">Certified bench-tested · Verified owner · Secure 30% reservation</p>
       </div>
@@ -82,10 +82,10 @@ export default function ListingBooking({ product }: { product: Product }) {
             type="button"
             onClick={() => setWithOperator((v) => !v)}
             className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
-              withOperator ? 'border-[#C5A059] bg-[#C5A059]/[0.04]' : 'border-black/[0.08] hover:border-black/20'
+              withOperator ? 'border-[#FFCC00] bg-[#FFCC00]/[0.04]' : 'border-black/[0.08] hover:border-black/20'
             }`}
           >
-            <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${withOperator ? 'border-[#C5A059] bg-[#C5A059] text-[#111827]' : 'border-black/20'}`}>
+            <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${withOperator ? 'border-[#FFCC00] bg-[#FFCC00] text-[#111827]' : 'border-black/20'}`}>
               {withOperator && <span className="text-[11px] leading-none">✓</span>}
             </span>
             <span className="flex-1">
@@ -119,7 +119,7 @@ export default function ListingBooking({ product }: { product: Product }) {
           <span>Rental total</span>
           <span>{formatMoney(total)}</span>
         </div>
-        <div className="mt-1 flex items-center justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[13px] font-semibold text-[#111827]">
+        <div className="mt-1 flex items-center justify-between rounded-xl border-l-2 border-[#FFCC00] bg-[#FFF7DB] px-3 py-2.5 text-[13px] font-semibold text-[#111827]">
           <span>Pay now · 30% downpayment</span>
           <span>{formatMoney(downpayment)}</span>
         </div>
@@ -129,7 +129,7 @@ export default function ListingBooking({ product }: { product: Product }) {
         size="lg"
         onClick={handleAdd}
         disabled={soldOut}
-        className="mt-5 h-12 w-full bg-[#C5A059] text-[#111827] hover:bg-[#a8843e] disabled:opacity-40"
+        className="mt-5 h-12 w-full bg-[#FFCC00] text-[#111827] hover:bg-[#E6B800] disabled:opacity-40"
       >
         <ShoppingCart className="h-4 w-4" />
         {soldOut ? 'Fully booked' : 'Reserve equipment'}
