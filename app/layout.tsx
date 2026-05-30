@@ -1,10 +1,17 @@
 import type { Metadata } from 'next'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/navbar'
 import CartDrawer from '@/components/cart-drawer'
 import { Toaster } from '@/components/ui/sonner'
 import Link from 'next/link'
 import { STORE } from '@/lib/storefront'
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jakarta',
+})
 
 export const metadata: Metadata = {
   title: STORE.name,
@@ -13,13 +20,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
-      <body className="flex min-h-full flex-col bg-white font-sans text-[#1d1d1f]">
+    <html lang="en" className={`h-full ${jakarta.variable}`}>
+      <body className="flex min-h-full flex-col bg-white font-sans text-[#111827] antialiased">
         <Navbar />
         <CartDrawer />
         <main className="flex-1">{children}</main>
 
-        <footer className="bg-[#1d1d1f] text-white/50">
+        <footer className="bg-[#111827] text-white/50">
           <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 px-5 py-14 md:grid-cols-4">
             <div className="col-span-2 md:col-span-1">
               <p className="mb-3 text-[15px] font-semibold text-white">{STORE.shortName}</p>

@@ -37,27 +37,35 @@ export default function StorefrontBrowser({ listings }: { listings: Product[] })
 
   return (
     <>
+      {/* Editorial intro */}
+      <div className="mb-6 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#C5A059]">Equipping your next vision</p>
+        <h1 className="mt-3 text-[30px] font-bold tracking-[-0.02em] text-[#111827] sm:text-[38px]">
+          Production-ready gear, ready when you are.
+        </h1>
+      </div>
+
       {/* Search */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6e6e73]" />
+      <div className="relative mx-auto max-w-2xl">
+        <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6b7280]" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search gear, category, or owner — e.g. camera, Aputure, drone"
-          className="h-14 w-full rounded-2xl border border-black/[0.08] bg-[#f5f5f7] pl-12 pr-4 text-[15px] text-[#1d1d1f] outline-none transition-colors focus:border-[#0071e3] focus:bg-white"
+          className="ring-gold h-14 w-full rounded-full border border-transparent bg-[#f3f4f6] pl-[3.25rem] pr-5 text-[15px] text-[#111827] outline-none transition-colors focus:bg-white"
         />
       </div>
 
       {/* Category chips */}
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-6 flex flex-wrap justify-center gap-2.5">
         {categories.map((c) => (
           <button
             key={c}
             onClick={() => setCategory(c)}
-            className={`h-9 rounded-full px-4 text-[13px] font-medium transition-colors ${
+            className={`h-9 rounded-full px-4 text-[13px] font-medium transition-all duration-200 ${
               category === c
-                ? 'bg-[#1d1d1f] text-white'
-                : 'bg-[#f5f5f7] text-[#1d1d1f]/70 hover:bg-black/[0.06]'
+                ? 'bg-[#C5A059] text-[#111827] shadow-sm'
+                : 'bg-[#f3f4f6] text-[#111827]/70 hover:bg-[#ece9e2] hover:text-[#111827]'
             }`}
           >
             {c}
@@ -67,12 +75,12 @@ export default function StorefrontBrowser({ listings }: { listings: Product[] })
 
       {/* Smart picks */}
       {showSmart && smartPicks.length > 0 && (
-        <section className="mt-12">
-          <div className="mb-5 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-[#0071e3]" />
-            <h2 className="text-[17px] font-semibold text-[#1d1d1f]">Smart picks for your shoot</h2>
+        <section className="mt-16">
+          <div className="mb-7 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-[#C5A059]" />
+            <h2 className="text-[20px] font-bold tracking-[-0.01em] text-[#111827]">Smart picks for your shoot</h2>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {smartPicks.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
@@ -81,23 +89,23 @@ export default function StorefrontBrowser({ listings }: { listings: Product[] })
       )}
 
       {/* Results */}
-      <section id="gear" className="mt-14 scroll-mt-20">
-        <div className="mb-5 flex items-end justify-between">
-          <h2 className="text-[17px] font-semibold text-[#1d1d1f]">
-            {showSmart ? 'All gear' : `${filtered.length} result${filtered.length === 1 ? '' : 's'}`}
+      <section id="gear" className="mt-16 scroll-mt-24">
+        <div className="mb-7 flex items-end justify-between">
+          <h2 className="text-[20px] font-bold tracking-[-0.01em] text-[#111827]">
+            {showSmart ? 'Browse all gear' : `${filtered.length} result${filtered.length === 1 ? '' : 's'}`}
           </h2>
-          <p className="text-[13px] text-[#6e6e73]">{listings.length} listings · prices per day</p>
+          <p className="text-[13px] text-[#6b7280]">{listings.length} listings · prices per day</p>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-black/[0.06] bg-[#f5f5f7] py-16 text-center">
-            <p className="text-[15px] font-medium text-[#1d1d1f]">No gear matches “{query}”.</p>
-            <button onClick={() => { setQuery(''); setCategory('All') }} className="mt-2 text-[13px] font-medium text-[#0071e3] hover:underline">
+          <div className="rounded-3xl bg-[#f3f4f6] py-20 text-center">
+            <p className="text-[15px] font-medium text-[#111827]">No gear matches “{query}”.</p>
+            <button onClick={() => { setQuery(''); setCategory('All') }} className="mt-2 text-[13px] font-semibold text-[#a8843e] hover:underline">
               Clear filters
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {filtered.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}

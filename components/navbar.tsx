@@ -21,15 +21,15 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-black/[0.06] bg-white/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
         <Link href="/" className="flex items-center">
-          <span className="text-[17px] font-semibold tracking-tight text-[#1d1d1f]">{STORE.shortName}</span>
+          <span className="text-[19px] font-bold tracking-[-0.03em] text-[#111827]">{STORE.shortName}</span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-9 md:flex">
           {LINKS.map(({ href, label }) => (
             <Link
               key={label}
               href={href}
-              className="text-[13px] font-medium text-[#1d1d1f]/70 transition-colors duration-150 hover:text-[#1d1d1f]"
+              className="text-[13px] font-medium text-[#111827]/70 transition-colors duration-150 hover:text-[#a8843e]"
             >
               {label}
             </Link>
@@ -40,19 +40,19 @@ export default function Navbar() {
           <button
             onClick={openCart}
             aria-label="Open cart"
-            className="relative flex h-9 items-center gap-2 rounded-full bg-[#1d1d1f] px-4 text-[13px] font-medium text-white transition-opacity hover:opacity-80"
+            className="relative flex h-9 items-center gap-2 rounded-full bg-[#111827] px-4 text-[13px] font-medium text-white transition-opacity hover:opacity-80"
           >
             <ShoppingBag className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Cart</span>
             {count > 0 && (
-              <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#0071e3] px-1 text-[10px] font-bold leading-none text-white">
+              <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[#C5A059] px-1 text-[10px] font-bold leading-none text-[#111827]">
                 {count}
               </span>
             )}
           </button>
 
           <button
-            className="rounded-full p-2 text-[#1d1d1f]/60 transition-colors hover:bg-black/5 md:hidden"
+            className="rounded-full p-2 text-[#111827]/60 transition-colors hover:bg-black/5 md:hidden"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Toggle menu"
           >
@@ -68,7 +68,7 @@ export default function Navbar() {
               key={label}
               href={href}
               onClick={() => setMenuOpen(false)}
-              className="flex h-11 items-center border-b border-black/[0.06] text-[15px] font-medium text-[#1d1d1f] last:border-0"
+              className="flex h-11 items-center border-b border-black/[0.06] text-[15px] font-medium text-[#111827] last:border-0"
             >
               {label}
             </Link>

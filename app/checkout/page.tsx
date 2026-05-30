@@ -63,21 +63,21 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <Link href="/#gear" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#6e6e73] hover:text-[#1d1d1f]">
+      <Link href="/#gear" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#6b7280] hover:text-[#111827]">
         <ArrowLeft className="h-4 w-4" />
         Keep browsing
       </Link>
       <div className="mb-8">
-        <p className="text-sm font-semibold text-[#0071e3]">Secure reservation</p>
-        <h1 className="mt-1 text-3xl font-semibold text-[#1d1d1f]">Reserve your gear</h1>
-        <p className="mt-2 text-sm text-[#6e6e73]">Pay a 30% downpayment now. The owner contacts you to coordinate handover and the balance.</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a8843e]">Secure reservation</p>
+        <h1 className="mt-1 text-3xl font-semibold text-[#111827]">Reserve your gear</h1>
+        <p className="mt-2 text-sm text-[#6b7280]">Pay a 30% downpayment now. The owner contacts you to coordinate handover and the balance.</p>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-5">
         <form onSubmit={handleSubmit} className="space-y-5 lg:col-span-3">
           {/* Contact */}
           <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
-            <h2 className="mb-4 text-lg font-semibold text-[#1d1d1f]">1. Your details</h2>
+            <h2 className="mb-4 text-lg font-semibold text-[#111827]">1. Your details</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -92,14 +92,14 @@ export default function CheckoutPage() {
                 <Input id="phone" type="tel" required placeholder="09XXXXXXXXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
             </div>
-            <p className="mt-3 text-xs text-[#6e6e73]">Owners use these to coordinate with you once your downpayment clears.</p>
+            <p className="mt-3 text-xs text-[#6b7280]">Owners use these to coordinate with you once your downpayment clears.</p>
           </div>
 
           {/* Shoot details */}
           <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[#1d1d1f]">2. Shoot details</h2>
-              <CalendarRange className="h-5 w-5 text-[#0071e3]" />
+              <h2 className="text-lg font-semibold text-[#111827]">2. Shoot details</h2>
+              <CalendarRange className="h-5 w-5 text-[#C5A059]" />
             </div>
             <div className="grid gap-4">
               <div>
@@ -115,10 +115,10 @@ export default function CheckoutPage() {
 
           {/* Payment */}
           <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
-            <h2 className="mb-4 text-lg font-semibold text-[#1d1d1f]">3. Payment method</h2>
+            <h2 className="mb-4 text-lg font-semibold text-[#111827]">3. Payment method</h2>
             <div className="grid gap-3">
               {PAYMENT_METHODS.map((method) => (
-                <label key={method.id} className={`cursor-pointer rounded-xl border p-4 transition-colors ${paymentMethod === method.id ? 'border-[#1d1d1f] bg-[#f5f5f7]' : 'border-black/[0.08] hover:border-black/20'}`}>
+                <label key={method.id} className={`cursor-pointer rounded-xl border p-4 transition-colors ${paymentMethod === method.id ? 'border-[#C5A059] bg-[#f6efdf]' : 'border-black/[0.08] hover:border-black/20'}`}>
                   <input
                     type="radio"
                     name="paymentMethod"
@@ -128,10 +128,10 @@ export default function CheckoutPage() {
                     className="sr-only"
                   />
                   <span className="flex gap-3">
-                    <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#0071e3]" />
+                    <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#C5A059]" />
                     <span>
-                      <span className="block text-sm font-semibold text-[#1d1d1f]">{method.label}</span>
-                      <span className="mt-1 block text-xs leading-5 text-[#6e6e73]">{method.description}</span>
+                      <span className="block text-sm font-semibold text-[#111827]">{method.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-[#6b7280]">{method.description}</span>
                     </span>
                   </span>
                 </label>
@@ -139,7 +139,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <Button type="submit" size="lg" className="h-12 w-full bg-[#1d1d1f] text-white hover:bg-[#1d1d1f]/85" disabled={loading}>
+          <Button type="submit" size="lg" className="h-12 w-full bg-[#C5A059] text-[#111827] hover:bg-[#a8843e]" disabled={loading}>
             {loading ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting to PayMongo...</>
             ) : (
@@ -151,36 +151,36 @@ export default function CheckoutPage() {
         {/* Summary */}
         <div className="lg:col-span-2">
           <div className="sticky top-20 space-y-4 rounded-2xl border border-black/[0.08] bg-white p-5">
-            <h2 className="font-semibold text-[#1d1d1f]">Booking summary</h2>
+            <h2 className="font-semibold text-[#111827]">Booking summary</h2>
             <div className="space-y-3">
               {items.map((item) => (
                 <div key={item.id} className="flex gap-3">
-                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-[#f5f5f7]">
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-[#f3f4f6]">
                     <Image src={item.image_url} alt={item.name} fill className="object-cover" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-sm font-semibold text-[#1d1d1f]">{item.name}</p>
-                    <p className="text-xs text-[#6e6e73]">{item.quantity} unit(s) · {item.days} day(s)</p>
+                    <p className="line-clamp-1 text-sm font-semibold text-[#111827]">{item.name}</p>
+                    <p className="text-xs text-[#6b7280]">{item.quantity} unit(s) · {item.days} day(s)</p>
                     {item.withOperator && (
-                      <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-[#0071e3]">
+                      <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-[#a8843e]">
                         <UserCog className="h-3 w-3" /> with operator
                       </p>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-[#1d1d1f]">{formatMoney(itemLineTotal(item))}</p>
+                  <p className="text-sm font-medium text-[#111827]">{formatMoney(itemLineTotal(item))}</p>
                 </div>
               ))}
             </div>
 
             <Separator />
-            <div className="space-y-2 text-sm text-[#6e6e73]">
+            <div className="space-y-2 text-sm text-[#6b7280]">
               <div className="flex justify-between"><span>Gear rental</span><span>{formatMoney(subtotal)}</span></div>
               {operatorTotal > 0 && <div className="flex justify-between"><span>Operators</span><span>{formatMoney(operatorTotal)}</span></div>}
-              <div className="flex justify-between font-semibold text-[#1d1d1f]"><span>Rental total</span><span>{formatMoney(total)}</span></div>
+              <div className="flex justify-between font-semibold text-[#111827]"><span>Rental total</span><span>{formatMoney(total)}</span></div>
               <div className="flex justify-between"><span>Balance due to owner</span><span>{formatMoney(balance)}</span></div>
             </div>
             <Separator />
-            <div className="flex justify-between rounded-lg bg-[#0071e3]/[0.06] px-3 py-3 text-lg font-semibold text-[#0071e3]">
+            <div className="flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-3 text-lg font-semibold text-[#111827]">
               <span>Pay now (30%)</span>
               <span>{formatMoney(downpayment)}</span>
             </div>

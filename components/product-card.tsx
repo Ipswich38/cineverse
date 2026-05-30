@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Plus, UserCog } from 'lucide-react'
+import { Plus, ShieldCheck, UserCog } from 'lucide-react'
 import { useCart } from '@/lib/cart-store'
 import type { Product } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -33,25 +33,26 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link href={`/products/${product.slug}`} className="group block">
-      <div className="overflow-hidden rounded-2xl bg-[#f5f5f7] transition-all duration-300 group-hover:shadow-[0_8px_30px_rgba(0,0,0,0.10)]">
-        <div className="relative aspect-[4/3] overflow-hidden">
+      <div className="card-float overflow-hidden rounded-3xl bg-white">
+        {/* Image floats on a soft canvas tile */}
+        <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-[#f3f4f6]">
           <Image
             src={product.image_url}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
           />
 
           {soldOut && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#1d1d1f]">Fully booked</span>
+            <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#111827] shadow-sm">Fully booked</span>
             </div>
           )}
 
           {product.badge && !soldOut && (
             <div className="absolute left-3 top-3">
-              <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[#1d1d1f] shadow-sm backdrop-blur-sm">
+              <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[#111827] shadow-sm backdrop-blur-sm">
                 {product.badge}
               </span>
             </div>
@@ -59,7 +60,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
           {product.operator_available && !soldOut && (
             <div className="absolute right-3 top-3">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#0071e3]/10 px-2 py-1 text-[10px] font-semibold text-[#0071e3]">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#f6efdf] px-2 py-1 text-[10px] font-semibold text-[#a8843e] shadow-sm">
                 <UserCog className="h-3 w-3" />
                 Operator
               </span>
@@ -67,10 +68,10 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
 
           {!soldOut && (
-            <div className="absolute inset-x-3 bottom-3 translate-y-2 opacity-0 transition-all duration-250 group-hover:translate-y-0 group-hover:opacity-100">
+            <div className="absolute inset-x-3 bottom-3 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
               <button
                 onClick={handleAdd}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1d1d1f] text-[13px] font-semibold text-white shadow-lg transition-opacity hover:opacity-80"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#C5A059] text-[13px] font-semibold text-[#111827] shadow-lg transition-colors hover:bg-[#a8843e]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add to Cart
@@ -79,15 +80,26 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
         </div>
 
-        <div className="px-4 py-4">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-[#6e6e73]">{product.category}</p>
-          <h3 className="line-clamp-1 text-[15px] font-semibold text-[#1d1d1f]">{product.name}</h3>
+        <div className="px-1.5 pb-1 pt-4">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b7280]">{product.category}</p>
+          <h3 className="line-clamp-1 text-[15px] font-semibold text-[#111827]">{product.name}</h3>
+
           {product.owner_name && (
-            <p className="mt-0.5 text-[12px] text-[#6e6e73]">by {product.owner_name}</p>
+            <p className="mt-1 inline-flex items-center gap-1 text-[12px] text-[#6b7280]">
+              <ShieldCheck className="h-3.5 w-3.5 text-[#C5A059]" />
+              {product.owner_name}
+            </p>
           )}
-          <div className="mt-3 flex items-baseline gap-1">
-            <span className="text-[15px] font-semibold text-[#1d1d1f]">{formatMoney(product.price)}</span>
-            <span className="text-[12px] text-[#6e6e73]">/day</span>
+
+          <div className="mt-3 flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[#6b7280]">Daily Rental</p>
+              <p className="mt-0.5 text-[17px] font-bold leading-none text-[#111827]">
+                {formatMoney(product.price)}
+                <span className="ml-1 text-[12px] font-normal text-[#6b7280]">/day</span>
+              </p>
+            </div>
+            <span className="mb-0.5 text-[11px] font-medium text-[#6b7280]">{product.stock} avail.</span>
           </div>
         </div>
       </div>

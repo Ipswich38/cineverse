@@ -30,14 +30,14 @@ export default async function HomePage() {
       </section>
 
       {/* Trust */}
-      <section className="border-t border-black/[0.06] bg-[#f5f5f7]">
+      <section className="border-t border-black/[0.06] bg-[#f3f4f6]">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px px-5 py-2 md:grid-cols-4">
           {TRUST_POINTS.map(({ icon: Icon, label, sub }) => (
             <div key={label} className="flex items-start gap-3 px-4 py-6">
-              <Icon className="h-5 w-5 shrink-0 text-[#0071e3]" />
+              <Icon className="h-5 w-5 shrink-0 text-[#C5A059]" />
               <div>
-                <p className="text-[13px] font-semibold text-[#1d1d1f]">{label}</p>
-                <p className="text-[12px] text-[#6e6e73]">{sub}</p>
+                <p className="text-[13px] font-semibold text-[#111827]">{label}</p>
+                <p className="text-[12px] text-[#6b7280]">{sub}</p>
               </div>
             </div>
           ))}
