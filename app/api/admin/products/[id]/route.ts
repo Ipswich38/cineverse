@@ -8,7 +8,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const body = await req.json()
-  const { name, slug, description, price, compare_at_price, image_url, stock, reorder_threshold, category, tags, badge, is_active } = body
+  const {
+    name, slug, description, price, compare_at_price, image_url, stock, reorder_threshold, category, tags, badge, is_active,
+    owner_name, owner_email, owner_phone, operator_available, operator_day_rate, for_rent, for_sale, sale_price,
+  } = body
 
   const update: Record<string, unknown> = {}
   if (name != null) update.name = name.trim()
@@ -23,6 +26,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (tags != null) update.tags = Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim()).filter(Boolean)
   if ('badge' in body) update.badge = badge?.trim() || null
   if (is_active != null) update.is_active = Boolean(is_active)
+  if ('owner_name' in body) update.owner_name = owner_name?.trim() || null
+  if ('owner_email' in body) update.owner_email = owner_email?.trim() || null
+  if ('owner_phone' in body) update.owner_phone = owner_phone?.trim() || null
+  if ('operator_available' in body) update.operator_available = Boolean(operator_available)
+  if ('operator_day_rate' in body) update.operator_day_rate = operator_day_rate ? Number(operator_day_rate) : null
+  if ('for_rent' in body) update.for_rent = Boolean(for_rent)
+  if ('for_sale' in body) update.for_sale = Boolean(for_sale)
+  if ('sale_price' in body) update.sale_price = sale_price ? Number(sale_price) : null
 
   const { data, error } = await supabaseAdmin
     .from('products')
