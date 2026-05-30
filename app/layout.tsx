@@ -31,15 +31,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/30">Rent</p>
               <ul className="space-y-3 text-[13px]">
                 <li><Link href="/#gear" className="transition-colors hover:text-white">Browse Gear</Link></li>
-                <li><Link href="/#how" className="transition-colors hover:text-white">How it works</Link></li>
+                <li><Link href="/about" className="transition-colors hover:text-white">About</Link></li>
                 <li><Link href="/checkout" className="transition-colors hover:text-white">Checkout</Link></li>
               </ul>
             </div>
             <div>
               <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/30">Support</p>
               <ul className="space-y-3 text-[13px]">
-                <li><Link href="/#how" className="transition-colors hover:text-white">Reservations</Link></li>
-                <li><Link href="/#how" className="transition-colors hover:text-white">Downpayments</Link></li>
+                <li><Link href="/about" className="transition-colors hover:text-white">Reservations</Link></li>
+                <li><Link href="/about" className="transition-colors hover:text-white">Downpayments</Link></li>
                 <li><Link href="/admin" className="transition-colors hover:text-white">Owner admin</Link></li>
               </ul>
             </div>

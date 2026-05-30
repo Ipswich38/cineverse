@@ -8,7 +8,7 @@ import { STORE } from '@/lib/storefront'
 
 const LINKS = [
   { href: '/#gear', label: 'Browse Gear' },
-  { href: '/#how', label: 'How it works' },
+  { href: '/about', label: 'About' },
   { href: '/checkout', label: 'Checkout' },
 ]
 
@@ -20,9 +20,8 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-black/[0.06] bg-white/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
-        <Link href="/" className="flex items-center gap-1.5">
+        <Link href="/" className="flex items-center">
           <span className="text-[17px] font-semibold tracking-tight text-[#1d1d1f]">{STORE.shortName}</span>
-          <span className="hidden text-[17px] font-light tracking-tight text-[#6e6e73] sm:inline">Rentals</span>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
