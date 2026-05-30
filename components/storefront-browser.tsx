@@ -1,10 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Search, Sparkles } from 'lucide-react'
 import ProductCard from '@/components/product-card'
 import type { Product } from '@/lib/supabase'
 import type { CartMode } from '@/lib/cart-store'
+import { STORE } from '@/lib/storefront'
 
 export default function StorefrontBrowser({ listings }: { listings: Product[] }) {
   const [mode, setMode] = useState<CartMode>('rent')
@@ -58,9 +59,9 @@ export default function StorefrontBrowser({ listings }: { listings: Product[] })
         </h1>
       </div>
 
-      {/* Rent / Buy toggle */}
+      {/* Rent / Buy (in-app) · Hire (→ CineForce, new tab) */}
       <div className="mb-5 flex justify-center">
-        <div className="inline-flex rounded-full bg-[#f3f4f6] p-1">
+        <div className="inline-flex items-center rounded-full bg-[#f3f4f6] p-1">
           {(['rent', 'buy'] as CartMode[]).map((m) => (
             <button
               key={m}
@@ -72,6 +73,16 @@ export default function StorefrontBrowser({ listings }: { listings: Product[] })
               {m}
             </button>
           ))}
+          <a
+            href={STORE.crewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Hire crew on CineForce (opens a new tab)"
+            className="inline-flex h-9 items-center gap-1 rounded-full px-6 text-[13px] font-semibold text-[#a8843e] transition-colors hover:bg-white"
+          >
+            Hire
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </a>
         </div>
       </div>
 

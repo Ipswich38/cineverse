@@ -32,6 +32,8 @@ export default function Navbar() {
               <a
                 key={label}
                 href={href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-0.5 text-[13px] font-semibold text-[#a8843e] transition-opacity duration-150 hover:opacity-80"
               >
                 {label}
@@ -81,6 +83,8 @@ export default function Navbar() {
               <a
                 key={label}
                 href={href}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => setMenuOpen(false)}
                 className="flex h-11 items-center gap-1 border-b border-black/[0.06] text-[15px] font-semibold text-[#a8843e] last:border-0"
               >
