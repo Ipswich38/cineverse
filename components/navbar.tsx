@@ -20,8 +20,9 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-black/[0.06] bg-white/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
-        <Link href="/" className="flex items-center">
-          <span className="text-[19px] font-bold tracking-[-0.03em] text-[#111827]">{STORE.shortName}</span>
+        <Link href="/" className="flex flex-col leading-none">
+          <span className="text-[18px] font-bold tracking-[-0.03em] text-[#111827]">{STORE.shortName}</span>
+          <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#6b7280]">{STORE.subBrand}</span>
         </Link>
 
         <nav className="hidden items-center gap-9 md:flex">

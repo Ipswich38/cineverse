@@ -5,6 +5,7 @@ import type { Product } from '@/lib/supabase'
 export const STORE = {
   name: 'CineVerse',
   shortName: 'CineVerse',
+  subBrand: 'Gearkit Online Store',
   tagline: 'Rent production gear from owners across the Philippines — camera, lighting, grip, audio, and more.',
   email: 'hello@cineverse.store',
   location: 'Metro Manila, Philippines',
