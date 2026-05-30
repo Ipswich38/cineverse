@@ -26,6 +26,10 @@ CREATE TABLE products (
   -- Smart add-on: hire an operator to run this gear
   operator_available BOOLEAN DEFAULT false,
   operator_day_rate NUMERIC(10,2) CHECK (operator_day_rate IS NULL OR operator_day_rate >= 0),
+  -- Dual-mode marketplace: rent, buy, or both
+  for_rent BOOLEAN DEFAULT true,
+  for_sale BOOLEAN DEFAULT false,
+  sale_price NUMERIC(10,2) CHECK (sale_price IS NULL OR sale_price >= 0),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -47,6 +51,8 @@ CREATE TABLE orders (
   downpayment_pct NUMERIC(4,3) DEFAULT 0.300,
   downpayment_amount NUMERIC(10,2) DEFAULT 0 CHECK (downpayment_amount >= 0),
   balance_amount NUMERIC(10,2) DEFAULT 0 CHECK (balance_amount >= 0),
+  -- Order kind: rental (30%/70% + round-trip + return) or purchase (full payment + one-way delivery)
+  order_kind TEXT DEFAULT 'rental' CHECK (order_kind IN ('rental', 'purchase')),
   -- Logistics: 'self' (renter coordinates with owner) or 'managed' (CineVerse pickup/delivery/return for a fee)
   logistics_method TEXT DEFAULT 'managed' CHECK (logistics_method IN ('self', 'managed')),
   logistics_fee NUMERIC(10,2) DEFAULT 0 CHECK (logistics_fee >= 0),
@@ -190,3 +196,22 @@ INSERT INTO products (name, slug, description, price, image_url, stock, category
 -- Power
 ('V-Mount Battery Kit (6 + charger)', 'v-mount-battery-kit-6-charger', 'Six high-capacity V-mount batteries with a dual charger and D-tap cables.', 800, 'https://images.unsplash.com/photo-1541617434114-48c3a51d0ab2?w=900&q=80', 5, 'Power', ARRAY['power','battery','vmount','add-on'], 'Power', 'PowerGrid Rentals', 'hi@powergrid.ph', '09221234567', false, NULL),
 ('EcoFlow Delta 2 Power Station', 'ecoflow-delta-2-power-station', '1kWh portable power station for location shoots — run lights, chargers, and monitors off-grid.', 1200, 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=900&q=80', 3, 'Power', ARRAY['power','station','location','add-on'], 'Location power', 'PowerGrid Rentals', 'hi@powergrid.ph', '09221234567', false, NULL);
+
+-- Mark a subset of listings as also available to BUY (dual-mode), with retail-ish prices.
+UPDATE products SET for_sale = true, sale_price = v.sale_price FROM (VALUES
+  ('gopro-hero12-black', 24990),
+  ('gopro-hero11-black', 18990),
+  ('gopro-max-360-camera', 31990),
+  ('dji-osmo-action-4', 17990),
+  ('dji-osmo-pocket-3-creator-combo', 39990),
+  ('insta360-x4-360-camera', 32990),
+  ('dji-mic-2-wireless-kit', 18990),
+  ('amaran-200x-bi-color-led', 22990),
+  ('aputure-ls-600x-pro-led', 64990),
+  ('atomos-ninja-v-recorder-monitor', 39990),
+  ('v-mount-battery-kit-6-charger', 34990),
+  ('ecoflow-delta-2-power-station', 64990),
+  ('dji-mini-4-pro', 64990),
+  ('dji-air-3s', 62990)
+) AS v(slug, sale_price)
+WHERE products.slug = v.slug;

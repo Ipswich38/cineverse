@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hasSupabaseAdminConfig, supabaseAdmin } from '@/lib/supabase'
 import { createCheckoutSession, hasPaymongoConfig, resolvePaymentMethodTypes } from '@/lib/paymongo'
-import { DOWNPAYMENT_PCT, LOGISTICS_FEE_PER_OWNER, COMMISSION_PCT } from '@/lib/cart-store'
+import { DOWNPAYMENT_PCT, LOGISTICS_FEE_PER_OWNER, SALE_DELIVERY_FEE_PER_SELLER, COMMISSION_PCT } from '@/lib/cart-store'
 import type { CartItem, LogisticsMethod } from '@/lib/cart-store'
 import type { Product } from '@/lib/supabase'
 
@@ -15,8 +15,10 @@ interface CheckoutCustomer {
 }
 
 interface CheckoutDetails {
+  kind?: 'rental' | 'purchase'
   shootStartDate?: string
   notes?: string
+  deliveryAddress?: string
   logisticsMethod?: LogisticsMethod
   paymentMethod?: 'paymongo_all' | 'gcash' | 'maya' | 'grab_pay' | 'card'
 }
@@ -83,7 +85,7 @@ export async function POST(req: NextRequest) {
     const productIds = [...new Set(items.map((item) => item.id))]
     const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
-      .select('id, name, slug, price, image_url, stock, category, tags, is_active, owner_name, owner_email, owner_phone, operator_available, operator_day_rate')
+      .select('id, name, slug, price, image_url, stock, category, tags, is_active, owner_name, owner_email, owner_phone, operator_available, operator_day_rate, for_sale, sale_price')
       .in('id', productIds)
       .eq('is_active', true)
 
@@ -91,6 +93,92 @@ export async function POST(req: NextRequest) {
 
     const productsById = new Map((products as Product[] | null)?.map((product) => [product.id, product]) ?? [])
 
+    // ---- Purchase (buy) ----
+    if (checkout?.kind === 'purchase') {
+      const deliveryAddress = checkout?.deliveryAddress?.trim() || null
+      const lines = items.map((item) => {
+        const product = productsById.get(item.id)
+        if (!product) throw new Error(`${item.name} is no longer available`)
+        if (!product.for_sale || product.sale_price == null) throw new Error(`${product.name} is not available to buy`)
+        if (product.stock < item.quantity) throw new Error(`${product.name} only has ${product.stock} left`)
+        const price = Number(product.sale_price)
+        return {
+          product_id: product.id,
+          product_name: product.name,
+          quantity: item.quantity,
+          days: 1,
+          daily_rate: price,
+          unit_price: price,
+          with_operator: false,
+          operator_day_rate: null,
+          operator_fee: 0,
+          line_total: price * item.quantity,
+          owner_name: product.owner_name ?? null,
+          owner_email: product.owner_email ?? null,
+          owner_phone: product.owner_phone ?? null,
+        }
+      })
+
+      const goods = lines.reduce((sum, l) => sum + l.line_total, 0)
+      const sellerCount = new Set(lines.map((l) => l.owner_email || l.owner_name || l.product_id)).size
+      const delivery = SALE_DELIVERY_FEE_PER_SELLER * sellerCount
+      const payNow = goods + delivery
+      const commission = Math.round(goods * COMMISSION_PCT)
+      const ownerPayout = goods - commission
+
+      const { data: order, error: orderError } = await supabaseAdmin
+        .from('orders')
+        .insert({
+          customer_name: normalizedCustomer.name,
+          customer_email: normalizedCustomer.email,
+          customer_phone: normalizedCustomer.phone,
+          customer_address: deliveryAddress,
+          order_kind: 'purchase',
+          notes: null,
+          subtotal: goods,
+          operator_total: 0,
+          total_amount: goods,
+          downpayment_pct: 1,
+          downpayment_amount: payNow,
+          balance_amount: 0,
+          logistics_method: 'managed',
+          logistics_fee: delivery,
+          commission_pct: COMMISSION_PCT,
+          platform_commission: commission,
+          owner_payout: ownerPayout,
+          payment_method: paymentMethod,
+          status: 'pending',
+          fulfillment_status: 'awaiting_payment',
+        })
+        .select()
+        .single()
+      if (orderError) throw new Error(orderError.message)
+
+      const { error: itemsError } = await supabaseAdmin.from('order_items').insert(
+        lines.map((l) => ({ ...l, order_id: order.id }))
+      )
+      if (itemsError) throw new Error(itemsError.message)
+
+      const ref = order.id.slice(0, 8).toUpperCase()
+      const session = await createCheckoutSession({
+        lineItems: [
+          ...lines.map((l) => ({ name: l.product_name, amount: l.daily_rate, quantity: l.quantity })),
+          ...(delivery > 0 ? [{ name: `Delivery (one-way${sellerCount > 1 ? ` ×${sellerCount} sellers` : ''}) — #${ref}`, amount: delivery, quantity: 1 }] : []),
+        ],
+        customer: { name: normalizedCustomer.name, email: normalizedCustomer.email, phone: normalizedCustomer.phone },
+        successUrl: `${baseUrl}/order-success?ref=${order.id}`,
+        cancelUrl: `${baseUrl}/checkout`,
+        orderId: order.id,
+        paymentMethodTypes: resolvePaymentMethodTypes(paymentMethod),
+      })
+
+      const { error: sessErr } = await supabaseAdmin.from('orders').update({ paymongo_session_id: session.id }).eq('id', order.id)
+      if (sessErr) throw new Error(sessErr.message)
+
+      return NextResponse.json({ checkoutUrl: session.attributes.checkout_url, ref })
+    }
+
+    // ---- Rental ----
     const pricedItems = items.map((item) => {
       const product = productsById.get(item.id)
       if (!product) throw new Error(`${item.name} is no longer available`)

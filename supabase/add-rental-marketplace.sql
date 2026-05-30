@@ -9,6 +9,10 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS owner_phone TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS operator_available BOOLEAN DEFAULT false;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS operator_day_rate NUMERIC(10,2);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS reorder_threshold INT DEFAULT 1;
+-- Dual-mode marketplace (rent / buy)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS for_rent BOOLEAN DEFAULT true;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS for_sale BOOLEAN DEFAULT false;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_price NUMERIC(10,2);
 
 -- Bookings: rental window + downpayment breakdown + owner notification timestamp.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS shoot_start_date DATE;
@@ -20,6 +24,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS downpayment_pct NUMERIC(4,3) DEFAULT
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS downpayment_amount NUMERIC(10,2) DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS balance_amount NUMERIC(10,2) DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS owner_notified_at TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_kind TEXT DEFAULT 'rental';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_method TEXT DEFAULT 'managed';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_fee NUMERIC(10,2) DEFAULT 0;
 

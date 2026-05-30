@@ -24,6 +24,10 @@ export interface Product {
   // Smart add-on: optionally hire an operator to run this gear on the shoot.
   operator_available?: boolean | null
   operator_day_rate?: number | null
+  // Dual-mode marketplace: a listing can be offered to rent, to buy, or both.
+  for_rent?: boolean | null
+  for_sale?: boolean | null
+  sale_price?: number | null // purchase price (₱) when for_sale
 }
 
 // An Order is a BOOKING: a rental reservation paid via a 30% downpayment.
@@ -34,6 +38,8 @@ export interface Order {
   customer_phone: string
   customer_address: string
   billing_address?: string | null
+  // 'rental' (30%/70% + round-trip + return) or 'purchase' (full payment + one-way delivery)
+  order_kind?: 'rental' | 'purchase' | null
   // Rental specifics
   shoot_start_date?: string | null
   rental_days?: number | null

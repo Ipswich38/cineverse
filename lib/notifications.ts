@@ -188,3 +188,34 @@ export async function notifyBalancePaid(order: Order, items: OrderItem[]) {
     ...ownerSends,
   ])
 }
+
+// Purchase confirmation (buy): paid in full → CineVerse delivers; sellers paid after delivery.
+export async function notifyPurchasePaid(order: Order, items: OrderItem[]) {
+  const ref = bookingRef(order.id)
+  const lines = items.map((it) => `• ${it.product_name} ×${it.quantity} — ${formatMoney(it.line_total)}`).join('\n')
+
+  const renterText =
+    `Order #${ref} confirmed — thank you!\n\n${lines}\n\n` +
+    `Paid: ${formatMoney(order.downpayment_amount ?? 0)} (incl. delivery ${formatMoney(order.logistics_fee ?? 0)})\n` +
+    (order.customer_address ? `Deliver to: ${order.customer_address}\n` : '') +
+    `\nCineVerse will deliver your gear and coordinate the schedule with you.`
+
+  const ownerSends = ownersFromItems(order, items).flatMap((owner) => {
+    const text =
+      `You sold gear on CineVerse (order #${ref}).\n\n${owner.lines.join('\n')}\n\n` +
+      `Sale subtotal: ${formatMoney(owner.gearTotal)}\n` +
+      `CineVerse commission (${Math.round(owner.pct * 100)}%): −${formatMoney(owner.commission)}\n` +
+      `Your payout: ${formatMoney(owner.payout)} — paid by CineVerse after the item is delivered.\n\n` +
+      `CineVerse will arrange pickup from you and deliver to the buyer.`
+    return [
+      sendEmail({ to: owner.email, subject: `Sold on CineVerse — order #${ref}`, text }),
+      sendSms({ to: owner.phone, message: `CineVerse: item sold (order #${ref}). Payout ${formatMoney(owner.payout)} after delivery. We'll arrange pickup.` }),
+    ]
+  })
+
+  await Promise.all([
+    sendEmail({ to: order.customer_email, subject: `CineVerse order #${ref} confirmed`, text: renterText }),
+    sendSms({ to: order.customer_phone, message: `CineVerse: order #${ref} confirmed. We'll deliver your gear soon!` }),
+    ...ownerSends,
+  ])
+}

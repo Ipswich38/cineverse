@@ -67,9 +67,27 @@ const O = {
   powergrid: { owner_name: 'PowerGrid Rentals', owner_email: 'hi@powergrid.ph', owner_phone: '09221234567' },
 }
 
-const base = { is_active: true, created_at: '2026-05-20T00:00:00.000Z' }
+const base = { is_active: true, for_rent: true, for_sale: false, created_at: '2026-05-20T00:00:00.000Z' }
 
-export const DEMO_PRODUCTS: Product[] = [
+// Subset of demo listings that are also available to BUY (retail-ish prices).
+const SALE_PRICES: Record<string, number> = {
+  'gopro-hero12-black': 24990,
+  'gopro-hero11-black': 18990,
+  'gopro-max-360-camera': 31990,
+  'dji-osmo-action-4': 17990,
+  'dji-osmo-pocket-3-creator-combo': 39990,
+  'insta360-x4-360-camera': 32990,
+  'dji-mic-2-wireless-kit': 18990,
+  'amaran-200x-bi-color-led': 22990,
+  'aputure-ls-600x-pro-led': 64990,
+  'atomos-ninja-v-recorder-monitor': 39990,
+  'v-mount-battery-kit-6-charger': 34990,
+  'ecoflow-delta-2-power-station': 64990,
+  'dji-mini-4-pro': 64990,
+  'dji-air-3s': 62990,
+}
+
+const RAW_LISTINGS: Product[] = [
   // ---- Cameras ----
   { id: 'sony-fx6', name: 'Sony FX6 Cinema Camera Kit', slug: 'sony-fx6-cinema-camera-kit', description: 'Full-frame 4K cinema camera with dual base ISO and fast AF. Cage, batteries, and media included.', price: 4500, image_url: img('photo-1521405924368-64c5b84bec60'), stock: 3, category: 'Camera', tags: ['camera', 'cinema', 'sony', '4k', 'fullframe'], badge: 'Most booked', operator_available: true, operator_day_rate: 3500, ...O.cinegear, ...base },
   { id: 'sony-fx3', name: 'Sony FX3 Full-Frame Cinema Camera', slug: 'sony-fx3-full-frame-cinema-camera', description: 'Compact full-frame cinema camera, gimbal-friendly, with active cooling and S-Cinetone.', price: 3500, image_url: img('photo-1520870121499-7dddb6ccbcde'), stock: 3, category: 'Camera', tags: ['camera', 'cinema', 'sony', 'compact'], badge: 'Compact', operator_available: true, operator_day_rate: 3000, ...O.cinegear, ...base },
@@ -134,6 +152,10 @@ export const DEMO_PRODUCTS: Product[] = [
   { id: 'vmount-kit', name: 'V-Mount Battery Kit (6 + charger)', slug: 'v-mount-battery-kit-6-charger', description: 'Six high-capacity V-mount batteries with a dual charger and D-tap cables.', price: 800, image_url: img('photo-1541617434114-48c3a51d0ab2'), stock: 5, category: 'Power', tags: ['power', 'battery', 'vmount', 'add-on'], badge: 'Power', operator_available: false, operator_day_rate: null, ...O.powergrid, ...base },
   { id: 'ecoflow-delta-2', name: 'EcoFlow Delta 2 Power Station', slug: 'ecoflow-delta-2-power-station', description: '1kWh portable power station for location shoots — run lights, chargers, and monitors off-grid.', price: 1200, image_url: img('photo-1508614589041-895b88991e3e'), stock: 3, category: 'Power', tags: ['power', 'station', 'location', 'add-on'], badge: 'Location power', operator_available: false, operator_day_rate: null, ...O.powergrid, ...base },
 ]
+
+export const DEMO_PRODUCTS: Product[] = RAW_LISTINGS.map((p) =>
+  SALE_PRICES[p.slug] ? { ...p, for_sale: true, sale_price: SALE_PRICES[p.slug] } : p
+)
 
 export function formatMoney(value: number) {
   return `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`

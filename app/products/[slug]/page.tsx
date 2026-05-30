@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, ShieldCheck, Store } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import ListingBooking from '@/components/listing-booking'
+import BuyPanel from '@/components/buy-panel'
 import ProductCard from '@/components/product-card'
 import { hasSupabaseConfig, supabase, type Product } from '@/lib/supabase'
 import { DEMO_PRODUCTS, PRODUCT_HIGHLIGHTS, formatMoney, getProductRecommendations } from '@/lib/storefront'
@@ -80,9 +81,12 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
             </Badge>
             <h1 className="text-[32px] font-semibold tracking-[-0.01em] text-[#111827]">{product.name}</h1>
 
-            <div className="mt-2 flex items-baseline gap-1">
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="text-[22px] font-semibold text-[#111827]">{formatMoney(product.price)}</span>
               <span className="text-[14px] text-[#6b7280]">/day</span>
+              {product.for_sale && product.sale_price ? (
+                <span className="text-[14px] font-medium text-[#a8843e]">· or buy {formatMoney(product.sale_price)}</span>
+              ) : null}
             </div>
 
             {product.owner_name && (
@@ -122,9 +126,10 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
 
-        {/* Right: sticky booking panel */}
-        <div className="lg:sticky lg:top-20 lg:self-start">
-          <ListingBooking product={product} />
+        {/* Right: rent and/or buy panels */}
+        <div className="space-y-5 lg:sticky lg:top-20 lg:self-start">
+          {product.for_rent !== false && <ListingBooking product={product} />}
+          {product.for_sale && product.sale_price ? <BuyPanel product={product} /> : null}
         </div>
       </div>
 

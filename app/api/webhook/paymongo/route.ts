@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { hasPaymongoWebhookConfig, verifyWebhookSignature } from '@/lib/paymongo'
-import { notifyCustomerBookingPaid, notifyOwnersBookingPaid, notifyBalancePaid } from '@/lib/notifications'
+import { notifyCustomerBookingPaid, notifyOwnersBookingPaid, notifyBalancePaid, notifyPurchasePaid } from '@/lib/notifications'
 import { COMMISSION_PCT } from '@/lib/cart-store'
 import type { Order, OrderItem } from '@/lib/supabase'
 
@@ -94,10 +94,16 @@ export async function POST(req: NextRequest) {
       const booking = reservation as Order
       const items = (itemsData as OrderItem[] | null) ?? []
       try {
-        await Promise.all([notifyCustomerBookingPaid(booking, items), notifyOwnersBookingPaid(booking, items)])
+        if (booking.order_kind === 'purchase') {
+          // Purchase is paid in full now → fund seller payouts (released after delivery) + confirm.
+          await createPayouts(booking, items)
+          await notifyPurchasePaid(booking, items)
+        } else {
+          await Promise.all([notifyCustomerBookingPaid(booking, items), notifyOwnersBookingPaid(booking, items)])
+        }
         await supabaseAdmin.from('orders').update({ owner_notified_at: new Date().toISOString() }).eq('id', reservation.id)
       } catch (notifyErr) {
-        console.error('[webhook] reservation notify failed:', notifyErr)
+        console.error('[webhook] reservation/purchase handling failed:', notifyErr)
       }
       return NextResponse.json({ received: true })
     }

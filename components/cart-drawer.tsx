@@ -12,29 +12,36 @@ import {
 } from '@/components/ui/sheet'
 import {
   useCart,
+  cartMode,
   cartSubtotal,
   cartOperatorTotal,
   cartTotal,
   cartDownpayment,
   cartBalance,
+  cartSaleDelivery,
   itemLineTotal,
 } from '@/lib/cart-store'
 import { DEMO_PRODUCTS, formatMoney, getCartRecommendations } from '@/lib/storefront'
 
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, updateDays, toggleOperator, addItem } = useCart()
+  const mode = cartMode(items)
+  const buy = mode === 'buy'
+
   const subtotal = cartSubtotal(items)
   const operatorTotal = cartOperatorTotal(items)
   const total = cartTotal(items)
   const downpayment = cartDownpayment(items)
   const balance = cartBalance(items)
-  const recommendations = getCartRecommendations(items, DEMO_PRODUCTS, 2)
+  const saleDelivery = cartSaleDelivery(items)
+  const buyTotal = total + saleDelivery
+  const recommendations = buy ? [] : getCartRecommendations(items, DEMO_PRODUCTS, 2)
 
   return (
     <Sheet open={isOpen} onOpenChange={closeCart}>
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-md">
         <SheetHeader className="border-b border-black/[0.06] px-5 py-4">
-          <SheetTitle className="text-lg font-semibold">Your booking ({items.length})</SheetTitle>
+          <SheetTitle className="text-lg font-semibold">{buy ? 'Your purchase' : 'Your booking'} ({items.length})</SheetTitle>
         </SheetHeader>
 
         {items.length === 0 ? (
@@ -44,7 +51,7 @@ export default function CartDrawer() {
             </div>
             <div>
               <p className="font-semibold text-[#111827]">Your cart is empty</p>
-              <p className="mt-1 text-sm">Add gear to start a booking.</p>
+              <p className="mt-1 text-sm">Add gear to get started.</p>
             </div>
             <Button variant="outline" onClick={closeCart}>Browse gear</Button>
           </div>
@@ -60,7 +67,9 @@ export default function CartDrawer() {
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-1 text-sm font-semibold text-[#111827]">{item.name}</p>
                       {item.ownerName && <p className="text-[11px] text-[#6b7280]">by {item.ownerName}</p>}
-                      <p className="mt-0.5 text-[13px] text-[#6b7280]">{formatMoney(item.price)}/day</p>
+                      <p className="mt-0.5 text-[13px] text-[#6b7280]">
+                        {buy ? formatMoney(item.salePrice ?? 0) : `${formatMoney(item.price)}/day`}
+                      </p>
                     </div>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -71,15 +80,16 @@ export default function CartDrawer() {
                     </button>
                   </div>
 
-                  {/* Duration + units */}
                   <div className="mt-3 flex items-center justify-between gap-2">
-                    <MiniStepper
-                      icon={<Calendar className="h-3 w-3 text-[#6b7280]" />}
-                      label="days"
-                      value={item.days}
-                      onDec={() => updateDays(item.id, item.days - 1)}
-                      onInc={() => updateDays(item.id, item.days + 1)}
-                    />
+                    {!buy && (
+                      <MiniStepper
+                        icon={<Calendar className="h-3 w-3 text-[#6b7280]" />}
+                        label="days"
+                        value={item.days}
+                        onDec={() => updateDays(item.id, item.days - 1)}
+                        onInc={() => updateDays(item.id, item.days + 1)}
+                      />
+                    )}
                     <MiniStepper
                       label="units"
                       value={item.quantity}
@@ -89,8 +99,7 @@ export default function CartDrawer() {
                     <span className="ml-auto text-sm font-semibold text-[#111827]">{formatMoney(itemLineTotal(item))}</span>
                   </div>
 
-                  {/* Operator toggle */}
-                  {item.operatorAvailable && (
+                  {!buy && item.operatorAvailable && (
                     <button
                       onClick={() => toggleOperator(item.id)}
                       className={`mt-2 flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[12px] transition-colors ${
@@ -149,24 +158,46 @@ export default function CartDrawer() {
             </div>
 
             <div className="space-y-3 border-t border-black/[0.06] p-5">
-              <div className="space-y-1.5 text-sm text-[#6b7280]">
-                <div className="flex justify-between"><span>Gear rental</span><span>{formatMoney(subtotal)}</span></div>
-                {operatorTotal > 0 && <div className="flex justify-between"><span>Operators</span><span>{formatMoney(operatorTotal)}</span></div>}
-                <div className="flex justify-between font-semibold text-[#111827]"><span>Rental total</span><span>{formatMoney(total)}</span></div>
-                <div className="flex justify-between"><span>Balance (70%) — via CineVerse</span><span>{formatMoney(balance)}</span></div>
-              </div>
-              <div className="flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
-                <span>Pay now · 30%</span>
-                <span>{formatMoney(downpayment)}</span>
-              </div>
-              <p className="text-center text-[11px] text-[#6b7280]">+ CineVerse delivery calculated at checkout</p>
-              <Link
-                href="/checkout"
-                onClick={closeCart}
-                className={buttonVariants({ size: 'lg', className: 'h-12 w-full rounded-xl bg-[#C5A059] text-[#111827] hover:bg-[#a8843e]' })}
-              >
-                Reserve — pay {formatMoney(downpayment)}
-              </Link>
+              {buy ? (
+                <>
+                  <div className="space-y-1.5 text-sm text-[#6b7280]">
+                    <div className="flex justify-between"><span>Items</span><span>{formatMoney(subtotal)}</span></div>
+                    <div className="flex justify-between"><span>Delivery (one-way)</span><span>{formatMoney(saleDelivery)}</span></div>
+                  </div>
+                  <div className="flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
+                    <span>Total</span>
+                    <span>{formatMoney(buyTotal)}</span>
+                  </div>
+                  <Link
+                    href="/checkout"
+                    onClick={closeCart}
+                    className={buttonVariants({ size: 'lg', className: 'h-12 w-full rounded-xl bg-[#C5A059] text-[#111827] hover:bg-[#a8843e]' })}
+                  >
+                    Checkout — pay {formatMoney(buyTotal)}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5 text-sm text-[#6b7280]">
+                    <div className="flex justify-between"><span>Gear rental</span><span>{formatMoney(subtotal)}</span></div>
+                    {operatorTotal > 0 && <div className="flex justify-between"><span>Operators</span><span>{formatMoney(operatorTotal)}</span></div>}
+                    <div className="flex justify-between font-semibold text-[#111827]"><span>Rental total</span><span>{formatMoney(total)}</span></div>
+                    <div className="flex justify-between"><span>Balance (70%) — via CineVerse</span><span>{formatMoney(balance)}</span></div>
+                  </div>
+                  <div className="flex justify-between rounded-xl border-l-2 border-[#C5A059] bg-[#f6efdf] px-3 py-2.5 text-[15px] font-semibold text-[#111827]">
+                    <span>Pay now · 30%</span>
+                    <span>{formatMoney(downpayment)}</span>
+                  </div>
+                  <Link
+                    href="/checkout"
+                    onClick={closeCart}
+                    className={buttonVariants({ size: 'lg', className: 'h-12 w-full rounded-xl bg-[#C5A059] text-[#111827] hover:bg-[#a8843e]' })}
+                  >
+                    Reserve — pay {formatMoney(downpayment)}
+                  </Link>
+                  <p className="text-center text-[11px] text-[#6b7280]">+ CineVerse delivery calculated at checkout</p>
+                </>
+              )}
             </div>
           </>
         )}
