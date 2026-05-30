@@ -3,6 +3,16 @@
 -- (notification-only; no login). Renters reserve gear with a 30% downpayment;
 -- the balance is settled directly with the owner on handover.
 
+-- ============================================================================
+-- ISOLATION: this store shares CineForce's Supabase PROJECT but lives in its own
+-- `cineverse` schema, fully separate from CineForce's `public` tables. No overlap.
+-- Run this whole file in the CineForce Supabase SQL editor.
+-- ============================================================================
+CREATE SCHEMA IF NOT EXISTS cineverse;
+GRANT USAGE ON SCHEMA cineverse TO anon, authenticated, service_role;
+-- Create everything below inside the cineverse schema.
+SET search_path = cineverse, public;
+
 -- Listings (table kept as `products` for tooling compatibility).
 -- `price` = daily rental rate (₱/day). `stock` = units available to rent.
 CREATE TABLE products (
@@ -215,3 +225,18 @@ UPDATE products SET for_sale = true, sale_price = v.sale_price FROM (VALUES
   ('dji-air-3s', 62990)
 ) AS v(slug, sale_price)
 WHERE products.slug = v.slug;
+
+-- ============================================================================
+-- Supabase API access for the cineverse schema.
+-- Custom schemas do NOT inherit public's default grants, so set them explicitly.
+-- ============================================================================
+-- Public can read active listings (still RLS-gated by the policy above).
+GRANT SELECT ON cineverse.products TO anon, authenticated;
+-- Server routes (service role) own bookings/payouts; service_role bypasses RLS.
+GRANT ALL ON ALL TABLES IN SCHEMA cineverse TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA cineverse TO service_role;
+
+-- Expose the cineverse schema to the Supabase API (PostgREST).
+-- Additive — keeps public + graphql_public so CineForce keeps working.
+ALTER ROLE authenticator SET pgrst.db_schemas = 'public, graphql_public, cineverse';
+NOTIFY pgrst, 'reload config';

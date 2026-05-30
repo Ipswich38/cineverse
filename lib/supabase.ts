@@ -112,6 +112,10 @@ export interface OrderItem {
   owner_phone?: string | null
 }
 
+// Isolation: the store shares CineForce's Supabase project but lives in its own
+// `cineverse` schema. All queries default to it so they never touch CineForce's public tables.
+const STORE_SCHEMA = 'cineverse'
+
 function hasRealValue(value: string | undefined) {
   return Boolean(value && !value.toLowerCase().includes('placeholder') && !value.toLowerCase().startsWith('your-'))
 }
@@ -131,7 +135,8 @@ function getSupabase() {
 
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { db: { schema: STORE_SCHEMA } }
   )
 }
 
@@ -142,7 +147,8 @@ function getSupabaseAdmin() {
 
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { db: { schema: STORE_SCHEMA } }
   )
 }
 
