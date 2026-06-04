@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, CalendarDays, CheckCircle2, MapPin, Package, ShoppingCart, ShieldAlert } from "lucide-react";
 import { useStore } from "@/app/providers";
 import { currency } from "@/lib/catalog";
+import { categoryName, normalizeCategory } from "@/lib/categories";
 
 export default function GearDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -37,7 +38,7 @@ export default function GearDetailPage() {
           <img src={item.images[0]} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
         <div style={{ padding: "4px 0 24px" }}>
-          <p style={{ color: "#9a7100", textTransform: "uppercase", letterSpacing: "0.14em", fontSize: 12, fontWeight: 700, marginTop: 0 }}>{item.category}</p>
+          <p style={{ color: "#9a7100", textTransform: "uppercase", letterSpacing: "0.14em", fontSize: 12, fontWeight: 700, marginTop: 0 }}>{categoryName(normalizeCategory(item.category))}</p>
           <h1 style={{ fontFamily: '"Jost", sans-serif', fontSize: "clamp(2rem, 4vw, 3rem)", lineHeight: 0.98, letterSpacing: "-0.045em", margin: "6px 0 10px" }}>{item.name}</h1>
           <p style={{ color: "#6c675f", fontSize: 14, lineHeight: 1.6 }}>{item.description}</p>
 

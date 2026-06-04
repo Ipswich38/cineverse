@@ -5,6 +5,7 @@ import { ArrowUpRight, MapPin, Package, ShoppingCart } from "lucide-react";
 import { useStore } from "@/app/providers";
 import type { EquipmentItem } from "@/lib/catalog";
 import { currency } from "@/lib/catalog";
+import { categoryName, normalizeCategory } from "@/lib/categories";
 
 export default function EquipmentCard({ item }: { item: EquipmentItem }) {
   const { addToCart } = useStore();
@@ -26,7 +27,7 @@ export default function EquipmentCard({ item }: { item: EquipmentItem }) {
           </h3>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 5 }}>
             <span style={{ color: "#6c675f", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              {item.category}
+              {categoryName(normalizeCategory(item.category))}
             </span>
             {item.featured && (
               <span style={{ color: "#9a7100", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>

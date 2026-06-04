@@ -4,7 +4,8 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CornerUpLeft, ExternalLink, Eye, FileText, Loader2, LockKeyhole, LogOut, Mail, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
 import { useStore } from "../providers";
-import { slugify, CATEGORIES, type EquipmentItem } from "@/lib/catalog";
+import { slugify, type EquipmentItem } from "@/lib/catalog";
+import { CATEGORY_FLAT, categoryName, normalizeCategory } from "@/lib/categories";
 import ProposalBuilder from "./ProposalBuilder";
 
 export default function AdminPage() {
@@ -196,7 +197,7 @@ export default function AdminPage() {
               <div key={item.id} style={{ padding: 14, borderRadius: 16, background: "#f0ece3", border: "1px solid rgba(17,17,17,0.1)", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                 <div>
                   <strong>{item.name}</strong>
-                  <div style={{ color: "#6c675f", fontSize: 13 }}>{item.category} · {item.owner}</div>
+                  <div style={{ color: "#6c675f", fontSize: 13 }}>{categoryName(normalizeCategory(item.category))} · {item.owner}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <a href={`/gear/${item.slug}`} target="_blank" rel="noreferrer" style={{ ...miniBtn, textDecoration: "none" }} title="Preview on the live site"><Eye size={14} /> Preview</a>
@@ -232,7 +233,7 @@ function InventoryForm({
   onClear: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [category, setCategory] = useState(initial?.category ?? CATEGORIES[0]);
+  const [category, setCategory] = useState(initial ? normalizeCategory(initial.category) : (CATEGORY_FLAT[0]?.slug ?? ""));
   const [owner, setOwner] = useState(initial?.owner ?? "");
   const [location, setLocation] = useState(initial?.location ?? "");
   const [ratePerDay, setRatePerDay] = useState(String(initial?.ratePerDay ?? 0));
@@ -313,8 +314,11 @@ function InventoryForm({
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ color: "#6c675f", fontSize: 13 }}>Category</span>
           <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {!CATEGORY_FLAT.some((c) => c.slug === category) && category && (
+              <option value={category}>{categoryName(category)} (current)</option>
+            )}
+            {CATEGORY_FLAT.map((c) => (
+              <option key={c.slug} value={c.slug}>{c.label}</option>
             ))}
           </select>
         </label>

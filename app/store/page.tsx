@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { CalendarDays, SlidersHorizontal } from "lucide-react";
 import { useStore } from "../providers";
 import { isItemAvailable } from "@/lib/catalog";
+import { categoryName, descendantSlugs, normalizeCategory } from "@/lib/categories";
 import EquipmentCard from "@/components/EquipmentCard";
 
 export default function StorePage() {
@@ -24,15 +25,19 @@ function StoreContent() {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
+  // Selecting a category includes everything beneath it (e.g. "Cameras" shows
+  // "Cinema Cameras", "Camera Accessories › Batteries", etc.).
+  const allowedCategories = useMemo(() => (category ? descendantSlugs(normalizeCategory(category)) : null), [category]);
+
   const filtered = useMemo(() => {
     return catalog.filter((item) => {
       if (query && !`${item.name} ${item.description} ${item.owner} ${item.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())) return false;
-      if (category && item.category !== category) return false;
+      if (allowedCategories && !allowedCategories.has(normalizeCategory(item.category))) return false;
       if (location && !item.location.toLowerCase().includes(location.toLowerCase())) return false;
       if (!isItemAvailable(item, from, to)) return false;
       return true;
     });
-  }, [catalog, query, category, location, from, to]);
+  }, [catalog, query, allowedCategories, location, from, to]);
 
   const dateNote =
     from && to
@@ -45,7 +50,7 @@ function StoreContent() {
     <div className="app-container" style={{ padding: "24px 0 76px" }}>
       <div style={{ margin: "0 0 18px", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", color: "#6c675f", fontSize: 13 }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <SlidersHorizontal size={14} /> {filtered.length} results{category ? ` in ${category}` : ""}
+          <SlidersHorizontal size={14} /> {filtered.length} results{category ? ` in ${categoryName(normalizeCategory(category))}` : ""}
         </span>
         {dateNote && (
           <span

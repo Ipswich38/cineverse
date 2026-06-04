@@ -11,7 +11,8 @@ import BrandLockup from "@/components/BrandLockup";
 import Footer from "@/components/Footer";
 import RentalCalendar from "@/components/RentalCalendar";
 import { useStore } from "@/app/providers";
-import { CATEGORIES, bookedDateSet, isItemAvailable } from "@/lib/catalog";
+import { bookedDateSet, isItemAvailable } from "@/lib/catalog";
+import CategoryNav from "./CategoryNav";
 
 const navItems: { href: string; label: string; icon: typeof Home }[] = [
   { href: "/", label: "Home", icon: Home },
@@ -117,14 +118,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <nav className="desktop-category-nav" aria-label="Product categories">
-            <Link href="/store">All Rentals</Link>
-            {CATEGORIES.map((category) => (
-              <Link key={category} href={`/store?category=${encodeURIComponent(category)}` as Route}>
-                {category}
-              </Link>
-            ))}
-          </nav>
+          <CategoryNav />
         </div>
 
         {searchOpen && (
