@@ -6,24 +6,41 @@ import { CornerUpLeft, Loader2, LockKeyhole, Mail, Plus, RefreshCw, Send, Shield
 import { useStore } from "../providers";
 import { slugify, CATEGORIES, type EquipmentItem } from "@/lib/catalog";
 
-const ADMIN_CODE = "vissionlink-admin";
-
 export default function AdminPage() {
   const { catalog, refreshCatalog } = useStore();
   const [code, setCode] = useState("");
   const [unlocked, setUnlocked] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockErr, setUnlockErr] = useState("");
   const [editing, setEditing] = useState<EquipmentItem | null>(null);
   const [view, setView] = useState<"ops" | "inbox">("ops");
   const [busy, setBusy] = useState(false);
 
   const approvedCount = useMemo(() => catalog.length, [catalog]);
 
+  // Validate the typed code on the server (the real secret never ships to the
+  // browser). On success we keep the code and reuse it as the Bearer token.
+  const unlock = async () => {
+    if (!code) return;
+    setUnlocking(true);
+    setUnlockErr("");
+    try {
+      const res = await fetch("/api/admin/verify", { method: "POST", headers: { Authorization: `Bearer ${code}` } });
+      if (res.ok) setUnlocked(true);
+      else setUnlockErr("That code didn't work.");
+    } catch {
+      setUnlockErr("Couldn't verify right now — please try again.");
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   const saveEquipment = async (item: EquipmentItem, mode: "POST" | "PUT") => {
     setBusy(true);
     try {
       const res = await fetch("/api/admin/equipment", {
         method: mode,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_CODE}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${code}` },
         body: JSON.stringify(item),
       });
       if (!res.ok) {
@@ -42,7 +59,7 @@ export default function AdminPage() {
     try {
       const res = await fetch(`/api/admin/equipment?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${ADMIN_CODE}` },
+        headers: { Authorization: `Bearer ${code}` },
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -62,10 +79,11 @@ export default function AdminPage() {
           <Shield size={26} color="#ffcc00" />
           <h1 style={{ fontFamily: '"Jost", sans-serif', fontSize: 34, margin: "12px 0 10px" }}>Admin access</h1>
           <p style={{ color: "#6c675f" }}>Use the private code to manage inventory listings and the customer inbox.</p>
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Admin code" style={inputStyle} />
-          <button onClick={() => setUnlocked(code === ADMIN_CODE)} style={{ marginTop: 14, background: "#f1f1ee", color: "#111", border: "none", borderRadius: 999, padding: "14px 22px", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <LockKeyhole size={16} /> Unlock
+          <input value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void unlock(); }} placeholder="Admin code" style={inputStyle} />
+          <button onClick={() => void unlock()} disabled={unlocking || !code} style={{ marginTop: 14, background: "#f1f1ee", color: "#111", border: "none", borderRadius: 999, padding: "14px 22px", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 8, opacity: unlocking || !code ? 0.6 : 1 }}>
+            {unlocking ? <Loader2 size={16} className="spin" /> : <LockKeyhole size={16} />} Unlock
           </button>
+          {unlockErr && <p style={{ color: "#c0392b", fontSize: 13, marginTop: 10 }}>{unlockErr}</p>}
         </div>
       </div>
     );
@@ -97,7 +115,7 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {view === "inbox" && <InboxPanel authCode={ADMIN_CODE} />}
+      {view === "inbox" && <InboxPanel authCode={code} />}
 
       {view === "ops" && (
       <>
@@ -111,7 +129,7 @@ export default function AdminPage() {
           <InventoryForm
             key={editing?.id ?? "new"}
             initial={editing}
-            authCode={ADMIN_CODE}
+            authCode={code}
             onSave={async (item) => {
               await saveEquipment(item, editing ? "PUT" : "POST");
               setEditing(null);
