@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CornerUpLeft, FileText, Loader2, LockKeyhole, Mail, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
+import { CornerUpLeft, ExternalLink, Eye, FileText, Loader2, LockKeyhole, LogOut, Mail, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
 import { useStore } from "../providers";
 import { slugify, CATEGORIES, type EquipmentItem } from "@/lib/catalog";
 import ProposalBuilder from "./ProposalBuilder";
@@ -16,6 +16,8 @@ export default function AdminPage() {
   const [editing, setEditing] = useState<EquipmentItem | null>(null);
   const [view, setView] = useState<"ops" | "inbox" | "proposals">("ops");
   const [busy, setBusy] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [previewKey, setPreviewKey] = useState(0);
 
   const approvedCount = useMemo(() => catalog.length, [catalog]);
 
@@ -27,13 +29,39 @@ export default function AdminPage() {
     setUnlockErr("");
     try {
       const res = await fetch("/api/admin/verify", { method: "POST", headers: { Authorization: `Bearer ${code}` } });
-      if (res.ok) setUnlocked(true);
-      else setUnlockErr("That code didn't work.");
+      if (res.ok) {
+        setUnlocked(true);
+        try { localStorage.setItem("vl_admin_code", code); } catch {}
+      } else {
+        setUnlockErr("That code didn't work.");
+      }
     } catch {
       setUnlockErr("Couldn't verify right now — please try again.");
     } finally {
       setUnlocking(false);
     }
+  };
+
+  // Stay logged in across reloads: restore a saved code and re-verify it on mount.
+  useEffect(() => {
+    let stored: string | null = null;
+    try { stored = localStorage.getItem("vl_admin_code"); } catch {}
+    if (!stored) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/verify", { method: "POST", headers: { Authorization: `Bearer ${stored}` } });
+        if (res.ok) { setCode(stored as string); setUnlocked(true); }
+        else { try { localStorage.removeItem("vl_admin_code"); } catch {} }
+      } catch { /* offline — stay locked but keep the saved code */ }
+    })();
+  }, []);
+
+  const logout = () => {
+    try { localStorage.removeItem("vl_admin_code"); } catch {}
+    setUnlocked(false);
+    setCode("");
+    setEditing(null);
+    setView("ops");
   };
 
   const saveEquipment = async (item: EquipmentItem, mode: "POST" | "PUT") => {
@@ -50,6 +78,7 @@ export default function AdminPage() {
         return;
       }
       await refreshCatalog();
+      setPreviewKey((k) => k + 1);
     } finally {
       setBusy(false);
     }
@@ -68,6 +97,7 @@ export default function AdminPage() {
         return;
       }
       await refreshCatalog();
+      setPreviewKey((k) => k + 1);
     } finally {
       setBusy(false);
     }
@@ -92,7 +122,7 @@ export default function AdminPage() {
 
   return (
     <div className="app-container" style={{ padding: "28px 0 76px" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 18, alignItems: "center", flexWrap: "wrap" }}>
         {([["ops", "Operations"], ["proposals", "Proposals"], ["inbox", "Inbox"]] as const).map(([key, label]) => (
           <button
             key={key}
@@ -114,6 +144,7 @@ export default function AdminPage() {
             {label}
           </button>
         ))}
+        <button onClick={logout} style={{ ...miniBtn, marginLeft: "auto" }} title="Log out"><LogOut size={14} /> Log out</button>
       </div>
 
       {view === "inbox" && <InboxPanel authCode={code} />}
@@ -125,6 +156,26 @@ export default function AdminPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 14, marginBottom: 18 }}>
         <Metric label="Live listings" value={`${approvedCount}`} />
       </div>
+
+      {/* Live site preview — see the real storefront (with your listings) without leaving admin. */}
+      <section className="surface" style={{ padding: 16, borderRadius: 20, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 20, margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Eye size={18} /> Site preview
+          </h2>
+          <button onClick={() => setShowPreview((s) => !s)} style={{ ...miniBtn, marginLeft: "auto" }}>{showPreview ? "Hide" : "Show"}</button>
+          {showPreview && <button onClick={() => setPreviewKey((k) => k + 1)} style={miniBtn}><RefreshCw size={14} /> Refresh</button>}
+          <a href="/store" target="_blank" rel="noreferrer" style={{ ...miniBtn, textDecoration: "none" }}><ExternalLink size={14} /> Open storefront</a>
+        </div>
+        {showPreview && (
+          <iframe
+            key={previewKey}
+            src="/store"
+            title="Storefront preview"
+            style={{ width: "100%", height: 560, marginTop: 12, border: "1px solid rgba(17,17,17,0.14)", borderRadius: 12, background: "#fff" }}
+          />
+        )}
+      </section>
 
       <div style={{ display: "grid", gap: 16 }}>
         <section className="surface" style={{ padding: 18, borderRadius: 20 }}>
@@ -148,6 +199,7 @@ export default function AdminPage() {
                   <div style={{ color: "#6c675f", fontSize: 13 }}>{item.category} · {item.owner}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
+                  <a href={`/gear/${item.slug}`} target="_blank" rel="noreferrer" style={{ ...miniBtn, textDecoration: "none" }} title="Preview on the live site"><Eye size={14} /> Preview</a>
                   <button onClick={() => setEditing(item)} style={miniBtn} disabled={busy}>Edit</button>
                   <button onClick={() => removeEquipment(item.id)} style={miniBtn} disabled={busy}><Trash2 size={14} /></button>
                 </div>

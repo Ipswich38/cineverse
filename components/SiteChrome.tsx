@@ -22,7 +22,8 @@ const navItems: { href: string; label: string; icon: typeof Home }[] = [
 
 const primaryLinks: { href: string; label: string; external?: boolean }[] = [
   { href: "/store", label: "Browse A Gear" },
-  { href: "https://cineforce.vissionlink.com", label: "Need A Crew", external: true },
+  // Hidden for now (per client) — re-enable when the crew cross-link returns.
+  // { href: "https://cineforce.vissionlink.com", label: "Need A Crew", external: true },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];

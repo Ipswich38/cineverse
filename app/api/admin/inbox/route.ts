@@ -25,6 +25,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(list)
   } catch (err) {
     console.error('[inbox:error]', err)
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Inbox error' }, { status: 500 })
+    // imapflow surfaces useful detail beyond the bare "Command failed" — pull the
+    // server response / code so the cause (usually a Zoho-side setting) is visible.
+    const e = err as { message?: string; responseText?: string; serverResponseCode?: string; authenticationFailed?: boolean }
+    const detail = e.responseText || e.serverResponseCode || e.message || 'Inbox error'
+    const isAuth = Boolean(e.authenticationFailed) || /auth|login|credential/i.test(detail)
+    const message = isAuth
+      ? `Mailbox sign-in was rejected (${detail}). In Zoho Mail, enable IMAP access for hello@vissionlink.com and use an app-specific password (not the login password); set ZOHO_IMAP_HOST if your account is on a non-.com region.`
+      : `Could not read the mailbox (${detail}). Check that IMAP is enabled in Zoho and the host/port are correct.`
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
