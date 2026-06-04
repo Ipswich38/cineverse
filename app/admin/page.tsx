@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CornerUpLeft, Loader2, LockKeyhole, Mail, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
 import { useStore } from "../providers";
-import { slugify, type EquipmentItem } from "@/lib/catalog";
+import { slugify, CATEGORIES, type EquipmentItem } from "@/lib/catalog";
 
 const ADMIN_CODE = "vissionlink-admin";
 
@@ -111,6 +111,7 @@ export default function AdminPage() {
           <InventoryForm
             key={editing?.id ?? "new"}
             initial={editing}
+            authCode={ADMIN_CODE}
             onSave={async (item) => {
               await saveEquipment(item, editing ? "PUT" : "POST");
               setEditing(null);
@@ -140,70 +141,173 @@ export default function AdminPage() {
   );
 }
 
+// One line per entry → string[], and back. Used for specs and tags so the admin
+// can edit them as readable lists instead of raw JSON.
+const linesToArray = (text: string): string[] =>
+  text.split("\n").map((s) => s.trim()).filter(Boolean);
+const arrayToLines = (arr: string[]): string => (arr ?? []).join("\n");
+
 function InventoryForm({
   initial,
+  authCode,
   onSave,
   onClear,
 }: {
   initial: EquipmentItem | null;
+  authCode: string;
   onSave: (item: EquipmentItem) => void;
   onClear: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [category, setCategory] = useState(initial?.category ?? "Camera");
+  const [category, setCategory] = useState(initial?.category ?? CATEGORIES[0]);
   const [owner, setOwner] = useState(initial?.owner ?? "");
   const [location, setLocation] = useState(initial?.location ?? "");
   const [ratePerDay, setRatePerDay] = useState(String(initial?.ratePerDay ?? 0));
   const [securityDeposit, setSecurityDeposit] = useState(String(initial?.securityDeposit ?? 0));
   const [stock, setStock] = useState(String(initial?.stock ?? 1));
-  const [image, setImage] = useState(initial?.images[0] ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [featured, setFeatured] = useState(Boolean(initial?.featured));
+  const [images, setImages] = useState<string[]>(initial?.images ?? []);
+  const [specsText, setSpecsText] = useState(arrayToLines(initial?.specs ?? []));
+  const [tagsText, setTagsText] = useState(arrayToLines(initial?.tags ?? []));
+  const [urlToAdd, setUrlToAdd] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState("");
+
+  const uploadFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setUploadErr("");
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${authCode}` },
+          body: fd,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Upload failed.");
+        setImages((prev) => [...prev, data.url as string]);
+      }
+    } catch (err) {
+      setUploadErr(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (idx: number) => setImages((prev) => prev.filter((_, i) => i !== idx));
+  const makePrimary = (idx: number) =>
+    setImages((prev) => {
+      const next = [...prev];
+      const [picked] = next.splice(idx, 1);
+      return picked ? [picked, ...next] : prev;
+    });
+
+  const save = () => {
+    if (!name.trim()) {
+      alert("Please enter a name.");
+      return;
+    }
+    const item: EquipmentItem = {
+      // Preserve identity + slug on edit so existing /gear/[slug] links don't break.
+      id: initial?.id ?? `item-${slugify(name)}-${Date.now()}`,
+      slug: initial?.slug ?? slugify(name),
+      name: name.trim(),
+      category,
+      description,
+      owner,
+      location,
+      ratePerDay: Number(ratePerDay) || 0,
+      securityDeposit: Number(securityDeposit) || 0,
+      stock: Number(stock) || 0,
+      featured,
+      images,
+      specs: linesToArray(specsText),
+      tags: linesToArray(tagsText),
+      // Preserve booked/blocked dates managed elsewhere — never wipe on edit.
+      unavailable: initial?.unavailable ?? [],
+    };
+    onSave(item);
+  };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div style={{ display: "grid", gap: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
-        {[
-          ["Name", name, setName],
-          ["Category", category, setCategory],
-          ["Owner", owner, setOwner],
-          ["Location", location, setLocation],
-          ["Rate/day", ratePerDay, setRatePerDay],
-          ["Deposit", securityDeposit, setSecurityDeposit],
-          ["Stock", stock, setStock],
-          ["Image URL", image, setImage],
-        ].map(([label, value, setter]) => (
-          <Field key={label as string} label={label as string} value={value as string} onChange={setter as (value: string) => void} />
-        ))}
+        <Field label="Name" value={name} onChange={setName} />
+        <label style={{ display: "grid", gap: 8 }}>
+          <span style={{ color: "#6c675f", fontSize: 13 }}>Category</span>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <Field label="Owner" value={owner} onChange={setOwner} />
+        <Field label="Location" value={location} onChange={setLocation} />
+        <Field label="Rate/day (₱)" value={ratePerDay} onChange={setRatePerDay} />
+        <Field label="Security deposit (₱)" value={securityDeposit} onChange={setSecurityDeposit} />
+        <Field label="Stock" value={stock} onChange={setStock} />
       </div>
+
       <Field label="Description" value={description} onChange={setDescription} textarea />
-      <div style={{ display: "flex", gap: 10 }}>
-        <button
-          onClick={() => {
-            const item: EquipmentItem = {
-              id: initial?.id ?? `item-${slugify(name)}-${Date.now()}`,
-              slug: slugify(name),
-              name,
-              category,
-              description,
-              owner,
-              location,
-              ratePerDay: Number(ratePerDay),
-              securityDeposit: Number(securityDeposit),
-              stock: Number(stock),
-              featured: false,
-              images: [image],
-              specs: [owner, location].filter(Boolean),
-              tags: [category.toLowerCase()],
-            };
-            onSave(item);
-          }}
-          style={miniBtn}
-        >
-          <Plus size={14} /> Save
-        </button>
-        {initial && (
-          <button onClick={onClear} style={miniBtn}>Cancel</button>
+
+      <label style={{ display: "inline-flex", alignItems: "center", gap: 9, fontSize: 14, fontWeight: 700, color: "#15130f" }}>
+        <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} style={{ width: 18, height: 18 }} />
+        Featured on the storefront
+      </label>
+
+      {/* Photos — upload to storage, or paste a URL. First photo is the cover. */}
+      <div style={{ display: "grid", gap: 10 }}>
+        <span style={{ color: "#6c675f", fontSize: 13 }}>Photos {images.length > 0 && `· ${images.length}`} (first is the cover)</span>
+        {images.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {images.map((src, idx) => (
+              <div key={`${src}-${idx}`} style={{ position: "relative", width: 96, height: 96, borderRadius: 12, overflow: "hidden", border: idx === 0 ? "2px solid #d8a800" : "1px solid rgba(17,17,17,0.15)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", inset: "auto 0 0 0", display: "flex", justifyContent: "space-between", gap: 4, padding: 4, background: "rgba(0,0,0,0.45)" }}>
+                  {idx !== 0 ? (
+                    <button onClick={() => makePrimary(idx)} title="Make cover" style={tinyBtn}>★</button>
+                  ) : (
+                    <span style={{ ...tinyBtn, background: "transparent", color: "#ffcc00" }}>cover</span>
+                  )}
+                  <button onClick={() => removeImage(idx)} title="Remove" style={tinyBtn}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+          <label style={{ ...miniBtn, cursor: uploading ? "default" : "pointer", opacity: uploading ? 0.6 : 1 }}>
+            {uploading ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
+            {uploading ? "Uploading…" : "Upload photos"}
+            <input type="file" accept="image/*" multiple disabled={uploading} onChange={(e) => { void uploadFiles(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
+          </label>
+          <input value={urlToAdd} onChange={(e) => setUrlToAdd(e.target.value)} placeholder="…or paste an image URL" style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
+          <button
+            onClick={() => { const u = urlToAdd.trim(); if (u) { setImages((prev) => [...prev, u]); setUrlToAdd(""); } }}
+            style={miniBtn}
+            disabled={!urlToAdd.trim()}
+          >
+            Add URL
+          </button>
+        </div>
+        {uploadErr && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{uploadErr}</p>}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
+        <Field label="Specs (one per line)" value={specsText} onChange={setSpecsText} textarea />
+        <Field label="Tags (one per line)" value={tagsText} onChange={setTagsText} textarea />
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={save} style={miniBtn} disabled={uploading}>
+          <Plus size={14} /> {initial ? "Save changes" : "Add listing"}
+        </button>
+        {initial && <button onClick={onClear} style={miniBtn}>Cancel</button>}
       </div>
     </div>
   );
@@ -250,6 +354,18 @@ const miniBtn: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
+};
+
+const tinyBtn: CSSProperties = {
+  background: "rgba(255,255,255,0.92)",
+  color: "#111",
+  border: "none",
+  borderRadius: 7,
+  padding: "2px 7px",
+  fontSize: 12,
+  fontWeight: 800,
+  lineHeight: 1.4,
+  cursor: "pointer",
 };
 
 // ─── Inbox ───────────────────────────────────────────────────────────────────
