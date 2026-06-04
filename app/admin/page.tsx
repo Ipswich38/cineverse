@@ -2,9 +2,10 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CornerUpLeft, Loader2, LockKeyhole, Mail, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
+import { CornerUpLeft, FileText, Loader2, LockKeyhole, Mail, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
 import { useStore } from "../providers";
 import { slugify, CATEGORIES, type EquipmentItem } from "@/lib/catalog";
+import ProposalBuilder from "./ProposalBuilder";
 
 export default function AdminPage() {
   const { catalog, refreshCatalog } = useStore();
@@ -13,7 +14,7 @@ export default function AdminPage() {
   const [unlocking, setUnlocking] = useState(false);
   const [unlockErr, setUnlockErr] = useState("");
   const [editing, setEditing] = useState<EquipmentItem | null>(null);
-  const [view, setView] = useState<"ops" | "inbox">("ops");
+  const [view, setView] = useState<"ops" | "inbox" | "proposals">("ops");
   const [busy, setBusy] = useState(false);
 
   const approvedCount = useMemo(() => catalog.length, [catalog]);
@@ -92,7 +93,7 @@ export default function AdminPage() {
   return (
     <div className="app-container" style={{ padding: "28px 0 76px" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-        {([["ops", "Operations"], ["inbox", "Inbox"]] as const).map(([key, label]) => (
+        {([["ops", "Operations"], ["proposals", "Proposals"], ["inbox", "Inbox"]] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setView(key)}
@@ -109,13 +110,15 @@ export default function AdminPage() {
               color: view === key ? "#fffdf8" : "#15130f",
             }}
           >
-            {key === "inbox" ? <Mail size={15} /> : <Shield size={15} />}
+            {key === "inbox" ? <Mail size={15} /> : key === "proposals" ? <FileText size={15} /> : <Shield size={15} />}
             {label}
           </button>
         ))}
       </div>
 
       {view === "inbox" && <InboxPanel authCode={code} />}
+
+      {view === "proposals" && <ProposalBuilder catalog={catalog} />}
 
       {view === "ops" && (
       <>
