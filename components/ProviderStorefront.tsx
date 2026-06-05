@@ -70,6 +70,19 @@ export default function ProviderStorefront({ profile }: { profile: ProviderProfi
       </header>
 
       <div className="pstore-body">
+        {/* ── Packages (full catalog, moved here from the retired /packages page) ── */}
+        {profile.hasPackages && (
+          <section id="packages" className="pstore-section" aria-label={`Packages from ${profile.name}`}>
+            <div className="pstore-section-head">
+              <div>
+                <p className="section-kicker">Bundled & reviewed</p>
+                <h2>Production packages</h2>
+              </div>
+            </div>
+            <PackagesCatalog />
+          </section>
+        )}
+
         {/* ── Featured gear ────────────────────────────────────────────── */}
         {gridItems.length > 0 && (
           <section className="pstore-section" aria-label={`Gear from ${profile.name}`}>
@@ -85,19 +98,6 @@ export default function ProviderStorefront({ profile }: { profile: ProviderProfi
             <div className="product-grid">
               {gridItems.map((item) => <EquipmentCard key={item.id} item={item} />)}
             </div>
-          </section>
-        )}
-
-        {/* ── Packages (full catalog, moved here from the retired /packages page) ── */}
-        {profile.hasPackages && (
-          <section id="packages" className="pstore-section" aria-label={`Packages from ${profile.name}`}>
-            <div className="pstore-section-head">
-              <div>
-                <p className="section-kicker">Bundled & reviewed</p>
-                <h2>Production packages</h2>
-              </div>
-            </div>
-            <PackagesCatalog />
           </section>
         )}
 
