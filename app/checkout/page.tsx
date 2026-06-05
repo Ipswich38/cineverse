@@ -19,7 +19,7 @@ export default function CheckoutPage() {
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
-        <Link href="/packages" className="primary-button">
+        <Link href="/providers" className="primary-button">
           Ask a quotation <ArrowRight size={16} />
         </Link>
         <Link href="/store" className="secondary-button">

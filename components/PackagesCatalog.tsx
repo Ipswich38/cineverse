@@ -1,52 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import { Check, Clock, Package, Send } from "lucide-react";
+import { Check, Clock, Send } from "lucide-react";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import { PackageQuoteButton } from "@/components/PackageQuoteModal";
-import { PACKAGE_OFFERS, packagesForItemSlug } from "@/lib/package-offers";
+import { PACKAGE_OFFERS } from "@/lib/package-offers";
 
-export default function PackagesPage() {
+// The full production-package catalog (cards + price range + inclusions + the
+// "Ask a quotation" flow). Lives inside the BMR provider storefront; the old
+// standalone /packages page was retired. Self-contained styles include the quote
+// modal so the dialog renders correctly wherever this is mounted.
+export default function PackagesCatalog() {
   return (
-    <Suspense fallback={<div className="app-container packages-page">Loading packages...</div>}>
-      <PackagesContent />
-    </Suspense>
-  );
-}
-
-function PackagesContent() {
-  const searchParams = useSearchParams();
-  const itemSlug = searchParams.get("item") ?? "";
-  const offers = useMemo(() => (itemSlug ? packagesForItemSlug(itemSlug) : PACKAGE_OFFERS), [itemSlug]);
-  const itemLabel = itemSlug ? itemSlug.replace(/-/g, " ") : "";
-
-  return (
-    <div className="app-container packages-page">
+    <div className="packages-catalog">
       <style>{CSS}</style>
 
-      <header className="packages-hero">
-        <div className="packages-hero-icon"><Package size={22} /></div>
-        <div>
-          <p className="packages-eyebrow">BMR package quotation</p>
-          <h1>Production packages reviewed for your shoot</h1>
-          <p>
-            Choose a listed package, review the price range, then request a quotation. Exact pricing is still confirmed by admin because final rates can change
-            based on dates, scope, crew, transportation, location, availability, VAT, and bundle discounts.
-          </p>
-        </div>
-      </header>
-
-      {itemSlug && (
-        <div className="filter-note">
-          <span>Showing packages that include: <strong>{itemLabel}</strong></span>
-          <Link href="/packages">View all packages</Link>
-        </div>
-      )}
-
       <section className="package-grid" aria-label="Production packages">
-        {offers.map((offer) => (
+        {PACKAGE_OFFERS.map((offer) => (
           <article className="package-card" key={offer.id}>
             <Link href={`/packages/${offer.slug}`} className="package-image-link" aria-label={`View ${offer.name}`}>
               <GearImagePlaceholder name={offer.name} />
@@ -81,14 +51,6 @@ function PackagesContent() {
         ))}
       </section>
 
-      {offers.length === 0 && (
-        <div className="empty-package-filter">
-          <h2>No package currently lists this item</h2>
-          <p>Try viewing all packages or request a custom quotation so admin can review whether this item can be bundled.</p>
-          <Link href="/packages" className="package-detail-link">View all packages</Link>
-        </div>
-      )}
-
       <aside className="pricing-note">
         <Clock size={16} />
         <span>Displayed ranges are planning guides only. Once sent, your request is logged for admin review and the quickest response is usually within the same business day.</span>
@@ -98,26 +60,6 @@ function PackagesContent() {
 }
 
 const CSS = `
-.packages-page {
-  padding: 28px 0 76px;
-}
-.packages-hero {
-  display: grid;
-  grid-template-columns: auto minmax(0, 780px);
-  gap: 14px;
-  align-items: start;
-  margin-bottom: 22px;
-}
-.packages-hero-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: #f5c518;
-  color: #15130f;
-}
-.packages-eyebrow,
 .package-card-eyebrow {
   margin: 0 0 6px;
   color: #6c675f;
@@ -126,44 +68,10 @@ const CSS = `
   letter-spacing: 0.08em;
   font-weight: 600;
 }
-.packages-hero h1 {
-  margin: 0;
-  font-family: "Jost", sans-serif;
-  font-size: clamp(30px, 4vw, 48px);
-  line-height: 1;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-.packages-hero p:not(.packages-eyebrow) {
-  max-width: 760px;
-  color: #6c675f;
-  line-height: 1.7;
-  margin: 12px 0 0;
-}
 .package-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
-}
-.filter-note {
-  margin: -4px 0 16px;
-  padding: 12px 14px;
-  border: 1px solid rgba(17,17,17,0.1);
-  background: #fffdf8;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  color: #6c675f;
-  font-size: 13px;
-}
-.filter-note strong {
-  color: #15130f;
-  text-transform: capitalize;
-}
-.filter-note a {
-  color: #15130f;
-  font-weight: 600;
 }
 .package-card {
   display: grid;
@@ -285,23 +193,6 @@ const CSS = `
   color: #9a7100;
   flex: 0 0 auto;
 }
-.empty-package-filter {
-  margin-top: 16px;
-  padding: 22px;
-  border: 1px solid rgba(17,17,17,0.1);
-  background: #fffdf8;
-}
-.empty-package-filter h2 {
-  margin: 0;
-  font-family: "Jost", sans-serif;
-  font-size: 24px;
-  font-weight: 500;
-}
-.empty-package-filter p {
-  margin: 8px 0 14px;
-  color: #6c675f;
-  line-height: 1.6;
-}
 .quote-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -380,12 +271,6 @@ const CSS = `
   }
 }
 @media (max-width: 640px) {
-  .packages-page {
-    padding-top: 18px;
-  }
-  .packages-hero {
-    grid-template-columns: 1fr;
-  }
   .package-grid {
     grid-template-columns: 1fr;
   }

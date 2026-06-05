@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Mail, MapPin, Package } from "lucide-react";
+import { ArrowRight, BadgeCheck, Mail, MapPin } from "lucide-react";
 import { useStore } from "@/app/providers";
 import EquipmentCard from "@/components/EquipmentCard";
-import GearImagePlaceholder from "@/components/GearImagePlaceholder";
+import PackagesCatalog from "@/components/PackagesCatalog";
 import type { ProviderProfile } from "@/lib/providers";
 import { PACKAGE_OFFERS } from "@/lib/package-offers";
 
@@ -20,7 +20,6 @@ export default function ProviderStorefront({ profile }: { profile: ProviderProfi
   const featured = items.filter((item) => item.featured);
   const gridItems = (featured.length >= 4 ? featured : items).slice(0, 8);
   const locations = Array.from(new Set(items.map((item) => item.location).filter(Boolean)));
-  const featuredPackages = profile.hasPackages ? PACKAGE_OFFERS.slice(0, 3) : [];
 
   const bannerStyle = {
     background: `linear-gradient(160deg, ${profile.bannerFrom} 0%, ${profile.bannerTo} 100%)`,
@@ -62,9 +61,9 @@ export default function ProviderStorefront({ profile }: { profile: ProviderProfi
               Browse all gear <ArrowRight size={15} />
             </Link>
             {profile.hasPackages && (
-              <Link href="/packages" className="pstore-btn pstore-btn--ghost">
-                Request a quote
-              </Link>
+              <a href="#packages" className="pstore-btn pstore-btn--ghost">
+                View packages
+              </a>
             )}
           </div>
         </div>
@@ -89,33 +88,16 @@ export default function ProviderStorefront({ profile }: { profile: ProviderProfi
           </section>
         )}
 
-        {/* ── Packages ─────────────────────────────────────────────────── */}
-        {featuredPackages.length > 0 && (
-          <section className="pstore-section" aria-label={`Packages from ${profile.name}`}>
+        {/* ── Packages (full catalog, moved here from the retired /packages page) ── */}
+        {profile.hasPackages && (
+          <section id="packages" className="pstore-section" aria-label={`Packages from ${profile.name}`}>
             <div className="pstore-section-head">
               <div>
                 <p className="section-kicker">Bundled & reviewed</p>
                 <h2>Production packages</h2>
               </div>
-              <Link href="/packages" className="pstore-seeall">
-                <Package size={14} /> All packages
-              </Link>
             </div>
-            <div className="pstore-pkg-grid">
-              {featuredPackages.map((offer) => (
-                <Link href={`/packages/${offer.slug}`} className="pstore-pkg-card" key={offer.id}>
-                  <div className="pstore-pkg-image">
-                    <GearImagePlaceholder name={offer.name} />
-                  </div>
-                  <div className="pstore-pkg-body">
-                    <p>{offer.eyebrow}</p>
-                    <h3>{offer.name}</h3>
-                    <span className="pstore-pkg-price">{offer.priceRange}</span>
-                  </div>
-                  <ArrowRight className="pstore-pkg-arrow" size={16} />
-                </Link>
-              ))}
-            </div>
+            <PackagesCatalog />
           </section>
         )}
 

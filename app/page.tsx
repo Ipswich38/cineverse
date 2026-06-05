@@ -49,7 +49,7 @@ export default function HomePage() {
     el.scrollBy({ left: direction * Math.round(el.clientWidth * 0.72), behavior: "smooth" });
   };
   const renderCarouselItem = (item: EquipmentItem) => (
-    <Link href={`/packages?item=${encodeURIComponent(item.slug)}`} className="landing-carousel-item" key={item.id}>
+    <Link href="/providers" className="landing-carousel-item" key={item.id}>
       <div className="landing-carousel-image">
         <GearImagePlaceholder name={item.name} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -95,7 +95,7 @@ export default function HomePage() {
               <Link href="/store" className="hero-cta-primary">
                 Browse catalog <ArrowRight size={16} />
               </Link>
-              <Link href="/packages" className="hero-cta-secondary">
+              <Link href="/providers" className="hero-cta-secondary">
                 Request quotation
               </Link>
             </div>
@@ -155,7 +155,7 @@ export default function HomePage() {
                 <ArrowRight className="landing-package-arrow" size={16} />
               </Link>
             ))}
-            <Link href="/packages" className="landing-package-all">
+            <Link href="/providers" className="landing-package-all">
               <Package size={16} />
               View all packages
             </Link>

@@ -46,7 +46,7 @@ export default function GearDetailPage() {
 
           <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
             <Link
-              href={`/packages?item=${item.slug}`}
+              href="/providers"
               style={{
                 border: "none",
                 background: "#f5c518",

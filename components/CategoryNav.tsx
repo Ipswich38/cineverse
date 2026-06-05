@@ -55,7 +55,7 @@ export default function CategoryNav() {
                 </Link>
               </div>
             </div>
-            <Link className="cat-link" href="/packages">Packages</Link>
+            <Link className="cat-link" href={"/providers#packages" as Route}>Packages</Link>
             <Nodes nodes={CATEGORIES.filter((top) => top.slug !== "packages")} />
           </div>
         </div>

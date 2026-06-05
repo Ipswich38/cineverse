@@ -92,7 +92,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                   !item.external &&
                   (pathname === item.href ||
                     (item.href === "/store" && pathname.startsWith("/store")) ||
-                    (item.href === "/providers" && (pathname === "/providers" || pathname === "/packages")) ||
+                    (item.href === "/providers" && pathname === "/providers") ||
                     (item.href === "/about" && pathname === "/about") ||
                     (item.href === "/contact" && pathname === "/contact"));
                 return item.external ? (
@@ -115,7 +115,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                           {provider.name}
                         </Link>
                       ))}
-                      <Link href="/packages" className="primary-dropdown-all">All packages</Link>
+                      <Link href={"/providers#packages" as Route} className="primary-dropdown-all">All packages</Link>
                     </div>
                   </div>
                 ) : (
@@ -168,7 +168,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                     !item.external &&
                   (pathname === item.href ||
                       (item.href === "/store" && pathname.startsWith("/store")) ||
-                      (item.href === "/providers" && (pathname === "/providers" || pathname === "/packages")) ||
+                      (item.href === "/providers" && pathname === "/providers") ||
                       (item.href === "/about" && pathname === "/about") ||
                       (item.href === "/contact" && pathname === "/contact"));
                   return item.external ? (
@@ -180,7 +180,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                       <Link href={item.href as Route} className={active ? "mobile-nav-active" : ""} onClick={() => setMobileMenuOpen(false)}>
                         {item.label}
                       </Link>
-                      <Link href="/packages" className={`mobile-nav-sub ${pathname === "/packages" ? "mobile-nav-active" : ""}`} onClick={() => setMobileMenuOpen(false)}>
+                      <Link href={"/providers#packages" as Route} className="mobile-nav-sub" onClick={() => setMobileMenuOpen(false)}>
                         All packages
                       </Link>
                     </span>

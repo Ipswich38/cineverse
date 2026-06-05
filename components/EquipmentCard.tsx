@@ -47,7 +47,7 @@ export default function EquipmentCard({ item }: { item: EquipmentItem }) {
 
       <div style={{ padding: 0, display: "grid", gap: 10 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href={`/packages?item=${encodeURIComponent(item.slug)}`} className="card-pill-cta primary">
+          <Link href="/providers" className="card-pill-cta primary">
             View Package
             <ArrowUpRight size={13} />
           </Link>

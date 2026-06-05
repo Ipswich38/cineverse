@@ -14,7 +14,7 @@ export default function CartPage() {
           <p className="section-kicker">Cart</p>
           <h1 style={{ fontFamily: '"Jost", sans-serif', fontSize: 28, margin: "6px 0 0", letterSpacing: "-0.04em" }}>Quotation list</h1>
         </div>
-        <Link href="/packages" style={{ textDecoration: "none", background: "#f5c518", color: "#15130f", fontWeight: 800, padding: "10px 18px", borderRadius: 999, display: "inline-flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+        <Link href="/providers" style={{ textDecoration: "none", background: "#f5c518", color: "#15130f", fontWeight: 800, padding: "10px 18px", borderRadius: 999, display: "inline-flex", gap: 8, alignItems: "center", fontSize: 13 }}>
           Request quotation <ArrowRight size={16} />
         </Link>
       </div>
@@ -23,7 +23,7 @@ export default function CartPage() {
         <div style={{ padding: 0 }}>
           {cart.length === 0 ? (
             <div style={{ padding: 24, color: "#6c675f" }}>
-              Cart checkout is being replaced by quotation requests. Start with <Link href="/packages">Packages</Link> or browse the <Link href="/store">catalog</Link>.
+              Cart checkout is being replaced by quotation requests. Start with <Link href="/providers">Packages</Link> or browse the <Link href="/store">catalog</Link>.
             </div>
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
@@ -63,7 +63,7 @@ export default function CartPage() {
             <SummaryRow label="Pricing" value="Quoted by admin" />
             <SummaryRow label="Payment" value="After confirmation" />
           </div>
-          <Link href="/packages" style={{ marginTop: 16, display: "flex", justifyContent: "center", alignItems: "center", gap: 8, background: "#f5c518", color: "#15130f", textDecoration: "none", fontWeight: 800, borderRadius: 999, padding: "12px 14px", fontSize: 13 }}>
+          <Link href="/providers" style={{ marginTop: 16, display: "flex", justifyContent: "center", alignItems: "center", gap: 8, background: "#f5c518", color: "#15130f", textDecoration: "none", fontWeight: 800, borderRadius: 999, padding: "12px 14px", fontSize: 13 }}>
             Ask a quotation
           </Link>
         </aside>
