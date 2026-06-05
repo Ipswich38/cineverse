@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,8 +24,9 @@ const navItems: { href: string; label: string; icon: typeof Home }[] = [
 
 const primaryLinks: { href: string; label: string; external?: boolean }[] = [
   { href: "/store", label: "Store" },
-  { href: "/packages", label: "Packages" },
-  { href: "/providers", label: "Providers" },
+  // Providers & Packages share one menu: each provider opens its branded
+  // storefront (/providers), and "All packages" links the full package catalog.
+  { href: "/providers", label: "Providers & Packages" },
   // Hidden for now (per client) — re-enable when the crew cross-link returns.
   // { href: "https://cineforce.vissionlink.com", label: "Need A Crew", external: true },
   { href: "/about", label: "About" },
@@ -41,7 +42,6 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [gearBarOpen, setGearBarOpen] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState("");
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
   const [dateFrom, setDateFrom] = useState<string | null>(null);
@@ -49,7 +49,6 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
   const [calOpen, setCalOpen] = useState(false);
 
   const bookedDates = useMemo(() => bookedDateSet(catalog), [catalog]);
-  const providerSelected = PUBLIC_PROVIDERS.some((provider) => provider.queryOwner === selectedProvider);
   const availableCount = useMemo(
     () => (dateFrom && dateTo ? catalog.filter((i) => isItemAvailable(i, dateFrom, dateTo)).length : null),
     [catalog, dateFrom, dateTo],
@@ -64,7 +63,6 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
 
   const submitSearch = () => {
     const trimmed = query.trim();
-    setSelectedProvider("");
     router.push(trimmed ? `/store?query=${encodeURIComponent(trimmed)}` : "/store");
   };
 
@@ -77,10 +75,6 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
     router.push((`/store${p.toString() ? `?${p}` : ""}`) as Route);
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setSelectedProvider(new URLSearchParams(window.location.search).get("query") ?? "");
-  }, [pathname]);
 
   return (
     <div className="app-shell">
@@ -98,8 +92,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                   !item.external &&
                   (pathname === item.href ||
                     (item.href === "/store" && pathname.startsWith("/store")) ||
-                    (item.href === "/packages" && pathname === "/packages") ||
-                    (item.href === "/providers" && (pathname === "/providers" || providerSelected)) ||
+                    (item.href === "/providers" && (pathname === "/providers" || pathname === "/packages")) ||
                     (item.href === "/about" && pathname === "/about") ||
                     (item.href === "/contact" && pathname === "/contact"));
                 return item.external ? (
@@ -107,7 +100,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                     {item.label}
                   </a>
                 ) : isProviders ? (
-                  <div key={item.label} className={`primary-nav-node ${providerSelected ? "provider-selected" : ""}`}>
+                  <div key={item.label} className="primary-nav-node">
                     <Link href={item.href as Route} className={`nav-cta ${active ? "nav-cta-active" : ""}`}>
                       {item.label}
                       <ChevronDown className="primary-nav-arrow" size={14} strokeWidth={1.8} />
@@ -116,14 +109,13 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                       {PUBLIC_PROVIDERS.map((provider) => (
                         <Link
                           key={provider.name}
-                          href={`/store?query=${encodeURIComponent(provider.queryOwner)}` as Route}
-                          className={selectedProvider === provider.queryOwner ? "primary-dropdown-selected" : ""}
-                          onClick={() => setSelectedProvider(provider.queryOwner)}
+                          href="/providers"
+                          className={pathname === "/providers" ? "primary-dropdown-selected" : ""}
                         >
                           {provider.name}
                         </Link>
                       ))}
-                      <Link href="/providers" className="primary-dropdown-all">View all providers</Link>
+                      <Link href="/packages" className="primary-dropdown-all">All packages</Link>
                     </div>
                   </div>
                 ) : (
@@ -171,18 +163,27 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
             <div className="mobile-menu-panel">
               <nav className="mobile-primary-nav" aria-label="Mobile primary">
                 {primaryLinks.map((item) => {
+                  const isProviders = item.href === "/providers";
                   const active =
                     !item.external &&
                   (pathname === item.href ||
                       (item.href === "/store" && pathname.startsWith("/store")) ||
-                      (item.href === "/packages" && pathname === "/packages") ||
-                      (item.href === "/providers" && pathname === "/providers") ||
+                      (item.href === "/providers" && (pathname === "/providers" || pathname === "/packages")) ||
                       (item.href === "/about" && pathname === "/about") ||
                       (item.href === "/contact" && pathname === "/contact"));
                   return item.external ? (
                     <a key={item.label} href={item.href} target="_blank" rel="noreferrer" onClick={() => setMobileMenuOpen(false)}>
                       {item.label}
                     </a>
+                  ) : isProviders ? (
+                    <span key={item.label} className="mobile-nav-group">
+                      <Link href={item.href as Route} className={active ? "mobile-nav-active" : ""} onClick={() => setMobileMenuOpen(false)}>
+                        {item.label}
+                      </Link>
+                      <Link href="/packages" className={`mobile-nav-sub ${pathname === "/packages" ? "mobile-nav-active" : ""}`} onClick={() => setMobileMenuOpen(false)}>
+                        All packages
+                      </Link>
+                    </span>
                   ) : (
                     <Link key={item.label} href={item.href as Route} className={active ? "mobile-nav-active" : ""} onClick={() => setMobileMenuOpen(false)}>
                       {item.label}
