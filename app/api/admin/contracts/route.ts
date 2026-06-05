@@ -47,10 +47,15 @@ export async function GET(req: NextRequest) {
   const doc: ContractDoc = row.contract ?? generateContract(row.quotation, { rentalFrom: row.date_from ?? null, rentalTo: row.date_to ?? null, agreementDate: today() });
 
   if (req.nextUrl.searchParams.get("format") === "pdf") {
-    const pdf = await renderContractPdf(doc);
-    return new NextResponse(new Uint8Array(pdf), {
-      headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${doc.number}.pdf"` },
-    });
+    try {
+      const pdf = await renderContractPdf(doc);
+      return new NextResponse(new Uint8Array(pdf), {
+        headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${doc.number}.pdf"` },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "PDF render failed.";
+      return NextResponse.json({ error: `Could not render the contract PDF: ${msg}` }, { status: 500 });
+    }
   }
 
   return NextResponse.json({
@@ -94,7 +99,13 @@ export async function POST(req: NextRequest) {
   if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
   const db = supabaseAdmin()!;
-  const pdf = await renderContractPdf(doc);
+  let pdf: Buffer;
+  try {
+    pdf = await renderContractPdf(doc);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "PDF render failed.";
+    return NextResponse.json({ error: `Could not render the contract PDF: ${msg}` }, { status: 500 });
+  }
 
   const { data: bucket } = await db.storage.getBucket(BUCKET);
   if (!bucket) {

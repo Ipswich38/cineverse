@@ -601,8 +601,8 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
   const visible = focus === "quotations" ? quotes : quotes.filter((q) => q.quotation_agreed_at);
   const COPY = {
     quotations: { title: "E-Quotations", sub: "Web requests + quotations you start for call / walk-in clients.", empty: "No quote requests yet." },
-    contracts: { title: "E-Contracts", sub: "Agreed quotations ready to turn into a signed rental agreement.", empty: "No agreed quotations yet — mark a quotation agreed under E-Quotations." },
-    invoicing: { title: "Invoicing", sub: "Agreed rentals — issue invoices, record deposits & payments, track balances.", empty: "No agreed quotations yet — mark a quotation agreed under E-Quotations." },
+    contracts: { title: "E-Contracts", sub: "Agreed quotations ready to turn into a signed rental agreement.", empty: "Nothing here yet — mark a quotation agreed under E-Quotations, or use “New contract” for an off-site order." },
+    invoicing: { title: "Invoicing", sub: "Agreed rentals — issue invoices, record deposits & payments, track balances.", empty: "Nothing here yet — mark a quotation agreed under E-Quotations, or use “New invoice” for an off-site order." },
   }[focus];
 
   return (
@@ -613,11 +613,9 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
           <p style={{ margin: "2px 0 0", color: "#6c675f", fontSize: 13 }}>{COPY.sub}</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {focus === "quotations" && (
-            <button onClick={() => setCreating(true)} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}>
-              <Plus size={14} /> New quotation
-            </button>
-          )}
+          <button onClick={() => setCreating(true)} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}>
+            <Plus size={14} /> {focus === "contracts" ? "New contract" : focus === "invoicing" ? "New invoice" : "New quotation"}
+          </button>
           <button onClick={loadQuotes} disabled={loading} style={{ ...miniBtn, opacity: loading ? 0.6 : 1 }}>
             {loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Refresh
           </button>
@@ -728,11 +726,22 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
       {creating && (
         <QuotationCreateForm
           authCode={authCode}
+          kind={focus === "invoicing" ? "invoice" : focus === "contracts" ? "contract" : "quotation"}
           onClose={() => setCreating(false)}
           onCreated={(request) => {
             setCreating(false);
             setQuotes((prev) => [request, ...prev]);
-            setBuilding(request); // jump straight into review/edit/sign
+            if (focus === "quotations") {
+              setBuilding(request); // jump straight into review/edit/sign
+              return;
+            }
+            // Standalone contract / invoice: the new request already carries an
+            // auto quotation draft, so mark it agreed (unlocks the downstream
+            // doc) and open that editor directly.
+            void setAgreed(request.id, true);
+            const agreed = { ...request, quotation_agreed_at: new Date().toISOString() };
+            if (focus === "contracts") setBuildingContract(agreed);
+            else setBuildingInvoice(agreed);
           }}
         />
       )}
@@ -779,10 +788,12 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
 // the request + auto-draft and drops straight into the editor to review & sign.
 function QuotationCreateForm({
   authCode,
+  kind = "quotation",
   onClose,
   onCreated,
 }: {
   authCode: string;
+  kind?: "quotation" | "contract" | "invoice";
   onClose: () => void;
   onCreated: (request: QuoteRequest) => void;
 }) {
@@ -815,10 +826,12 @@ function QuotationCreateForm({
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,9,7,0.55)", zIndex: 1000, display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "32px 16px", overflowY: "auto" }}>
       <div onClick={(e) => e.stopPropagation()} className="surface" style={{ width: "100%", maxWidth: 560, background: "#f7f5ef", border: "1px solid rgba(17,17,17,0.14)", borderRadius: 18, padding: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 4 }}>
-          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>New quotation</h2>
+          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>New {kind}</h2>
           <button onClick={onClose} style={{ ...tinyBtn, padding: 6, borderRadius: 999 }} aria-label="Close"><X size={16} /></button>
         </div>
-        <p style={{ margin: "0 0 14px", color: "#6c675f", fontSize: 13 }}>For a call or walk-in client. Pick a package to pre-fill lines, then review & sign in the next step.</p>
+        <p style={{ margin: "0 0 14px", color: "#6c675f", fontSize: 13 }}>
+          For an order that didn&apos;t come through the site (call / walk-in client). Pick a package to pre-fill lines, then review &amp; {kind === "quotation" ? "sign" : `build the ${kind}`} in the next step.
+        </p>
 
         <div style={{ display: "grid", gap: 10 }}>
           <LabeledField label="Package (optional — pre-fills equipment lines)">
@@ -845,7 +858,7 @@ function QuotationCreateForm({
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={miniBtn}>Cancel</button>
             <button onClick={create} disabled={busy} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy ? 0.6 : 1 }}>
-              {busy ? <Loader2 size={14} className="spin" /> : <FileText size={14} />} Generate & review
+              {busy ? <Loader2 size={14} className="spin" /> : <FileText size={14} />} {kind === "quotation" ? "Generate & review" : `Create & build ${kind}`}
             </button>
           </div>
         </div>
@@ -944,6 +957,9 @@ function QuotationEditor({
 
   const preview = async () => {
     if (!doc) return;
+    // Open the tab synchronously inside the click so the browser keeps it within
+    // the user gesture (a window.open after `await` gets popup-blocked).
+    const win = window.open("", "_blank");
     setBusy("preview");
     setError("");
     try {
@@ -954,12 +970,13 @@ function QuotationEditor({
         body: JSON.stringify({ doc }),
       });
       const res = await fetch(`/api/admin/quotations?requestId=${encodeURIComponent(request.id)}&format=pdf`, { headers: headers() });
-      if (!res.ok) throw new Error("Could not render PDF preview.");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
+      if (!res.ok) throw new Error(await pdfErr(res));
+      const url = URL.createObjectURL(await res.blob());
+      if (win) win.location.href = url;
+      else downloadBlobUrl(url, `${doc.number}.pdf`); // popup blocked — download instead
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
+      if (win) win.close();
       setError(err instanceof Error ? err.message : "Could not render PDF preview.");
     } finally {
       setBusy(null);
@@ -1179,6 +1196,26 @@ function DocChip({ label, on, tone }: { label: string; on?: boolean; tone?: "gre
   return <span style={{ display: "inline-flex", borderRadius: 999, background: bg, color: fg, padding: "4px 9px", fontSize: 11, fontWeight: 700 }}>{label}</span>;
 }
 
+// Pull a human-readable error out of a failed PDF response (the routes return
+// JSON { error } on a render failure; fall back to a generic line otherwise).
+async function pdfErr(res: Response): Promise<string> {
+  try {
+    const data = await res.json();
+    if (data?.error) return data.error as string;
+  } catch { /* not JSON */ }
+  return `Could not render the PDF (HTTP ${res.status}).`;
+}
+
+// Fallback when the preview tab is popup-blocked: download the PDF instead.
+function downloadBlobUrl(blobUrl: string, filename: string) {
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 // Shared async lifecycle for a downstream document editor (contract / invoice):
 // load draft-or-saved, save (PUT), preview/print (PUT then open PDF), send (POST).
 // `normalize` backfills fields older drafts may predate.
@@ -1229,15 +1266,18 @@ function useDocEditor<T extends object>(endpoint: string, requestId: string, aut
 
   const preview = async () => {
     if (!doc) return;
+    // Open synchronously (inside the click) to dodge the popup blocker.
+    const win = window.open("", "_blank");
     setBusy("preview"); setError("");
     try {
       await put();
       const res = await fetch(`${url}&format=pdf`, { headers: headers() });
-      if (!res.ok) throw new Error("Could not render PDF.");
+      if (!res.ok) throw new Error(await pdfErr(res));
       const blobUrl = URL.createObjectURL(await res.blob());
-      window.open(blobUrl, "_blank", "noopener");
+      if (win) win.location.href = blobUrl;
+      else downloadBlobUrl(blobUrl, "document.pdf");
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    } catch (err) { setError(err instanceof Error ? err.message : "Could not render PDF."); }
+    } catch (err) { if (win) win.close(); setError(err instanceof Error ? err.message : "Could not render PDF."); }
     finally { setBusy(null); }
   };
 
