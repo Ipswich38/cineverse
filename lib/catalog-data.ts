@@ -83,6 +83,9 @@ async function fetchCatalog(): Promise<EquipmentItem[]> {
       .eq("is_active", true)
       .order("created_at", { ascending: true });
     if (error || !data || data.length === 0) return INITIAL_CATALOG; // graceful fallback
+    const hasBmrCatalog = data.some((row) => typeof row.id === "string" && row.id.startsWith("bmr-"));
+    const looksLikeLegacyDemoSeed = data.length <= 6 && data.some((row) => row.id === "eq-cam-1");
+    if (!hasBmrCatalog && looksLikeLegacyDemoSeed) return INITIAL_CATALOG;
     return (data as Row[]).map(rowToItem);
   } catch {
     return INITIAL_CATALOG;

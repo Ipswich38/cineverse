@@ -1,24 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, MapPin, Package, ShoppingCart } from "lucide-react";
-import { useStore } from "@/app/providers";
+import { ArrowUpRight, MapPin, Package } from "lucide-react";
+import GearImagePlaceholder from "./GearImagePlaceholder";
 import type { EquipmentItem } from "@/lib/catalog";
-import { currency } from "@/lib/catalog";
 import { categoryName, normalizeCategory } from "@/lib/categories";
 
 export default function EquipmentCard({ item }: { item: EquipmentItem }) {
-  const { addToCart } = useStore();
-
   return (
     <article className="equipment-card">
       <Link href={`/gear/${item.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
         <div style={{ position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: "#ece6dc" }}>
-          <img
-            src={item.images[0]}
-            alt={item.name}
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
-          />
+          <GearImagePlaceholder name={item.name} />
         </div>
 
         <div style={{ padding: "9px 0 0" }}>
@@ -53,21 +46,9 @@ export default function EquipmentCard({ item }: { item: EquipmentItem }) {
       </div>
 
       <div style={{ padding: 0, display: "grid", gap: 10 }}>
-        <div>
-          <p style={{ fontFamily: '"Jost", sans-serif', fontWeight: 700, fontSize: 16, margin: 0, color: "#15130f" }}>
-            {currency(item.ratePerDay)}
-          </p>
-          <p style={{ color: "#6c675f", fontSize: 11, margin: "1px 0 0" }}>
-            per day
-          </p>
-        </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="card-pill-cta primary" onClick={() => addToCart(item, 1, 1)}>
-            <ShoppingCart size={13} />
-            Add to cart
-          </button>
-          <Link href={`/gear/${item.slug}`} className="card-pill-cta secondary">
-            Details
+          <Link href={`/packages?item=${encodeURIComponent(item.slug)}`} className="card-pill-cta primary">
+            View Package
             <ArrowUpRight size={13} />
           </Link>
         </div>

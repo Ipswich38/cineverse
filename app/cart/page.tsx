@@ -3,20 +3,19 @@
 import Link from "next/link";
 import { Minus, Plus, Trash2, ArrowRight } from "lucide-react";
 import { useStore } from "../providers";
-import { currency } from "@/lib/catalog";
 
 export default function CartPage() {
-  const { cart, subtotal, downpayment, setDays, setQuantity, removeFromCart, clearCart } = useStore();
+  const { cart, setDays, setQuantity, removeFromCart, clearCart } = useStore();
 
   return (
     <div className="app-container" style={{ padding: "22px 0 64px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 16, marginBottom: 18 }}>
         <div>
           <p className="section-kicker">Cart</p>
-          <h1 style={{ fontFamily: '"Jost", sans-serif', fontSize: 28, margin: "6px 0 0", letterSpacing: "-0.04em" }}>Reserve your rentals</h1>
+          <h1 style={{ fontFamily: '"Jost", sans-serif', fontSize: 28, margin: "6px 0 0", letterSpacing: "-0.04em" }}>Quotation list</h1>
         </div>
-        <Link href="/checkout" style={{ textDecoration: "none", background: "#f5c518", color: "#15130f", fontWeight: 800, padding: "10px 18px", borderRadius: 999, display: "inline-flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-          Checkout <ArrowRight size={16} />
+        <Link href="/packages" style={{ textDecoration: "none", background: "#f5c518", color: "#15130f", fontWeight: 800, padding: "10px 18px", borderRadius: 999, display: "inline-flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+          Request quotation <ArrowRight size={16} />
         </Link>
       </div>
 
@@ -24,7 +23,7 @@ export default function CartPage() {
         <div style={{ padding: 0 }}>
           {cart.length === 0 ? (
             <div style={{ padding: 24, color: "#6c675f" }}>
-              Your cart is empty. Start with the <Link href="/store">catalog</Link>.
+              Cart checkout is being replaced by quotation requests. Start with <Link href="/packages">Packages</Link> or browse the <Link href="/store">catalog</Link>.
             </div>
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
@@ -46,10 +45,7 @@ export default function CartPage() {
                       <StepControl label="Days" value={item.days} onDec={() => setDays(item.itemId, Math.max(1, item.days - 1))} onInc={() => setDays(item.itemId, item.days + 1)} />
                       <StepControl label="Qty" value={item.quantity} onDec={() => setQuantity(item.itemId, Math.max(1, item.quantity - 1))} onInc={() => setQuantity(item.itemId, item.quantity + 1)} />
                     </div>
-
-                    <p style={{ marginTop: 14, color: "#6c675f" }}>
-                      {currency(item.ratePerDay)} x {item.days} day(s) x {item.quantity}
-                    </p>
+                    <p style={{ marginTop: 14, color: "#6c675f" }}>Pricing is reviewed by admin before confirmation.</p>
                   </div>
                 </div>
               ))}
@@ -63,12 +59,12 @@ export default function CartPage() {
         <aside style={{ padding: 16, border: "1px solid rgba(17,17,17,0.12)", background: "#fffdf8", height: "fit-content" }}>
           <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 20, margin: 0 }}>Summary</h2>
           <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
-            <SummaryRow label="Subtotal" value={currency(subtotal)} />
-            <SummaryRow label="Downpayment (30%)" value={currency(downpayment)} />
-            <SummaryRow label="Balance on return" value={currency(Math.max(0, subtotal - downpayment))} />
+            <SummaryRow label="Items listed" value={`${cart.length}`} />
+            <SummaryRow label="Pricing" value="Quoted by admin" />
+            <SummaryRow label="Payment" value="After confirmation" />
           </div>
-          <Link href="/checkout" style={{ marginTop: 16, display: "flex", justifyContent: "center", alignItems: "center", gap: 8, background: "#f5c518", color: "#15130f", textDecoration: "none", fontWeight: 800, borderRadius: 999, padding: "12px 14px", fontSize: 13 }}>
-            Proceed to checkout
+          <Link href="/packages" style={{ marginTop: 16, display: "flex", justifyContent: "center", alignItems: "center", gap: 8, background: "#f5c518", color: "#15130f", textDecoration: "none", fontWeight: 800, borderRadius: 999, padding: "12px 14px", fontSize: 13 }}>
+            Ask a quotation
           </Link>
         </aside>
       </div>

@@ -1,0 +1,203 @@
+export type PackageOffer = {
+  id: string;
+  slug: string;
+  name: string;
+  eyebrow: string;
+  priceRange: string;
+  description: string;
+  inclusions: string[];
+  details: string[];
+  bestFor: string;
+  reviewNotes: string[];
+  relatedItemSlugs: string[];
+};
+
+export const PACKAGE_OFFERS: PackageOffer[] = [
+  {
+    id: "komodo-camera-package",
+    slug: "komodo-camera-package",
+    name: "KOMODO Camera Package",
+    eyebrow: "Camera package",
+    priceRange: "₱15,000-₱25,000/day",
+    description: "A focused KOMODO 6K setup for productions that need a cinema camera body with core accessories ready for shoot day.",
+    inclusions: ["KOMODO 6K body", "Power and media support", "Monitor and matte box accessories", "Tripod, hi-hat, and camera support add-ons"],
+    details: [
+      "Designed around a compact cinema camera body package with power, media, monitor, matte box, and basic support.",
+      "Best requested as a reviewed bundle because monitor, tripod, media, and accessory needs change per shoot.",
+      "Crew, transport, taxes, overtime, and out-of-town requirements are quoted separately when applicable.",
+    ],
+    bestFor: "Commercials, music videos, interviews, and narrative shoots.",
+    reviewNotes: ["Camera configuration", "Shoot dates and duration", "Monitor/media/accessory needs", "Pickup, delivery, or on-set support"],
+    relatedItemSlugs: [
+      "komodo-package-6k-sensor",
+      "komodo-6k-body",
+      "nd-filter-set-3-6-9",
+      "tripod-and-fluid-head-support",
+      "v-mount-battery-set",
+    ],
+  },
+  {
+    id: "komodo-prime-monitoring-package",
+    slug: "komodo-prime-monitoring-package",
+    name: "KOMODO + Prime Lens + Monitoring Package",
+    eyebrow: "Camera and video village",
+    priceRange: "₱35,000-₱65,000/day",
+    description: "Built from BMR's invoice template: KOMODO body, DZOFilm prime lenses, Pyro wireless video, and director monitoring support.",
+    inclusions: ["KOMODO 6K body package", "DZOFilm Arles FF/VV prime lens set", "Pyro S wireless video", "21 inch floor monitor or handheld director monitor"],
+    details: [
+      "Combines the camera body, full-frame prime lenses, wireless video, and director or client monitoring into one reviewed package.",
+      "Useful when production needs one coordinated rental request instead of separate camera, lens, and monitoring line items.",
+      "Final quote depends on monitor count, wireless video count, rental days, and whether camera assistant support is needed.",
+    ],
+    bestFor: "Camera-first shoots needing client, director, or agency monitoring.",
+    reviewNotes: ["Lens mount and focal length requirements", "Number of monitors", "Wireless video range", "Camera assistant requirement"],
+    relatedItemSlugs: [
+      "komodo-package-6k-sensor",
+      "komodo-6k-body",
+      "dzofilm-arles-ff-vv-prime-5-lens-set-ef-pl",
+      "hollyland-pyro-s-wireless-video",
+      "vaxis-3000-storm",
+      "vaxis-1000s",
+      "cosmo-600-wireless-video",
+      "handheld-director-s-monitor",
+      "21-inches-floor-monitor",
+      "blackmagic-wireless-recorder",
+      "nd-filter-set-3-6-9",
+      "v-mount-battery-set",
+    ],
+  },
+  {
+    id: "full-production-lighting-grip-package",
+    slug: "full-production-lighting-grip-package",
+    name: "Full Production Lighting and Grip Package",
+    eyebrow: "Lighting, grip, and utilities",
+    priceRange: "₱80,000-₱160,000/day",
+    description: "A larger package based on BMR's cost estimate template with camera, drone, lighting, grip, and production support items reviewed together.",
+    inclusions: ["KOMODO and selected camera support", "DJI Mavic aerial option", "Nanlux, Aputure, Amaran, and Pavotube lighting", "C-stands, clamps, overheads, apple boxes, sandbags, and extensions"],
+    details: [
+      "Built for shoot days where camera, lighting, grip, and utilities need to be coordinated as one production rental package.",
+      "Can include large LED fixtures, RGB practicals, tubes, soft modifiers, stands, clamps, overheads, sandbags, and cable support.",
+      "Final pricing depends heavily on gear count, crew count, location, transport, setup complexity, and discounts approved by admin.",
+    ],
+    bestFor: "Bigger shoot days that need lighting, grip, and production logistics bundled.",
+    reviewNotes: ["Lighting plan", "Grip list", "Location and access", "Crew, pickup, and transport needs"],
+    relatedItemSlugs: [
+      "komodo-package-6k-sensor",
+      "komodo-6k-body",
+      "gopro-hero-13-black",
+      "insta360-x4-8k-camera",
+      "dzofilm-arles-ff-vv-prime-5-lens-set-ef-pl",
+      "nd-filter-set-3-6-9",
+      "dji-mavic-4-pro-100mp-6k-60fps",
+      "cinematic-drone-operator",
+      "set-7-assistant-cameraman-kit",
+      "tilta-nucleus-m-full-kit",
+      "nucleus-m-iris-control",
+      "ronin-rs3-pro-gimbal-stabilizer-combo",
+      "tilta-float-handheld-gimbal-support-system",
+      "dji-ronin-2-electronic-gimbal",
+      "tripod-and-fluid-head-support",
+      "vaxis-3000-storm",
+      "vaxis-1000s",
+      "cosmo-600-wireless-video",
+      "handheld-director-s-monitor",
+      "blackmagic-wireless-recorder",
+      "solidcom-c1-pro",
+      "jbl-partybox-320",
+      "nanlux-evoke-1200b-with-fresnel-and-barndoors",
+      "nanlux-720b-light-kit-with-fresnel-and-barndoors",
+      "aputure-ls300x-led-light-kit",
+      "aputure-b7c-kit",
+      "amaran-f22-2x2-rgb-flexible-light-mat",
+      "nanlite-pavotube-ii-30c-rgbww-led-pixel-tube",
+      "1ft-pavotube-kit",
+      "aputure-light-dome-150",
+      "aputure-light-dome-90",
+      "aputure-spotlight-with-19-26-36-degree-lenses",
+      "aputure-lantern-85",
+      "avenger-c-stand-with-arm-and-grip-head",
+      "avenger-hi-roller-stand-large-wide-base",
+      "manfrotto-04-light-stand",
+      "matthellini-clamp",
+      "gator-clamp",
+      "super-clamp",
+      "survival-kit",
+      "digital-juice-shadow-kit",
+      "4x4-floppy",
+      "4x4-silk",
+      "12x12-butterfly",
+      "20x20-butterfly",
+      "12x12-black-backing",
+      "20x20-black-backing",
+      "reflector",
+      "manfrotto-8ft-polecat",
+      "smoke-machine-haze",
+      "10ft-ladder",
+      "apple-box-set-full-half-quarter",
+      "sandbag",
+      "extension-cables",
+      "triple-d-tap-breakout-box",
+      "v-mount-battery-set",
+      "21-inches-floor-monitor",
+      "hollyland-pyro-s-wireless-video",
+    ],
+  },
+  {
+    id: "assistant-cameraman-ac-kit",
+    slug: "assistant-cameraman-ac-kit",
+    name: "Assistant Cameraman + AC Kit",
+    eyebrow: "Service and gear",
+    priceRange: "₱18,000-₱35,000/day",
+    description: "A service package based on the BMR service invoice structure, pairing assistant cameraman support with a complete AC kit.",
+    inclusions: ["Assistant cameraman support", "Set 7 Assistant Cameraman Kit", "Wireless follow focus", "SmallHD monitor, Vaxis wireless video, and AC tools"],
+    details: [
+      "Pairs technical camera department support with the AC kit instead of renting tools separately.",
+      "Can cover wireless follow focus, monitor, Vaxis wireless video, marks, batteries, cables, and camera assistant tools.",
+      "Final quote depends on shoot length, call time, camera system, and whether extra wireless or monitor units are requested.",
+    ],
+    bestFor: "Camera departments that need technical support and AC tools in one reviewed package.",
+    reviewNotes: ["Camera system", "Lens control needs", "Number of shoot days", "Call time and location"],
+    relatedItemSlugs: [
+      "set-7-assistant-cameraman-kit",
+      "tilta-nucleus-m-full-kit",
+      "nucleus-m-iris-control",
+      "hollyland-pyro-s-wireless-video",
+      "vaxis-1000s",
+      "handheld-director-s-monitor",
+      "v-mount-battery-set",
+    ],
+  },
+  {
+    id: "gimbal-stabilizer-package",
+    slug: "gimbal-stabilizer-package",
+    name: "Gimbal Stabilizer Package",
+    eyebrow: "Movement support",
+    priceRange: "₱10,000-₱45,000/day",
+    description: "A stabilization package that can be reviewed around RS3 Pro, Tilta Float, or Ronin 2 needs depending on camera payload and operating style.",
+    inclusions: ["Ronin RS3 Pro combo option", "Tilta Float support option", "DJI Ronin 2 heavy-lift option", "Power, control, and wireless accessories as needed"],
+    details: [
+      "Supports small to heavy camera movement setups, from RS3 Pro-style builds to Ronin 2 heavy-lift work.",
+      "The reviewed quote matches the stabilizer to camera payload, lens setup, power needs, and operator support.",
+      "Wireless video, lens control, batteries, support vest, and operating support can be included where required.",
+    ],
+    bestFor: "Moving camera work, vehicle work, handheld stabilization, and long operating days.",
+    reviewNotes: ["Camera and lens payload", "Operating style", "Wireless video needs", "Operator/support requirement"],
+    relatedItemSlugs: [
+      "ronin-rs3-pro-gimbal-stabilizer-combo",
+      "tilta-float-handheld-gimbal-support-system",
+      "dji-ronin-2-electronic-gimbal",
+      "hollyland-pyro-s-wireless-video",
+      "tilta-nucleus-m-full-kit",
+      "triple-d-tap-breakout-box",
+      "v-mount-battery-set",
+    ],
+  },
+];
+
+export function packageBySlug(slug: string) {
+  return PACKAGE_OFFERS.find((offer) => offer.slug === slug);
+}
+
+export function packagesForItemSlug(itemSlug: string) {
+  return PACKAGE_OFFERS.filter((offer) => offer.relatedItemSlugs.includes(itemSlug));
+}

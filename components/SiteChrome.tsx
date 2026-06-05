@@ -1,17 +1,18 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, Filter, Home, Store, ShoppingCart, Shield, Search, ShoppingBag, StoreIcon, X } from "lucide-react";
+import { CalendarDays, ChevronDown, Filter, Home, Menu, Store, ShoppingCart, Shield, Search, ShoppingBag, StoreIcon, X } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import BrandLockup from "@/components/BrandLockup";
 import Footer from "@/components/Footer";
 import RentalCalendar from "@/components/RentalCalendar";
 import { useStore } from "@/app/providers";
 import { bookedDateSet, isItemAvailable } from "@/lib/catalog";
+import { COMPANY } from "@/lib/company";
 import CategoryNav from "./CategoryNav";
 
 const navItems: { href: string; label: string; icon: typeof Home }[] = [
@@ -22,19 +23,25 @@ const navItems: { href: string; label: string; icon: typeof Home }[] = [
 ];
 
 const primaryLinks: { href: string; label: string; external?: boolean }[] = [
-  { href: "/store", label: "Browse A Gear" },
+  { href: "/store", label: "Store" },
+  { href: "/packages", label: "Packages" },
+  { href: "/providers", label: "Providers" },
   // Hidden for now (per client) — re-enable when the crew cross-link returns.
   // { href: "https://cineforce.vissionlink.com", label: "Need A Crew", external: true },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
 
+const PUBLIC_PROVIDERS = [{ name: COMPANY.legalName, queryOwner: "Vissionlink Rentals" }];
+
 export default function SiteChrome({ children }: { children: ReactNode }) {
   const { cartCount, catalog } = useStore();
   const pathname = usePathname();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [gearBarOpen, setGearBarOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState("");
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
   const [dateFrom, setDateFrom] = useState<string | null>(null);
@@ -42,6 +49,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
   const [calOpen, setCalOpen] = useState(false);
 
   const bookedDates = useMemo(() => bookedDateSet(catalog), [catalog]);
+  const providerSelected = PUBLIC_PROVIDERS.some((provider) => provider.queryOwner === selectedProvider);
   const availableCount = useMemo(
     () => (dateFrom && dateTo ? catalog.filter((i) => isItemAvailable(i, dateFrom, dateTo)).length : null),
     [catalog, dateFrom, dateTo],
@@ -56,6 +64,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
 
   const submitSearch = () => {
     const trimmed = query.trim();
+    setSelectedProvider("");
     router.push(trimmed ? `/store?query=${encodeURIComponent(trimmed)}` : "/store");
   };
 
@@ -68,27 +77,55 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
     router.push((`/store${p.toString() ? `?${p}` : ""}`) as Route);
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setSelectedProvider(new URLSearchParams(window.location.search).get("query") ?? "");
+  }, [pathname]);
+
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="app-container" style={{ padding: "14px 0 10px", position: "relative" }}>
+        <div className="app-container header-inner">
           <div className="header-main-row">
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", justifySelf: "start" }}>
+            <Link href="/" className="header-brand" aria-label="VissionLink home">
               <BrandMark size={24} />
               <BrandLockup size={18} />
             </Link>
-            <nav className="primary-navbar" aria-label="Primary">
+            <nav className="primary-navbar desktop-primary-navbar" aria-label="Primary">
               {primaryLinks.map((item) => {
+                const isProviders = item.href === "/providers";
                 const active =
                   !item.external &&
                   (pathname === item.href ||
                     (item.href === "/store" && pathname.startsWith("/store")) ||
+                    (item.href === "/packages" && pathname === "/packages") ||
+                    (item.href === "/providers" && (pathname === "/providers" || providerSelected)) ||
                     (item.href === "/about" && pathname === "/about") ||
                     (item.href === "/contact" && pathname === "/contact"));
                 return item.external ? (
                   <a key={item.label} href={item.href} className="nav-cta" target="_blank" rel="noreferrer">
                     {item.label}
                   </a>
+                ) : isProviders ? (
+                  <div key={item.label} className={`primary-nav-node ${providerSelected ? "provider-selected" : ""}`}>
+                    <Link href={item.href as Route} className={`nav-cta ${active ? "nav-cta-active" : ""}`}>
+                      {item.label}
+                      <ChevronDown className="primary-nav-arrow" size={14} strokeWidth={1.8} />
+                    </Link>
+                    <div className="primary-dropdown">
+                      {PUBLIC_PROVIDERS.map((provider) => (
+                        <Link
+                          key={provider.name}
+                          href={`/store?query=${encodeURIComponent(provider.queryOwner)}` as Route}
+                          className={selectedProvider === provider.queryOwner ? "primary-dropdown-selected" : ""}
+                          onClick={() => setSelectedProvider(provider.queryOwner)}
+                        >
+                          {provider.name}
+                        </Link>
+                      ))}
+                      <Link href="/providers" className="primary-dropdown-all">View all providers</Link>
+                    </div>
+                  </div>
                 ) : (
                   <Link key={item.label} href={item.href as Route} className={`nav-cta ${active ? "nav-cta-active" : ""}`}>
                     {item.label}
@@ -96,29 +133,68 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                 );
               })}
             </nav>
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16 }}>
-              <Link href="/store" aria-label="Browse store" style={{ color: "#15130f", display: "inline-flex" }}>
+            <div className="header-actions">
+              <Link href="/store" aria-label="Store" className={`header-icon-button ${pathname.startsWith("/store") ? "header-icon-active" : ""}`}>
                 <StoreIcon size={22} strokeWidth={1.6} />
               </Link>
               <button
                 aria-label="Open search"
                 onClick={() => setSearchOpen((open) => !open)}
-                style={{ background: "transparent", border: 0, color: "#15130f", padding: 0, display: "inline-flex", cursor: "pointer" }}
+                className={`header-icon-button ${searchOpen ? "header-icon-active" : ""}`}
               >
                 <Search size={22} strokeWidth={1.6} />
               </button>
-              <Link href="/cart" aria-label="Cart" style={{ color: "#15130f", display: "inline-flex", position: "relative" }}>
+              <Link href="/cart" aria-label="Cart" className={`header-icon-button header-cart-button ${pathname.startsWith("/cart") ? "header-icon-active" : ""}`}>
                 <ShoppingBag size={22} strokeWidth={1.6} />
                 {cartCount > 0 && (
-                  <span style={{ position: "absolute", right: -8, top: -8, fontSize: 11, color: "#fffdf8", background: "#1f1f1f", borderRadius: 999, padding: "1px 6px" }}>
+                  <span className="header-cart-count">
                     {cartCount}
                   </span>
                 )}
               </Link>
+              <button
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileMenuOpen}
+                onClick={() => setMobileMenuOpen((open) => !open)}
+                className="header-icon-button mobile-menu-button"
+              >
+                {mobileMenuOpen ? <X size={22} strokeWidth={1.7} /> : <Menu size={22} strokeWidth={1.7} />}
+              </button>
             </div>
           </div>
 
-          <CategoryNav />
+          <div className="desktop-category-row">
+            <CategoryNav />
+          </div>
+
+          {mobileMenuOpen && (
+            <div className="mobile-menu-panel">
+              <nav className="mobile-primary-nav" aria-label="Mobile primary">
+                {primaryLinks.map((item) => {
+                  const active =
+                    !item.external &&
+                  (pathname === item.href ||
+                      (item.href === "/store" && pathname.startsWith("/store")) ||
+                      (item.href === "/packages" && pathname === "/packages") ||
+                      (item.href === "/providers" && pathname === "/providers") ||
+                      (item.href === "/about" && pathname === "/about") ||
+                      (item.href === "/contact" && pathname === "/contact"));
+                  return item.external ? (
+                    <a key={item.label} href={item.href} target="_blank" rel="noreferrer" onClick={() => setMobileMenuOpen(false)}>
+                      {item.label}
+                    </a>
+                  ) : (
+                    <Link key={item.label} href={item.href as Route} className={active ? "mobile-nav-active" : ""} onClick={() => setMobileMenuOpen(false)}>
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <div className="mobile-menu-categories">
+                <CategoryNav />
+              </div>
+            </div>
+          )}
         </div>
 
         {searchOpen && (

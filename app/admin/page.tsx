@@ -2,9 +2,9 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CornerUpLeft, ExternalLink, Eye, FileText, Loader2, LockKeyhole, LogOut, Mail, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
+import { CornerUpLeft, ExternalLink, Eye, FileText, Loader2, LockKeyhole, LogOut, Mail, PackageCheck, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
 import { useStore } from "../providers";
-import { slugify, type EquipmentItem } from "@/lib/catalog";
+import { currency, slugify, type EquipmentItem } from "@/lib/catalog";
 import { CATEGORY_FLAT, categoryName, normalizeCategory } from "@/lib/categories";
 import ProposalBuilder from "./ProposalBuilder";
 
@@ -15,7 +15,7 @@ export default function AdminPage() {
   const [unlocking, setUnlocking] = useState(false);
   const [unlockErr, setUnlockErr] = useState("");
   const [editing, setEditing] = useState<EquipmentItem | null>(null);
-  const [view, setView] = useState<"ops" | "inbox" | "proposals">("ops");
+  const [view, setView] = useState<"ops" | "quotes" | "inbox" | "proposals">("ops");
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
@@ -124,7 +124,7 @@ export default function AdminPage() {
   return (
     <div className="app-container" style={{ padding: "28px 0 76px" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 18, alignItems: "center", flexWrap: "wrap" }}>
-        {([["ops", "Operations"], ["proposals", "Proposals"], ["inbox", "Inbox"]] as const).map(([key, label]) => (
+        {([["ops", "Operations"], ["quotes", "Quotes"], ["proposals", "Proposals"], ["inbox", "Inbox"]] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setView(key)}
@@ -141,7 +141,7 @@ export default function AdminPage() {
               color: view === key ? "#fffdf8" : "#15130f",
             }}
           >
-            {key === "inbox" ? <Mail size={15} /> : key === "proposals" ? <FileText size={15} /> : <Shield size={15} />}
+            {key === "inbox" ? <Mail size={15} /> : key === "quotes" ? <PackageCheck size={15} /> : key === "proposals" ? <FileText size={15} /> : <Shield size={15} />}
             {label}
           </button>
         ))}
@@ -149,6 +149,8 @@ export default function AdminPage() {
       </div>
 
       {view === "inbox" && <InboxPanel authCode={code} />}
+
+      {view === "quotes" && <QuotesPanel authCode={code} />}
 
       {view === "proposals" && <ProposalBuilder catalog={catalog} />}
 
@@ -444,6 +446,158 @@ const tinyBtn: CSSProperties = {
   lineHeight: 1.4,
   cursor: "pointer",
 };
+
+// Custom package quote requests submitted from /packages.
+type QuoteItem = {
+  id?: string;
+  slug?: string;
+  name?: string;
+  qty?: number;
+  days?: number;
+  ratePerDay?: number;
+};
+
+type QuoteRequest = {
+  id: string;
+  created_at: string;
+  name: string;
+  company: string | null;
+  email: string;
+  phone: string | null;
+  project: string | null;
+  date_from: string | null;
+  date_to: string | null;
+  notes: string | null;
+  items: QuoteItem[];
+  est_total: number | string | null;
+  status: "pending" | "responded" | "closed";
+};
+
+function QuotesPanel({ authCode }: { authCode: string }) {
+  const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [updating, setUpdating] = useState<string | null>(null);
+  const headers = useCallback(() => ({ Authorization: `Bearer ${authCode}` }), [authCode]);
+
+  const loadQuotes = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/quotes", { headers: headers() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not load quote requests.");
+      setQuotes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load quote requests.");
+    } finally {
+      setLoading(false);
+    }
+  }, [headers]);
+
+  useEffect(() => {
+    loadQuotes();
+  }, [loadQuotes]);
+
+  const setStatus = async (id: string, status: QuoteRequest["status"]) => {
+    setUpdating(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/quotes?id=${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { ...headers(), "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not update quote.");
+      setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, status } : q)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update quote.");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  return (
+    <div className="surface" style={{ padding: 18, border: "1px solid rgba(17,17,17,0.1)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <div>
+          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>Package quote requests</h2>
+          <p style={{ margin: "2px 0 0", color: "#6c675f", fontSize: 13 }}>Custom bundles waiting for admin pricing and response.</p>
+        </div>
+        <button onClick={loadQuotes} disabled={loading} style={{ ...miniBtn, opacity: loading ? 0.6 : 1 }}>
+          {loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Refresh
+        </button>
+      </div>
+
+      {error && <p style={{ color: "#c0392b", fontSize: 13 }}>{error}</p>}
+      {!loading && !error && quotes.length === 0 && <p style={{ color: "#6c675f", fontSize: 13 }}>No package quote requests yet.</p>}
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {quotes.map((q) => {
+          const total = Number(q.est_total) || 0;
+          return (
+            <article key={q.id} style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.12)", padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <h3 style={{ fontFamily: '"Jost", sans-serif', fontSize: 20, margin: 0 }}>{q.name}</h3>
+                  <p style={{ margin: "4px 0 0", color: "#6c675f", fontSize: 13 }}>
+                    {q.email}{q.phone ? ` / ${q.phone}` : ""}{q.company ? ` / ${q.company}` : ""}
+                  </p>
+                  {(q.project || q.date_from || q.date_to) && (
+                    <p style={{ margin: "4px 0 0", color: "#6c675f", fontSize: 13 }}>
+                      {[q.project, q.date_from && q.date_to ? `${q.date_from} to ${q.date_to}` : q.date_from || q.date_to].filter(Boolean).join(" / ")}
+                    </p>
+                  )}
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ display: "inline-flex", borderRadius: 999, background: q.status === "pending" ? "#fff3c4" : q.status === "responded" ? "#dff0e4" : "#eceef2", color: "#15130f", padding: "5px 10px", fontSize: 12, fontWeight: 500 }}>
+                    {q.status}
+                  </span>
+                  <p style={{ margin: "8px 0 0", color: "#6c675f", fontSize: 12 }}>{fmtDate(q.created_at)}</p>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12, display: "grid", gap: 7 }}>
+                {q.items.map((item, idx) => (
+                  <div key={`${q.id}-${item.id ?? idx}`} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 10, color: "#15130f", fontSize: 13, borderBottom: "1px solid rgba(17,17,17,0.08)", paddingBottom: 7 }}>
+                    <span>{item.name || item.slug || item.id || "Item"}</span>
+                    <span style={{ color: "#6c675f" }}>{item.qty ?? 1} x {item.days ?? 1} day(s)</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
+                <p style={{ margin: 0, color: "#6c675f", fontSize: 13 }}>Reference individual total: <strong style={{ color: "#15130f" }}>{currency(total)}</strong></p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <a href={`mailto:${q.email}?subject=${encodeURIComponent(`VissionLink package quotation - ${q.id}`)}`} style={{ ...miniBtn, textDecoration: "none" }}>
+                    <Mail size={14} /> Reply
+                  </a>
+                  {(["pending", "responded", "closed"] as const).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatus(q.id, status)}
+                      disabled={updating === q.id || q.status === status}
+                      style={{ ...miniBtn, opacity: updating === q.id || q.status === status ? 0.55 : 1 }}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {q.notes && (
+                <p style={{ margin: "12px 0 0", color: "#3a362f", background: "#f0ece3", padding: 10, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                  {q.notes}
+                </p>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // ─── Inbox ───────────────────────────────────────────────────────────────────
 // Mirrors the hello@vissionlink.com Zoho mailbox: lists recent mail, opens a

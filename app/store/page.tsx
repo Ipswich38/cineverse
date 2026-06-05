@@ -7,6 +7,7 @@ import { useStore } from "../providers";
 import { isItemAvailable } from "@/lib/catalog";
 import { categoryName, descendantSlugs, normalizeCategory } from "@/lib/categories";
 import EquipmentCard from "@/components/EquipmentCard";
+import FeaturedProvider from "@/components/FeaturedProvider";
 
 export default function StorePage() {
   return (
@@ -48,6 +49,10 @@ function StoreContent() {
 
   return (
     <div className="app-container" style={{ padding: "24px 0 76px" }}>
+      <div style={{ marginBottom: 26 }}>
+        <FeaturedProvider />
+      </div>
+
       <div style={{ margin: "0 0 18px", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", color: "#6c675f", fontSize: 13 }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <SlidersHorizontal size={14} /> {filtered.length} results{category ? ` in ${categoryName(normalizeCategory(category))}` : ""}
