@@ -3,6 +3,7 @@ import { sendQuoteRequestEmail } from "@/lib/contact-mail";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
 import { PACKAGE_OFFERS } from "@/lib/package-offers";
 import { providerBySlug } from "@/lib/providers";
+import { generateDraft } from "@/lib/quotation";
 
 export const runtime = "nodejs";
 
@@ -68,13 +69,39 @@ export async function POST(req: Request) {
     priceRange: offer.priceRange,
   });
 
-  // Secondary (best-effort): log to the admin inbox so /admin tracks it too.
+  // Secondary (best-effort): log to the admin inbox so /admin tracks it too, and
+  // auto-generate the editable e-quotation draft from the BMR rate card so the
+  // provider has a complete quotation waiting for review. It is NEVER auto-sent —
+  // the provider reviews/edits in /admin and clicks Send themselves.
   if (hasSupabase()) {
     try {
+      const id = `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const items = [
+        {
+          type: "package",
+          slug: offer.slug,
+          name: offer.name,
+          providerSlug: provider.slug,
+          providerName: provider.name,
+          priceRange: offer.priceRange,
+        },
+      ];
+      const draft = generateDraft({
+        id,
+        name,
+        company,
+        email,
+        phone,
+        project,
+        date_from: dateFrom || null,
+        date_to: dateTo || null,
+        notes,
+        items,
+      });
       await supabaseAdmin()!
         .from(TABLE)
         .insert({
-          id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          id,
           name,
           company,
           email,
@@ -83,18 +110,11 @@ export async function POST(req: Request) {
           date_from: dateFrom || null,
           date_to: dateTo || null,
           notes,
-          items: [
-            {
-              type: "package",
-              slug: offer.slug,
-              name: offer.name,
-              providerSlug: provider.slug,
-              providerName: provider.name,
-              priceRange: offer.priceRange,
-            },
-          ],
+          items,
           est_total: 0,
           status: "pending",
+          quotation: draft,
+          quotation_status: "draft",
         });
     } catch (err) {
       console.error("[quote-request:db]", err);

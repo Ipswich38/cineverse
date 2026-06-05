@@ -1,12 +1,18 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CornerUpLeft, ExternalLink, Eye, FileText, Loader2, LockKeyhole, LogOut, Mail, PackageCheck, Plus, RefreshCw, Send, Shield, Trash2 } from "lucide-react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CornerUpLeft, ExternalLink, Eye, FileText, Loader2, LockKeyhole, LogOut, Mail, PackageCheck, Plus, RefreshCw, Save, Send, Shield, Trash2, Users, X } from "lucide-react";
 import { useStore } from "../providers";
 import { currency, slugify, type EquipmentItem } from "@/lib/catalog";
 import { CATEGORY_FLAT, categoryName, normalizeCategory } from "@/lib/categories";
 import ProposalBuilder from "./ProposalBuilder";
+import { computeTotals, formatPHP, lineAmount, type QuotationDoc, type QuotationLine } from "@/lib/quotation";
+import { type ContractDoc } from "@/lib/contract";
+import { computeInvoiceMoney, CHANNEL_LABELS, ALL_CHANNELS, type InvoiceDoc, type PaymentChannel, type PaymentEntry, type Incident } from "@/lib/invoice";
+import { type ClientPolicy } from "@/lib/clients";
+import { PERSONNEL_RATES, RATE_CARD } from "@/lib/bmr-rate-card";
+import { PACKAGE_OFFERS } from "@/lib/package-offers";
 
 export default function AdminPage() {
   const { catalog, refreshCatalog } = useStore();
@@ -15,7 +21,7 @@ export default function AdminPage() {
   const [unlocking, setUnlocking] = useState(false);
   const [unlockErr, setUnlockErr] = useState("");
   const [editing, setEditing] = useState<EquipmentItem | null>(null);
-  const [view, setView] = useState<"ops" | "quotes" | "inbox" | "proposals">("ops");
+  const [view, setView] = useState<"ops" | "quotes" | "clients" | "inbox" | "proposals">("ops");
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
@@ -124,7 +130,7 @@ export default function AdminPage() {
   return (
     <div className="app-container" style={{ padding: "28px 0 76px" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 18, alignItems: "center", flexWrap: "wrap" }}>
-        {([["ops", "Operations"], ["quotes", "Quotes"], ["proposals", "Proposals"], ["inbox", "Inbox"]] as const).map(([key, label]) => (
+        {([["ops", "Operations"], ["quotes", "Quotes"], ["clients", "Clients"], ["proposals", "Proposals"], ["inbox", "Inbox"]] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setView(key)}
@@ -141,7 +147,7 @@ export default function AdminPage() {
               color: view === key ? "#fffdf8" : "#15130f",
             }}
           >
-            {key === "inbox" ? <Mail size={15} /> : key === "quotes" ? <PackageCheck size={15} /> : key === "proposals" ? <FileText size={15} /> : <Shield size={15} />}
+            {key === "inbox" ? <Mail size={15} /> : key === "quotes" ? <PackageCheck size={15} /> : key === "clients" ? <Users size={15} /> : key === "proposals" ? <FileText size={15} /> : <Shield size={15} />}
             {label}
           </button>
         ))}
@@ -149,6 +155,8 @@ export default function AdminPage() {
       </div>
 
       {view === "inbox" && <InboxPanel authCode={code} />}
+
+      {view === "clients" && <ClientsPanel authCode={code} />}
 
       {view === "quotes" && <QuotesPanel authCode={code} />}
 
@@ -471,6 +479,12 @@ type QuoteRequest = {
   items: QuoteItem[];
   est_total: number | string | null;
   status: "pending" | "responded" | "closed";
+  quotation_status?: "none" | "draft" | "sent" | null;
+  quotation_sent_at?: string | null;
+  quotation_agreed_at?: string | null;
+  contract_status?: "none" | "draft" | "sent" | "signed" | null;
+  invoice_status?: "none" | "draft" | "sent" | null;
+  channel?: "web" | "direct" | null;
 };
 
 function QuotesPanel({ authCode }: { authCode: string }) {
@@ -478,7 +492,31 @@ function QuotesPanel({ authCode }: { authCode: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [building, setBuilding] = useState<QuoteRequest | null>(null);
+  const [buildingContract, setBuildingContract] = useState<QuoteRequest | null>(null);
+  const [buildingInvoice, setBuildingInvoice] = useState<QuoteRequest | null>(null);
+  const [creating, setCreating] = useState(false);
   const headers = useCallback(() => ({ Authorization: `Bearer ${authCode}` }), [authCode]);
+
+  // Mark the quotation agreed/not — unlocks contract + invoice.
+  const setAgreed = async (id: string, agreed: boolean) => {
+    setUpdating(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/quotes?id=${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { ...headers(), "Content-Type": "application/json" },
+        body: JSON.stringify({ agreed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not update.");
+      setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, quotation_agreed_at: agreed ? new Date().toISOString() : null } : q)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update.");
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   const loadQuotes = useCallback(async () => {
     setLoading(true);
@@ -523,11 +561,16 @@ function QuotesPanel({ authCode }: { authCode: string }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <div>
           <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>Package quote requests</h2>
-          <p style={{ margin: "2px 0 0", color: "#6c675f", fontSize: 13 }}>Custom bundles waiting for admin pricing and response.</p>
+          <p style={{ margin: "2px 0 0", color: "#6c675f", fontSize: 13 }}>Web requests + quotations you start for call / walk-in clients.</p>
         </div>
-        <button onClick={loadQuotes} disabled={loading} style={{ ...miniBtn, opacity: loading ? 0.6 : 1 }}>
-          {loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Refresh
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => setCreating(true)} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}>
+            <Plus size={14} /> New quotation
+          </button>
+          <button onClick={loadQuotes} disabled={loading} style={{ ...miniBtn, opacity: loading ? 0.6 : 1 }}>
+            {loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Refresh
+          </button>
+        </div>
       </div>
 
       {error && <p style={{ color: "#c0392b", fontSize: 13 }}>{error}</p>}
@@ -540,7 +583,10 @@ function QuotesPanel({ authCode }: { authCode: string }) {
             <article key={q.id} style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.12)", padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div>
-                  <h3 style={{ fontFamily: '"Jost", sans-serif', fontSize: 20, margin: 0 }}>{q.name}</h3>
+                  <h3 style={{ fontFamily: '"Jost", sans-serif', fontSize: 20, margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    {q.name}
+                    {q.channel === "direct" && <span style={{ fontFamily: "inherit", fontSize: 11, fontWeight: 700, background: "#e7efe9", color: "#2f6b46", borderRadius: 999, padding: "2px 8px" }}>direct</span>}
+                  </h3>
                   <p style={{ margin: "4px 0 0", color: "#6c675f", fontSize: 13 }}>
                     {q.email}{q.phone ? ` / ${q.phone}` : ""}{q.company ? ` / ${q.company}` : ""}
                   </p>
@@ -554,6 +600,12 @@ function QuotesPanel({ authCode }: { authCode: string }) {
                   <span style={{ display: "inline-flex", borderRadius: 999, background: q.status === "pending" ? "#fff3c4" : q.status === "responded" ? "#dff0e4" : "#eceef2", color: "#15130f", padding: "5px 10px", fontSize: 12, fontWeight: 500 }}>
                     {q.status}
                   </span>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", marginTop: 6 }}>
+                    {q.quotation_status && q.quotation_status !== "none" && <DocChip label={`quotation ${q.quotation_status}`} on={q.quotation_status === "sent"} />}
+                    {q.quotation_agreed_at && <DocChip label="agreed" on tone="green" />}
+                    {q.contract_status && q.contract_status !== "none" && <DocChip label={`contract ${q.contract_status}`} on={q.contract_status !== "draft"} />}
+                    {q.invoice_status && q.invoice_status !== "none" && <DocChip label={`invoice ${q.invoice_status}`} on={q.invoice_status !== "draft"} />}
+                  </div>
                   <p style={{ margin: "8px 0 0", color: "#6c675f", fontSize: 12 }}>{fmtDate(q.created_at)}</p>
                 </div>
               </div>
@@ -570,6 +622,9 @@ function QuotesPanel({ authCode }: { authCode: string }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
                 <p style={{ margin: 0, color: "#6c675f", fontSize: 13 }}>Reference individual total: <strong style={{ color: "#15130f" }}>{currency(total)}</strong></p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => setBuilding(q)} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}>
+                    <FileText size={14} /> {q.quotation_status && q.quotation_status !== "none" ? "Edit quotation" : "Build quotation"}
+                  </button>
                   <a href={`mailto:${q.email}?subject=${encodeURIComponent(`VissionLink package quotation - ${q.id}`)}`} style={{ ...miniBtn, textDecoration: "none" }}>
                     <Mail size={14} /> Reply
                   </a>
@@ -586,6 +641,29 @@ function QuotesPanel({ authCode }: { authCode: string }) {
                 </div>
               </div>
 
+              {/* Downstream lifecycle: agree → contract → invoice. Shown once a
+                  quotation has been built. */}
+              {q.quotation_status && q.quotation_status !== "none" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 10, paddingTop: 10, borderTop: "1px dashed rgba(17,17,17,0.14)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#6c675f" }}>After client agrees →</span>
+                  {!q.quotation_agreed_at ? (
+                    <button onClick={() => setAgreed(q.id, true)} disabled={updating === q.id} style={{ ...miniBtn, background: "#2f6b46", color: "#fff", opacity: updating === q.id ? 0.6 : 1 }}>
+                      <PackageCheck size={14} /> Mark agreed
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={() => setBuildingContract(q)} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}>
+                        <FileText size={14} /> {q.contract_status && q.contract_status !== "none" ? "Edit contract" : "Build contract"}
+                      </button>
+                      <button onClick={() => setBuildingInvoice(q)} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}>
+                        <FileText size={14} /> {q.invoice_status && q.invoice_status !== "none" ? "Edit invoice" : "Build invoice"}
+                      </button>
+                      <button onClick={() => setAgreed(q.id, false)} disabled={updating === q.id} style={{ ...tinyBtn, color: "#6c675f" }} title="Undo agreed">undo</button>
+                    </>
+                  )}
+                </div>
+              )}
+
               {q.notes && (
                 <p style={{ margin: "12px 0 0", color: "#3a362f", background: "#f0ece3", padding: 10, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                   {q.notes}
@@ -595,9 +673,1007 @@ function QuotesPanel({ authCode }: { authCode: string }) {
           );
         })}
       </div>
+
+      {creating && (
+        <QuotationCreateForm
+          authCode={authCode}
+          onClose={() => setCreating(false)}
+          onCreated={(request) => {
+            setCreating(false);
+            setQuotes((prev) => [request, ...prev]);
+            setBuilding(request); // jump straight into review/edit/sign
+          }}
+        />
+      )}
+
+      {building && (
+        <QuotationEditor
+          request={building}
+          authCode={authCode}
+          onClose={() => setBuilding(null)}
+          onSent={(id) => {
+            setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, status: "responded", quotation_status: "sent" } : q)));
+            setBuilding(null);
+          }}
+          onSaved={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, quotation_status: q.quotation_status === "sent" ? "sent" : "draft" } : q)))}
+        />
+      )}
+
+      {buildingContract && (
+        <ContractEditor
+          request={buildingContract}
+          authCode={authCode}
+          onClose={() => setBuildingContract(null)}
+          onSent={(id) => { setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, contract_status: "sent" } : q))); setBuildingContract(null); }}
+          onSaved={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, contract_status: q.contract_status && q.contract_status !== "none" ? q.contract_status : "draft" } : q)))}
+        />
+      )}
+
+      {buildingInvoice && (
+        <InvoiceEditor
+          request={buildingInvoice}
+          authCode={authCode}
+          onClose={() => setBuildingInvoice(null)}
+          onSent={(id) => { setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, invoice_status: "sent" } : q))); setBuildingInvoice(null); }}
+          onSaved={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, invoice_status: q.invoice_status === "sent" ? "sent" : "draft" } : q)))}
+        />
+      )}
     </div>
   );
 }
+
+// ─── Manual quotation create form ─────────────────────────────────────────────
+// For clients who reach out by phone or in person: the admin picks a package
+// (optional — pre-fills rate-card lines) and fills client details, then creates
+// the request + auto-draft and drops straight into the editor to review & sign.
+function QuotationCreateForm({
+  authCode,
+  onClose,
+  onCreated,
+}: {
+  authCode: string;
+  onClose: () => void;
+  onCreated: (request: QuoteRequest) => void;
+}) {
+  const [form, setForm] = useState({ name: "", email: "", company: "", phone: "", project: "", dateFrom: "", dateTo: "", notes: "", packageSlug: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const create = async () => {
+    if (!form.name.trim() || !form.email.trim()) { setError("Client name and email are required."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/quotes", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authCode}`, "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not create quotation.");
+      onCreated(data.request as QuoteRequest);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create quotation.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,9,7,0.55)", zIndex: 1000, display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "32px 16px", overflowY: "auto" }}>
+      <div onClick={(e) => e.stopPropagation()} className="surface" style={{ width: "100%", maxWidth: 560, background: "#f7f5ef", border: "1px solid rgba(17,17,17,0.14)", borderRadius: 18, padding: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 4 }}>
+          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>New quotation</h2>
+          <button onClick={onClose} style={{ ...tinyBtn, padding: 6, borderRadius: 999 }} aria-label="Close"><X size={16} /></button>
+        </div>
+        <p style={{ margin: "0 0 14px", color: "#6c675f", fontSize: 13 }}>For a call or walk-in client. Pick a package to pre-fill lines, then review & sign in the next step.</p>
+
+        <div style={{ display: "grid", gap: 10 }}>
+          <LabeledField label="Package (optional — pre-fills equipment lines)">
+            <select value={form.packageSlug} onChange={(e) => set("packageSlug", e.target.value)} style={editInput}>
+              <option value="">No package — start blank</option>
+              {PACKAGE_OFFERS.map((o) => (
+                <option key={o.slug} value={o.slug}>{o.name} ({o.priceRange})</option>
+              ))}
+            </select>
+          </LabeledField>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <LabeledField label="Client name *"><input value={form.name} onChange={(e) => set("name", e.target.value)} style={editInput} /></LabeledField>
+            <LabeledField label="Client email *"><input value={form.email} onChange={(e) => set("email", e.target.value)} style={editInput} /></LabeledField>
+            <LabeledField label="Company"><input value={form.company} onChange={(e) => set("company", e.target.value)} style={editInput} /></LabeledField>
+            <LabeledField label="Phone"><input value={form.phone} onChange={(e) => set("phone", e.target.value)} style={editInput} /></LabeledField>
+            <LabeledField label="Project"><input value={form.project} onChange={(e) => set("project", e.target.value)} style={editInput} /></LabeledField>
+            <div />
+            <LabeledField label="Shoot from"><input type="date" value={form.dateFrom} onChange={(e) => set("dateFrom", e.target.value)} style={editInput} /></LabeledField>
+            <LabeledField label="Shoot to"><input type="date" value={form.dateTo} onChange={(e) => set("dateTo", e.target.value)} style={editInput} /></LabeledField>
+          </div>
+          <LabeledField label="Notes"><textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
+
+          {error && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{error}</p>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={miniBtn}>Cancel</button>
+            <button onClick={create} disabled={busy} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy ? 0.6 : 1 }}>
+              {busy ? <Loader2 size={14} className="spin" /> : <FileText size={14} />} Generate & review
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Quotation editor ─────────────────────────────────────────────────────────
+// Loads a draft (auto-built from the request) or the saved quotation, lets the
+// admin edit line items, totals, and notes, capture an e-signature, then Save or
+// Send. Send renders the PDF server-side, stores a copy, and emails the client.
+function QuotationEditor({
+  request,
+  authCode,
+  onClose,
+  onSent,
+  onSaved,
+}: {
+  request: QuoteRequest;
+  authCode: string;
+  onClose: () => void;
+  onSent: (id: string) => void;
+  onSaved: (id: string) => void;
+}) {
+  const [doc, setDoc] = useState<QuotationDoc | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState<"save" | "send" | "preview" | null>(null);
+  const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState("");
+  const headers = useCallback(() => ({ Authorization: `Bearer ${authCode}` }), [authCode]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(`/api/admin/quotations?requestId=${encodeURIComponent(request.id)}`, { headers: headers() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not load quotation.");
+        // Backfill fields that older drafts may predate.
+        const raw = data.doc as QuotationDoc;
+        if (alive) setDoc({ ...raw, laborLines: raw.laborLines ?? [], specialDiscountRate: raw.specialDiscountRate ?? 0, paymentTerms: raw.paymentTerms ?? "" });
+      } catch (err) {
+        if (alive) setError(err instanceof Error ? err.message : "Could not load quotation.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [request.id, headers]);
+
+  const totals = useMemo(() => (doc ? computeTotals(doc) : null), [doc]);
+
+  const patch = (p: Partial<QuotationDoc>) => setDoc((d) => (d ? { ...d, ...p } : d));
+
+  // Line helpers parameterized by which band they edit: "lines" (equipment) or
+  // "laborLines" (crew). `days` carries over from the equipment rental days.
+  type Band = "lines" | "laborLines";
+  const newId = (n: number) => `ln-${Date.now().toString(36)}-${n}`;
+  const patchLine = (band: Band, id: string, p: Partial<QuotationLine>) =>
+    setDoc((d) => (d ? { ...d, [band]: d[band].map((l) => (l.id === id ? { ...l, ...p } : l)) } : d));
+  const addLine = (band: Band, preset?: Partial<QuotationLine>) =>
+    setDoc((d) => {
+      if (!d) return d;
+      const days = d.lines[0]?.days ?? 1;
+      const line: QuotationLine = { id: newId(d[band].length), description: "", qty: 1, days, unitRate: 0, ...preset };
+      return { ...d, [band]: [...d[band], line] };
+    });
+  const removeLine = (band: Band, id: string) =>
+    setDoc((d) => (d ? { ...d, [band]: d[band].filter((l) => l.id !== id) } : d));
+
+  const save = async () => {
+    if (!doc) return;
+    setBusy("save");
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(`/api/admin/quotations?requestId=${encodeURIComponent(request.id)}`, {
+        method: "PUT",
+        headers: { ...headers(), "Content-Type": "application/json" },
+        body: JSON.stringify({ doc }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not save.");
+      setNotice("Draft saved.");
+      onSaved(request.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const preview = async () => {
+    if (!doc) return;
+    setBusy("preview");
+    setError("");
+    try {
+      // Save first so the PDF reflects current edits, then open it.
+      await fetch(`/api/admin/quotations?requestId=${encodeURIComponent(request.id)}`, {
+        method: "PUT",
+        headers: { ...headers(), "Content-Type": "application/json" },
+        body: JSON.stringify({ doc }),
+      });
+      const res = await fetch(`/api/admin/quotations?requestId=${encodeURIComponent(request.id)}&format=pdf`, { headers: headers() });
+      if (!res.ok) throw new Error("Could not render PDF preview.");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not render PDF preview.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const send = async () => {
+    if (!doc) return;
+    if (!confirm(`Send quotation ${doc.number} to ${doc.client.email}? The client will receive the PDF by email.`)) return;
+    setBusy("send");
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(`/api/admin/quotations?requestId=${encodeURIComponent(request.id)}`, {
+        method: "POST",
+        headers: { ...headers(), "Content-Type": "application/json" },
+        body: JSON.stringify({ doc, message }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not send.");
+      if (data.emailSkipped) {
+        setNotice("Saved and marked sent, but email is not configured — the client was not emailed.");
+        onSaved(request.id);
+      } else {
+        onSent(request.id);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,9,7,0.55)", zIndex: 1000, display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "32px 16px", overflowY: "auto" }}>
+      <div onClick={(e) => e.stopPropagation()} className="surface" style={{ width: "100%", maxWidth: 760, background: "#f7f5ef", border: "1px solid rgba(17,17,17,0.14)", borderRadius: 18, padding: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>Quotation{doc ? ` · ${doc.number}` : ""}</h2>
+          <button onClick={onClose} style={{ ...tinyBtn, padding: 6, borderRadius: 999 }} aria-label="Close"><X size={16} /></button>
+        </div>
+
+        {loading && <p style={{ color: "#6c675f", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 8 }}><Loader2 size={14} className="spin" /> Building draft…</p>}
+        {error && <p style={{ color: "#c0392b", fontSize: 13 }}>{error}</p>}
+
+        {doc && totals && (
+          <div style={{ display: "grid", gap: 16 }}>
+            {/* Client + dates */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <LabeledField label="Client name"><input value={doc.client.name} onChange={(e) => patch({ client: { ...doc.client, name: e.target.value } })} style={editInput} /></LabeledField>
+              <LabeledField label="Client email"><input value={doc.client.email} onChange={(e) => patch({ client: { ...doc.client, email: e.target.value } })} style={editInput} /></LabeledField>
+              <LabeledField label="Company"><input value={doc.client.company} onChange={(e) => patch({ client: { ...doc.client, company: e.target.value } })} style={editInput} /></LabeledField>
+              <LabeledField label="Project"><input value={doc.client.project} onChange={(e) => patch({ client: { ...doc.client, project: e.target.value } })} style={editInput} /></LabeledField>
+              <LabeledField label="Issue date"><input type="date" value={doc.issueDate} onChange={(e) => patch({ issueDate: e.target.value })} style={editInput} /></LabeledField>
+              <LabeledField label="Valid until"><input type="date" value={doc.validUntil} onChange={(e) => patch({ validUntil: e.target.value })} style={editInput} /></LabeledField>
+            </div>
+
+            {/* Equipment line items */}
+            <LineBand
+              title="Equipment"
+              lines={doc.lines}
+              picker={{ label: "+ Add from rate card…", options: RATE_CARD.map((r) => ({ value: r.key, label: `${r.name} — ${formatPHP(r.dailyRate)}`, description: r.name, unitRate: r.dailyRate })) }}
+              onAdd={(preset) => addLine("lines", preset)}
+              onPatch={(id, p) => patchLine("lines", id, p)}
+              onRemove={(id) => removeLine("lines", id)}
+            />
+
+            {/* Labor / personnel */}
+            <LineBand
+              title="Labor / Personnel"
+              lines={doc.laborLines}
+              picker={{ label: "+ Add crew…", options: PERSONNEL_RATES.map((r) => ({ value: r.key, label: `${r.name} — ${formatPHP(r.dailyRate)}`, description: r.name, unitRate: r.dailyRate })) }}
+              onAdd={(preset) => addLine("laborLines", preset)}
+              onPatch={(id, p) => patchLine("laborLines", id, p)}
+              onRemove={(id) => removeLine("laborLines", id)}
+            />
+
+            {/* Adjustments + totals */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gap: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={doc.applySurcharge} onChange={(e) => patch({ applySurcharge: e.target.checked })} />
+                  Out-of-town surcharge ({Math.round(doc.surchargeRate * 100)}%)
+                </label>
+                <LabeledField label="Special discount (%)"><input type="number" min={0} max={100} value={Math.round(doc.specialDiscountRate * 100)} onChange={(e) => patch({ specialDiscountRate: Math.min(100, Math.max(0, Number(e.target.value) || 0)) / 100 })} style={editInput} /></LabeledField>
+                <LabeledField label="Payment terms"><textarea value={doc.paymentTerms} onChange={(e) => patch({ paymentTerms: e.target.value })} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
+              </div>
+              <div style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.1)", borderRadius: 12, padding: 12, fontSize: 13, display: "grid", gap: 5, alignContent: "start" }}>
+                {doc.laborLines.length > 0 && <Row label="Equipment cost" value={formatPHP(totals.equipmentSubtotal)} />}
+                {doc.laborLines.length > 0 && <Row label="Labor cost" value={formatPHP(totals.laborSubtotal)} />}
+                {doc.applySurcharge && <Row label={`Surcharge (${Math.round(doc.surchargeRate * 100)}%)`} value={formatPHP(totals.surcharge)} />}
+                <Row label="Subtotal" value={formatPHP(totals.subtotal)} />
+                {totals.discount > 0 && <Row label={`Special discount (${Math.round(doc.specialDiscountRate * 100)}%)`} value={"- " + formatPHP(totals.discount)} />}
+                <div style={{ height: 1, background: "rgba(17,17,17,0.12)", margin: "4px 0" }} />
+                <Row label="GRAND TOTAL" value={formatPHP(totals.total)} bold />
+              </div>
+            </div>
+
+            <LabeledField label="Notes (shown on the quotation)"><textarea value={doc.notes} onChange={(e) => patch({ notes: e.target.value })} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
+
+            {/* Signature */}
+            <div>
+              <span style={{ fontWeight: 800, fontSize: 13 }}>Provider e-signature</span>
+              <SignaturePad value={doc.signatureDataUrl} onChange={(dataUrl) => patch({ signatureDataUrl: dataUrl })} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
+                <LabeledField label="Signed by"><input value={doc.signedBy} onChange={(e) => patch({ signedBy: e.target.value })} placeholder="Benito M. Remulta Jr." style={editInput} /></LabeledField>
+                <LabeledField label="Signed date"><input type="date" value={doc.signedDate} onChange={(e) => patch({ signedDate: e.target.value })} style={editInput} /></LabeledField>
+              </div>
+            </div>
+
+            <LabeledField label="Message to client (optional, included in the email body)"><textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} placeholder="A short note to accompany the quotation…" style={{ ...editInput, resize: "vertical" }} /></LabeledField>
+
+            {notice && <p style={{ color: "#15130f", background: "rgba(245,197,24,0.22)", padding: 10, borderRadius: 10, fontSize: 13, margin: 0 }}>{notice}</p>}
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button onClick={preview} disabled={busy !== null} style={{ ...miniBtn, opacity: busy ? 0.6 : 1 }} title="Opens the PDF in a new tab — print or save from there">
+                {busy === "preview" ? <Loader2 size={14} className="spin" /> : <Eye size={14} />} Preview / Print PDF
+              </button>
+              <button onClick={save} disabled={busy !== null} style={{ ...miniBtn, opacity: busy ? 0.6 : 1 }}>
+                {busy === "save" ? <Loader2 size={14} className="spin" /> : <Save size={14} />} Save draft
+              </button>
+              <button onClick={send} disabled={busy !== null} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy ? 0.6 : 1 }}>
+                {busy === "send" ? <Loader2 size={14} className="spin" /> : <Send size={14} />} Send to client
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LabeledField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#6c675f", fontWeight: 700 }}>
+      {label}
+      {children}
+    </label>
+  );
+}
+
+// One editable band of quotation lines (equipment or labor) with a rate-card
+// quick-add picker. Stateless — all mutations bubble up to the editor.
+function LineBand({
+  title,
+  lines,
+  picker,
+  onAdd,
+  onPatch,
+  onRemove,
+}: {
+  title: string;
+  lines: QuotationLine[];
+  picker: { label: string; options: { value: string; label: string; description: string; unitRate: number }[] };
+  onAdd: (preset?: Partial<QuotationLine>) => void;
+  onPatch: (id: string, p: Partial<QuotationLine>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const cols = "1fr 52px 52px 92px 92px 26px";
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontWeight: 800, fontSize: 13 }}>{title}</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          <select
+            value=""
+            onChange={(e) => {
+              const opt = picker.options.find((o) => o.value === e.target.value);
+              if (opt) onAdd({ description: opt.description, unitRate: opt.unitRate });
+              e.target.value = "";
+            }}
+            style={{ ...editInput, width: "auto", maxWidth: 220, fontSize: 12, padding: "7px 9px" }}
+          >
+            <option value="">{picker.label}</option>
+            {picker.options.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <button onClick={() => onAdd()} style={{ ...tinyBtn, display: "inline-flex", alignItems: "center", gap: 4 }}><Plus size={13} /> Blank</button>
+        </div>
+      </div>
+      {lines.length === 0 ? (
+        <p style={{ color: "#9a948a", fontSize: 12, margin: "2px 2px 0" }}>None yet — add from the picker or a blank line.</p>
+      ) : (
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: cols, gap: 6, fontSize: 11, color: "#6c675f", fontWeight: 700, padding: "0 2px" }}>
+            <span>Description</span><span style={{ textAlign: "right" }}>Qty</span><span style={{ textAlign: "right" }}>Days</span><span style={{ textAlign: "right" }}>Unit/day</span><span style={{ textAlign: "right" }}>Amount</span><span />
+          </div>
+          {lines.map((l) => (
+            <div key={l.id} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, alignItems: "center" }}>
+              <input value={l.description} onChange={(e) => onPatch(l.id, { description: e.target.value })} placeholder="Description" style={editInput} />
+              <input type="number" min={0} value={l.qty} onChange={(e) => onPatch(l.id, { qty: Number(e.target.value) })} style={{ ...editInput, textAlign: "right" }} />
+              <input type="number" min={0} value={l.days} onChange={(e) => onPatch(l.id, { days: Number(e.target.value) })} style={{ ...editInput, textAlign: "right" }} />
+              <input type="number" min={0} value={l.unitRate} onChange={(e) => onPatch(l.id, { unitRate: Number(e.target.value) })} style={{ ...editInput, textAlign: "right" }} />
+              <span style={{ textAlign: "right", fontSize: 12, fontWeight: 700 }}>{formatPHP(lineAmount(l))}</span>
+              <button onClick={() => onRemove(l.id)} style={{ ...tinyBtn, padding: 4, color: "#c0392b" }} aria-label="Remove line"><Trash2 size={13} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: bold ? 800 : 500, fontSize: bold ? 15 : 13, color: "#15130f" }}>
+      <span>{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+// Small lifecycle status pill used on the quote cards.
+function DocChip({ label, on, tone }: { label: string; on?: boolean; tone?: "green" }) {
+  const bg = tone === "green" ? "#e7efe9" : on ? "#15130f" : "#f0ece3";
+  const fg = tone === "green" ? "#2f6b46" : on ? "#ffcc00" : "#6c675f";
+  return <span style={{ display: "inline-flex", borderRadius: 999, background: bg, color: fg, padding: "4px 9px", fontSize: 11, fontWeight: 700 }}>{label}</span>;
+}
+
+// Shared async lifecycle for a downstream document editor (contract / invoice):
+// load draft-or-saved, save (PUT), preview/print (PUT then open PDF), send (POST).
+// `normalize` backfills fields older drafts may predate.
+function useDocEditor<T extends object>(endpoint: string, requestId: string, authCode: string, normalize: (raw: T) => T) {
+  const [doc, setDoc] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState<"save" | "send" | "preview" | null>(null);
+  const [notice, setNotice] = useState("");
+  const [meta, setMeta] = useState<Record<string, unknown> | null>(null);
+  const headers = useCallback(() => ({ Authorization: `Bearer ${authCode}` }), [authCode]);
+  const url = `${endpoint}?requestId=${encodeURIComponent(requestId)}`;
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(url, { headers: headers() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not load.");
+        if (alive) { setDoc(normalize(data.doc as T)); setMeta(data); }
+      } catch (err) {
+        if (alive) setError(err instanceof Error ? err.message : "Could not load.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
+
+  const put = async () => {
+    const res = await fetch(url, { method: "PUT", headers: { ...headers(), "Content-Type": "application/json" }, body: JSON.stringify({ doc }) });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || "Could not save.");
+    return data;
+  };
+
+  const save = async (onSaved?: () => void) => {
+    if (!doc) return;
+    setBusy("save"); setError(""); setNotice("");
+    try { await put(); setNotice("Draft saved."); onSaved?.(); }
+    catch (err) { setError(err instanceof Error ? err.message : "Could not save."); }
+    finally { setBusy(null); }
+  };
+
+  const preview = async () => {
+    if (!doc) return;
+    setBusy("preview"); setError("");
+    try {
+      await put();
+      const res = await fetch(`${url}&format=pdf`, { headers: headers() });
+      if (!res.ok) throw new Error("Could not render PDF.");
+      const blobUrl = URL.createObjectURL(await res.blob());
+      window.open(blobUrl, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not render PDF."); }
+    finally { setBusy(null); }
+  };
+
+  const send = async (message: string, onSent: () => void, onSkipped: () => void) => {
+    if (!doc) return;
+    setBusy("send"); setError(""); setNotice("");
+    try {
+      const res = await fetch(url, { method: "POST", headers: { ...headers(), "Content-Type": "application/json" }, body: JSON.stringify({ doc, message }) });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not send.");
+      if (data.emailSkipped) { setNotice("Saved and marked sent, but email is not configured — the client was not emailed."); onSkipped(); }
+      else onSent();
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not send."); }
+    finally { setBusy(null); }
+  };
+
+  return { doc, setDoc, loading, error, busy, notice, meta, save, preview, send };
+}
+
+// Modal shell shared by the contract & invoice editors.
+function DocModal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,9,7,0.55)", zIndex: 1000, display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "32px 16px", overflowY: "auto" }}>
+      <div onClick={(e) => e.stopPropagation()} className="surface" style={{ width: "100%", maxWidth: 760, background: "#f7f5ef", border: "1px solid rgba(17,17,17,0.14)", borderRadius: 18, padding: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>{title}</h2>
+          <button onClick={onClose} style={{ ...tinyBtn, padding: 6, borderRadius: 999 }} aria-label="Close"><X size={16} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Action footer shared by contract & invoice editors.
+function DocActions({ busy, onPreview, onSave, onSend }: { busy: "save" | "send" | "preview" | null; onPreview: () => void; onSave: () => void; onSend: () => void }) {
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+      <button onClick={onPreview} disabled={busy !== null} style={{ ...miniBtn, opacity: busy ? 0.6 : 1 }} title="Opens the PDF in a new tab — print or save from there">
+        {busy === "preview" ? <Loader2 size={14} className="spin" /> : <Eye size={14} />} Preview / Print PDF
+      </button>
+      <button onClick={onSave} disabled={busy !== null} style={{ ...miniBtn, opacity: busy ? 0.6 : 1 }}>
+        {busy === "save" ? <Loader2 size={14} className="spin" /> : <Save size={14} />} Save draft
+      </button>
+      <button onClick={onSend} disabled={busy !== null} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy ? 0.6 : 1 }}>
+        {busy === "send" ? <Loader2 size={14} className="spin" /> : <Send size={14} />} Send to client
+      </button>
+    </div>
+  );
+}
+
+// ─── Clients ledger (loyalty + delinquency control) ───────────────────────────
+type ClientRow = {
+  email: string; name: string | null; company: string | null; phone: string | null;
+  standing: "good" | "watch" | "blocked"; clean_paid_count: number; total_spent: number;
+  bounced_count: number; late_count: number; notes: string | null;
+  policy: ClientPolicy;
+};
+
+function ClientsPanel({ authCode }: { authCode: string }) {
+  const [clients, setClients] = useState<ClientRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const headers = useCallback(() => ({ Authorization: `Bearer ${authCode}` }), [authCode]);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const res = await fetch("/api/admin/clients", { headers: headers() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not load clients.");
+      setClients(Array.isArray(data) ? data : []);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not load clients."); }
+    finally { setLoading(false); }
+  }, [headers]);
+  useEffect(() => { load(); }, [load]);
+
+  const act = async (email: string, body: Record<string, unknown>) => {
+    setBusy(email); setError("");
+    try {
+      const res = await fetch(`/api/admin/clients?email=${encodeURIComponent(email)}`, { method: "PATCH", headers: { ...headers(), "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not update.");
+      setClients((prev) => prev.map((c) => (c.email === email ? { ...c, ...data.client, policy: data.policy } : c)));
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not update."); }
+    finally { setBusy(null); }
+  };
+
+  return (
+    <div className="surface" style={{ padding: 18, border: "1px solid rgba(17,17,17,0.1)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <div>
+          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>Clients</h2>
+          <p style={{ margin: "2px 0 0", color: "#6c675f", fontSize: 13 }}>Loyalty tier + standing drive deposit size, PDC eligibility, and loyalty discount.</p>
+        </div>
+        <button onClick={load} disabled={loading} style={{ ...miniBtn, opacity: loading ? 0.6 : 1 }}>{loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Refresh</button>
+      </div>
+      {error && <p style={{ color: "#c0392b", fontSize: 13 }}>{error}</p>}
+      {!loading && clients.length === 0 && <p style={{ color: "#6c675f", fontSize: 13 }}>No clients yet — they appear here after their first quotation request.</p>}
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {clients.map((c) => (
+          <article key={c.email} style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.12)", padding: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <h3 style={{ fontFamily: '"Jost", sans-serif', fontSize: 18, margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  {c.name || c.email}
+                  <DocChip label={c.policy.tierLabel} on />
+                  <DocChip label={c.standing} on={c.standing !== "good"} tone={c.standing === "good" ? "green" : undefined} />
+                </h3>
+                <p style={{ margin: "4px 0 0", color: "#6c675f", fontSize: 13 }}>{c.email}{c.company ? ` · ${c.company}` : ""}{c.phone ? ` · ${c.phone}` : ""}</p>
+                <p style={{ margin: "4px 0 0", color: "#6c675f", fontSize: 12 }}>
+                  {c.clean_paid_count} clean rentals · spent {formatPHP(Number(c.total_spent) || 0)} · {c.bounced_count} bounced · {c.late_count} late
+                </p>
+                <p style={{ margin: "4px 0 0", color: "#3a362f", fontSize: 12 }}>
+                  Policy: loyalty {Math.round(c.policy.loyaltyRate * 100)}% · deposit {Math.round(c.policy.depositRate * 100)}% · PDC {c.policy.pdcAllowed ? "allowed" : "no"}
+                </p>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  {(["good", "watch", "blocked"] as const).map((s) => (
+                    <button key={s} onClick={() => act(c.email, { standing: s })} disabled={busy === c.email || c.standing === s} style={{ ...tinyBtn, opacity: busy === c.email || c.standing === s ? 0.5 : 1 }}>{s}</button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => { if (confirm("Record a LATE settlement? Demotes to watch and resets the loyalty streak.")) void act(c.email, { delinquency: "late" }); }} disabled={busy === c.email} style={{ ...tinyBtn, color: "#c0392b" }}>+ late</button>
+                  <button onClick={() => { if (confirm("Record a BOUNCED cheque? Demotes to watch and resets the loyalty streak.")) void act(c.email, { delinquency: "bounced" }); }} disabled={busy === c.email} style={{ ...tinyBtn, color: "#c0392b" }}>+ bounced</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Contract editor ──────────────────────────────────────────────────────────
+function ContractEditor({ request, authCode, onClose, onSent, onSaved }: { request: QuoteRequest; authCode: string; onClose: () => void; onSent: (id: string) => void; onSaved: (id: string) => void }) {
+  const normalize = useCallback((d: ContractDoc) => ({ ...d, laborLines: d.laborLines ?? [] }), []);
+  const { doc, setDoc, loading, error, busy, notice, save, preview, send } = useDocEditor<ContractDoc>("/api/admin/contracts", request.id, authCode, normalize);
+  const [message, setMessage] = useState("");
+  const totals = useMemo(() => (doc ? computeTotals(doc) : null), [doc]);
+  const patch = (p: Partial<ContractDoc>) => setDoc((d) => (d ? { ...d, ...p } : d));
+  const bandHelpers = useLineBandHelpers(setDoc as never);
+
+  return (
+    <DocModal title={`Contract${doc ? ` · ${doc.number}` : ""}`} onClose={onClose}>
+      {loading && <p style={{ color: "#6c675f", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 8 }}><Loader2 size={14} className="spin" /> Loading agreed quotation…</p>}
+      {error && <p style={{ color: "#c0392b", fontSize: 13 }}>{error}</p>}
+      {doc && totals && (
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <LabeledField label="Client name"><input value={doc.client.name} onChange={(e) => patch({ client: { ...doc.client, name: e.target.value } })} style={editInput} /></LabeledField>
+            <LabeledField label="Client email"><input value={doc.client.email} onChange={(e) => patch({ client: { ...doc.client, email: e.target.value } })} style={editInput} /></LabeledField>
+            <LabeledField label="Agreement date"><input type="date" value={doc.agreementDate} onChange={(e) => patch({ agreementDate: e.target.value })} style={editInput} /></LabeledField>
+            <div />
+            <LabeledField label="Rental from"><input type="date" value={doc.rentalFrom} onChange={(e) => patch({ rentalFrom: e.target.value })} style={editInput} /></LabeledField>
+            <LabeledField label="Rental to"><input type="date" value={doc.rentalTo} onChange={(e) => patch({ rentalTo: e.target.value })} style={editInput} /></LabeledField>
+          </div>
+
+          <LineBand title="Equipment" lines={doc.lines} picker={equipmentPicker} onAdd={(p) => bandHelpers.add("lines", p)} onPatch={(id, p) => bandHelpers.patch("lines", id, p)} onRemove={(id) => bandHelpers.remove("lines", id)} />
+          <LineBand title="Labor / Personnel" lines={doc.laborLines} picker={laborPicker} onAdd={(p) => bandHelpers.add("laborLines", p)} onPatch={(id, p) => bandHelpers.patch("laborLines", id, p)} onRemove={(id) => bandHelpers.remove("laborLines", id)} />
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gap: 8 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                <input type="checkbox" checked={doc.applySurcharge} onChange={(e) => patch({ applySurcharge: e.target.checked })} /> Out-of-town surcharge ({Math.round(doc.surchargeRate * 100)}%)
+              </label>
+              <LabeledField label="Special discount (%)"><input type="number" min={0} max={100} value={Math.round(doc.specialDiscountRate * 100)} onChange={(e) => patch({ specialDiscountRate: Math.min(100, Math.max(0, Number(e.target.value) || 0)) / 100 })} style={editInput} /></LabeledField>
+              <LabeledField label="Payment terms"><textarea value={doc.paymentTerms} onChange={(e) => patch({ paymentTerms: e.target.value })} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
+            </div>
+            <div style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.1)", borderRadius: 12, padding: 12, fontSize: 13, display: "grid", gap: 5, alignContent: "start" }}>
+              {doc.laborLines.length > 0 && <Row label="Equipment cost" value={formatPHP(totals.equipmentSubtotal)} />}
+              {doc.laborLines.length > 0 && <Row label="Labor cost" value={formatPHP(totals.laborSubtotal)} />}
+              {doc.applySurcharge && <Row label={`Surcharge (${Math.round(doc.surchargeRate * 100)}%)`} value={formatPHP(totals.surcharge)} />}
+              <Row label="Subtotal" value={formatPHP(totals.subtotal)} />
+              {totals.discount > 0 && <Row label={`Special discount (${Math.round(doc.specialDiscountRate * 100)}%)`} value={"- " + formatPHP(totals.discount)} />}
+              <div style={{ height: 1, background: "rgba(17,17,17,0.12)", margin: "4px 0" }} />
+              <Row label="CONTRACT TOTAL" value={formatPHP(totals.total)} bold />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div>
+              <span style={{ fontWeight: 800, fontSize: 13 }}>Owner (provider) signature</span>
+              <SignaturePad value={doc.providerSignatureDataUrl} onChange={(s) => patch({ providerSignatureDataUrl: s })} />
+              <LabeledField label="Signed by"><input value={doc.providerSignedBy} onChange={(e) => patch({ providerSignedBy: e.target.value })} style={editInput} /></LabeledField>
+            </div>
+            <div>
+              <span style={{ fontWeight: 800, fontSize: 13 }}>Client signature (optional — for face-to-face)</span>
+              <SignaturePad value={doc.clientSignatureDataUrl} onChange={(s) => patch({ clientSignatureDataUrl: s })} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <LabeledField label="Signed by"><input value={doc.clientSignedBy} onChange={(e) => patch({ clientSignedBy: e.target.value })} style={editInput} /></LabeledField>
+                <LabeledField label="Position"><input value={doc.clientPosition} onChange={(e) => patch({ clientPosition: e.target.value })} style={editInput} /></LabeledField>
+              </div>
+            </div>
+          </div>
+
+          <LabeledField label="Message to client (optional, included in the email body)"><textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
+          {notice && <p style={{ color: "#15130f", background: "rgba(245,197,24,0.22)", padding: 10, borderRadius: 10, fontSize: 13, margin: 0 }}>{notice}</p>}
+          <DocActions busy={busy} onPreview={preview} onSave={() => save(() => onSaved(request.id))} onSend={() => { if (confirm(`Send contract ${doc.number} to ${doc.client.email}?`)) void send(message, () => onSent(request.id), () => onSaved(request.id)); }} />
+        </div>
+      )}
+    </DocModal>
+  );
+}
+
+// ─── Invoice editor ───────────────────────────────────────────────────────────
+function InvoiceEditor({ request, authCode, onClose, onSent, onSaved }: { request: QuoteRequest; authCode: string; onClose: () => void; onSent: (id: string) => void; onSaved: (id: string) => void }) {
+  const normalize = useCallback((d: InvoiceDoc) => ({ ...d, laborLines: d.laborLines ?? [], payments: d.payments ?? [], incidents: d.incidents ?? [], acceptedChannels: d.acceptedChannels ?? [...ALL_CHANNELS] }), []);
+  const { doc, setDoc, loading, error, busy, notice, meta, save, preview, send } = useDocEditor<InvoiceDoc>("/api/admin/invoices", request.id, authCode, normalize);
+  const [message, setMessage] = useState("");
+  const money = useMemo(() => (doc ? computeInvoiceMoney(doc) : null), [doc]);
+  const policy = (meta?.policy as ClientPolicy | undefined) ?? null;
+  const patch = (p: Partial<InvoiceDoc>) => setDoc((d) => (d ? { ...d, ...p } : d));
+  const bandHelpers = useLineBandHelpers(setDoc as never);
+
+  const newId = (n: number) => `${Date.now().toString(36)}-${n}`;
+  const addIncident = () => setDoc((d) => (d ? { ...d, incidents: [...d.incidents, { id: newId(d.incidents.length), date: doc?.issueDate ?? "", description: "", amount: 0 }] } : d));
+  const patchIncident = (id: string, p: Partial<Incident>) => setDoc((d) => (d ? { ...d, incidents: d.incidents.map((i) => (i.id === id ? { ...i, ...p } : i)) } : d));
+  const removeIncident = (id: string) => setDoc((d) => (d ? { ...d, incidents: d.incidents.filter((i) => i.id !== id) } : d));
+  const addPayment = (kind: PaymentEntry["kind"]) => setDoc((d) => (d ? { ...d, payments: [...d.payments, { id: newId(d.payments.length), date: doc?.issueDate ?? "", channel: "bank_transfer", amount: 0, reference: "", kind }] } : d));
+  const patchPayment = (id: string, p: Partial<PaymentEntry>) => setDoc((d) => (d ? { ...d, payments: d.payments.map((x) => (x.id === id ? { ...x, ...p } : x)) } : d));
+  const removePayment = (id: string) => setDoc((d) => (d ? { ...d, payments: d.payments.filter((x) => x.id !== id) } : d));
+  const toggleChannel = (c: PaymentChannel) => setDoc((d) => (d ? { ...d, acceptedChannels: d.acceptedChannels.includes(c) ? d.acceptedChannels.filter((x) => x !== c) : [...d.acceptedChannels, c] } : d));
+  const pct = (k: "loyaltyDiscountRate" | "pdcDiscountRate" | "promptPayDiscountRate") => (v: string) => patch({ [k]: Math.min(100, Math.max(0, Number(v) || 0)) / 100 } as Partial<InvoiceDoc>);
+
+  return (
+    <DocModal title={`Invoice${doc ? ` · ${doc.number}` : ""}`} onClose={onClose}>
+      {loading && <p style={{ color: "#6c675f", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 8 }}><Loader2 size={14} className="spin" /> Loading agreed quotation…</p>}
+      {error && <p style={{ color: "#c0392b", fontSize: 13 }}>{error}</p>}
+      {doc && money && (
+        <div style={{ display: "grid", gap: 16 }}>
+          {policy && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: policy.standing === "blocked" ? "#fbe6e6" : policy.standing === "watch" ? "#fff3c4" : "#e7efe9", border: "1px solid rgba(17,17,17,0.1)", borderRadius: 12, padding: "10px 12px" }}>
+              <span style={{ fontWeight: 800, fontSize: 13 }}>{policy.tierLabel}</span>
+              <DocChip label={policy.standing} on={policy.standing !== "good"} tone={policy.standing === "good" ? "green" : undefined} />
+              <span style={{ fontSize: 12, color: "#3a362f" }}>Loyalty {Math.round(policy.loyaltyRate * 100)}% · deposit {Math.round(policy.depositRate * 100)}% · PDC {policy.pdcAllowed ? "allowed" : "not allowed"}</span>
+              <span style={{ fontSize: 12, color: "#6c675f", flexBasis: "100%" }}>{policy.reason}</span>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <LabeledField label="Client name"><input value={doc.client.name} onChange={(e) => patch({ client: { ...doc.client, name: e.target.value } })} style={editInput} /></LabeledField>
+            <LabeledField label="Client email"><input value={doc.client.email} onChange={(e) => patch({ client: { ...doc.client, email: e.target.value } })} style={editInput} /></LabeledField>
+            <LabeledField label="Issue date"><input type="date" value={doc.issueDate} onChange={(e) => patch({ issueDate: e.target.value })} style={editInput} /></LabeledField>
+            <LabeledField label="Due date"><input type="date" value={doc.dueDate} onChange={(e) => patch({ dueDate: e.target.value })} style={editInput} /></LabeledField>
+          </div>
+
+          <LineBand title="Equipment" lines={doc.lines} picker={equipmentPicker} onAdd={(p) => bandHelpers.add("lines", p)} onPatch={(id, p) => bandHelpers.patch("lines", id, p)} onRemove={(id) => bandHelpers.remove("lines", id)} />
+          <LineBand title="Labor / Personnel" lines={doc.laborLines} picker={laborPicker} onAdd={(p) => bandHelpers.add("laborLines", p)} onPatch={(id, p) => bandHelpers.patch("laborLines", id, p)} onRemove={(id) => bandHelpers.remove("laborLines", id)} />
+
+          {/* Discounts + deposit */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            <LabeledField label="Special discount (%)"><input type="number" min={0} max={100} value={Math.round(doc.specialDiscountRate * 100)} onChange={(e) => patch({ specialDiscountRate: Math.min(100, Math.max(0, Number(e.target.value) || 0)) / 100 })} style={editInput} /></LabeledField>
+            <LabeledField label="Loyalty discount (%)"><input type="number" min={0} max={100} value={Math.round(doc.loyaltyDiscountRate * 100)} onChange={(e) => pct("loyaltyDiscountRate")(e.target.value)} style={editInput} /></LabeledField>
+            <LabeledField label="PDC discount (%)"><input type="number" min={0} max={100} value={Math.round(doc.pdcDiscountRate * 100)} onChange={(e) => pct("pdcDiscountRate")(e.target.value)} style={editInput} /></LabeledField>
+            <LabeledField label="Prompt-pay discount (%)"><input type="number" min={0} max={100} value={Math.round(doc.promptPayDiscountRate * 100)} onChange={(e) => pct("promptPayDiscountRate")(e.target.value)} style={editInput} /></LabeledField>
+            <LabeledField label="Required deposit (₱)"><input type="number" min={0} value={doc.depositRequired} onChange={(e) => patch({ depositRequired: Math.max(0, Number(e.target.value) || 0) })} style={editInput} /></LabeledField>
+            <LabeledField label="Late interest (%/mo)"><input type="number" min={0} value={Math.round(doc.lateInterestMonthlyRate * 100)} onChange={(e) => patch({ lateInterestMonthlyRate: Math.max(0, Number(e.target.value) || 0) / 100 })} style={editInput} /></LabeledField>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+            <input type="checkbox" checked={doc.applySurcharge} onChange={(e) => patch({ applySurcharge: e.target.checked })} /> Out-of-town surcharge ({Math.round(doc.surchargeRate * 100)}%)
+          </label>
+
+          {/* Payment channels */}
+          <div>
+            <span style={{ fontWeight: 800, fontSize: 13 }}>Accepted payment channels</span>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+              {ALL_CHANNELS.map((c) => (
+                <label key={c} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, background: "#fffdf8", border: "1px solid rgba(17,17,17,0.14)", borderRadius: 8, padding: "6px 9px" }}>
+                  <input type="checkbox" checked={doc.acceptedChannels.includes(c)} onChange={() => toggleChannel(c)} /> {CHANNEL_LABELS[c]}
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
+              <LabeledField label="PDC dated on/before"><input type="date" value={doc.pdcDueDate} onChange={(e) => patch({ pdcDueDate: e.target.value })} style={editInput} /></LabeledField>
+              <LabeledField label="Online payment link (PayMongo)"><input value={doc.payMongoLink} onChange={(e) => patch({ payMongoLink: e.target.value })} placeholder="https://pm.link/…" style={editInput} /></LabeledField>
+            </div>
+          </div>
+
+          {/* Incident ledger */}
+          <LedgerRows
+            title="Incidents / charges (damage, loss, late) — deposit absorbs these first"
+            addLabel="Add incident"
+            onAdd={addIncident}
+            cols="1fr 110px 110px 26px"
+            header={["Description", "Date", "Amount", ""]}
+            rows={doc.incidents.map((i) => ({ id: i.id, cells: [
+              <input key="d" value={i.description} onChange={(e) => patchIncident(i.id, { description: e.target.value })} placeholder="e.g. cracked ND filter" style={editInput} />,
+              <input key="t" type="date" value={i.date} onChange={(e) => patchIncident(i.id, { date: e.target.value })} style={editInput} />,
+              <input key="a" type="number" min={0} value={i.amount} onChange={(e) => patchIncident(i.id, { amount: Math.max(0, Number(e.target.value) || 0) })} style={{ ...editInput, textAlign: "right" }} />,
+            ], onRemove: () => removeIncident(i.id) }))}
+          />
+
+          {/* Payments ledger */}
+          <LedgerRows
+            title="Payments received (deposit + balance)"
+            addLabel="Add payment"
+            extraAdd={{ label: "Add deposit", onClick: () => addPayment("deposit") }}
+            onAdd={() => addPayment("payment")}
+            cols="92px 1fr 110px 1fr 26px"
+            header={["Kind", "Channel", "Date · Amount", "Reference", ""]}
+            rows={doc.payments.map((p) => ({ id: p.id, cells: [
+              <select key="k" value={p.kind} onChange={(e) => patchPayment(p.id, { kind: e.target.value as PaymentEntry["kind"] })} style={{ ...editInput, fontSize: 12 }}><option value="deposit">Deposit</option><option value="payment">Payment</option></select>,
+              <select key="c" value={p.channel} onChange={(e) => patchPayment(p.id, { channel: e.target.value as PaymentChannel })} style={{ ...editInput, fontSize: 12 }}>{ALL_CHANNELS.map((c) => <option key={c} value={c}>{CHANNEL_LABELS[c]}</option>)}</select>,
+              <div key="da" style={{ display: "grid", gap: 4 }}><input type="date" value={p.date} onChange={(e) => patchPayment(p.id, { date: e.target.value })} style={editInput} /><input type="number" min={0} value={p.amount} onChange={(e) => patchPayment(p.id, { amount: Math.max(0, Number(e.target.value) || 0) })} style={{ ...editInput, textAlign: "right" }} /></div>,
+              <input key="r" value={p.reference} onChange={(e) => patchPayment(p.id, { reference: e.target.value })} placeholder="cheque #, ref no." style={editInput} />,
+            ], onRemove: () => removePayment(p.id) }))}
+          />
+
+          <LabeledField label="Payment terms"><textarea value={doc.paymentTerms} onChange={(e) => patch({ paymentTerms: e.target.value })} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
+
+          {/* Money breakdown */}
+          <div style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.1)", borderRadius: 12, padding: 12, fontSize: 13, display: "grid", gap: 5 }}>
+            <Row label="Rental total" value={formatPHP(money.rental)} />
+            {money.loyaltyDiscount > 0 && <Row label={`Loyalty discount (${Math.round(doc.loyaltyDiscountRate * 100)}%)`} value={"- " + formatPHP(money.loyaltyDiscount)} />}
+            {money.pdcDiscount > 0 && <Row label={`PDC discount (${Math.round(doc.pdcDiscountRate * 100)}%)`} value={"- " + formatPHP(money.pdcDiscount)} />}
+            {money.promptDiscount > 0 && <Row label={`Prompt-pay discount (${Math.round(doc.promptPayDiscountRate * 100)}%)`} value={"- " + formatPHP(money.promptDiscount)} />}
+            {money.discountsTotal > 0 && <Row label="Net rental" value={formatPHP(money.net)} />}
+            {money.incidentsTotal > 0 && <Row label="Incidents / charges" value={"+ " + formatPHP(money.incidentsTotal)} />}
+            {doc.depositRequired > 0 && <Row label={`Required deposit${money.depositReceived >= doc.depositRequired ? " ✓ received" : ` (received ${formatPHP(money.depositReceived)})`}`} value={formatPHP(doc.depositRequired)} />}
+            {money.paid > 0 && <Row label="Payments received" value={"- " + formatPHP(money.paid)} />}
+            <div style={{ height: 1, background: "rgba(17,17,17,0.12)", margin: "4px 0" }} />
+            {money.interest > 0 && <Row label="Amount payable" value={formatPHP(money.principal)} />}
+            {money.interest > 0 && <Row label={`Late interest (${Math.round(doc.lateInterestMonthlyRate * 100)}%/mo · ${money.daysOverdue}d overdue)`} value={"+ " + formatPHP(money.interest)} />}
+            <Row label={`BALANCE DUE · ${money.status.toUpperCase()}`} value={formatPHP(money.balance)} bold />
+          </div>
+
+          <LabeledField label="Message to client (optional, included in the email body)"><textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
+          {notice && <p style={{ color: "#15130f", background: "rgba(245,197,24,0.22)", padding: 10, borderRadius: 10, fontSize: 13, margin: 0 }}>{notice}</p>}
+          <DocActions busy={busy} onPreview={preview} onSave={() => save(() => onSaved(request.id))} onSend={() => { if (confirm(`Send invoice ${doc.number} to ${doc.client.email}?`)) void send(message, () => onSent(request.id), () => onSaved(request.id)); }} />
+        </div>
+      )}
+    </DocModal>
+  );
+}
+
+// Small add/remove ledger table used for incidents & payments in the invoice editor.
+function LedgerRows({ title, addLabel, extraAdd, onAdd, cols, header, rows }: {
+  title: string;
+  addLabel: string;
+  extraAdd?: { label: string; onClick: () => void };
+  onAdd: () => void;
+  cols: string;
+  header: string[];
+  rows: { id: string; cells: ReactNode[]; onRemove: () => void }[];
+}) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontWeight: 800, fontSize: 13 }}>{title}</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          {extraAdd && <button onClick={extraAdd.onClick} style={{ ...tinyBtn, display: "inline-flex", alignItems: "center", gap: 4 }}><Plus size={13} /> {extraAdd.label}</button>}
+          <button onClick={onAdd} style={{ ...tinyBtn, display: "inline-flex", alignItems: "center", gap: 4 }}><Plus size={13} /> {addLabel}</button>
+        </div>
+      </div>
+      {rows.length === 0 ? (
+        <p style={{ color: "#9a948a", fontSize: 12, margin: "2px 2px 0" }}>None.</p>
+      ) : (
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: cols, gap: 6, fontSize: 11, color: "#6c675f", fontWeight: 700, padding: "0 2px" }}>
+            {header.map((h, i) => <span key={i} style={{ textAlign: i === header.length - 2 ? "right" : "left" }}>{h}</span>)}
+          </div>
+          {rows.map((r) => (
+            <div key={r.id} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, alignItems: "center" }}>
+              {r.cells}
+              <button onClick={r.onRemove} style={{ ...tinyBtn, padding: 4, color: "#c0392b" }} aria-label="Remove"><Trash2 size={13} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Rate-card pickers reused by the contract & invoice line bands.
+const equipmentPicker = { label: "+ Add from rate card…", options: RATE_CARD.map((r) => ({ value: r.key, label: `${r.name} — ${formatPHP(r.dailyRate)}`, description: r.name, unitRate: r.dailyRate })) };
+const laborPicker = { label: "+ Add crew…", options: PERSONNEL_RATES.map((r) => ({ value: r.key, label: `${r.name} — ${formatPHP(r.dailyRate)}`, description: r.name, unitRate: r.dailyRate })) };
+
+// Line-band mutation helpers bound to a doc with { lines, laborLines } bands.
+function useLineBandHelpers(setDoc: (fn: (d: { lines: QuotationLine[]; laborLines: QuotationLine[] } | null) => typeof d) => void) {
+  type Band = "lines" | "laborLines";
+  const newId = (n: number) => `ln-${Date.now().toString(36)}-${n}`;
+  const patch = (band: Band, id: string, p: Partial<QuotationLine>) =>
+    setDoc((d) => (d ? { ...d, [band]: d[band].map((l) => (l.id === id ? { ...l, ...p } : l)) } : d));
+  const add = (band: Band, preset?: Partial<QuotationLine>) =>
+    setDoc((d) => {
+      if (!d) return d;
+      const days = d.lines[0]?.days ?? 1;
+      const line: QuotationLine = { id: newId(d[band].length), description: "", qty: 1, days, unitRate: 0, ...preset };
+      return { ...d, [band]: [...d[band], line] };
+    });
+  const remove = (band: Band, id: string) => setDoc((d) => (d ? { ...d, [band]: d[band].filter((l) => l.id !== id) } : d));
+  return { patch, add, remove };
+}
+
+// Pointer-driven signature canvas. Emits a PNG data URL on each stroke end.
+function SignaturePad({ value, onChange }: { value: string | null; onChange: (dataUrl: string | null) => void }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  const drawing = useRef(false);
+
+  // Paint a saved signature back onto the canvas when the editor opens.
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (value && value.startsWith("data:image")) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.src = value;
+    }
+    // Only repaint on mount / when an externally-set value appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pos = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return { x: ((e.clientX - rect.left) / rect.width) * e.currentTarget.width, y: ((e.clientY - rect.top) / rect.height) * e.currentTarget.height };
+  };
+
+  const start = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const ctx = ref.current?.getContext("2d");
+    if (!ctx) return;
+    drawing.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const { x, y } = pos(e);
+    ctx.strokeStyle = "#15130f";
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+  const move = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current) return;
+    const ctx = ref.current?.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = pos(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+  const end = () => {
+    if (!drawing.current) return;
+    drawing.current = false;
+    const canvas = ref.current;
+    if (canvas) onChange(canvas.toDataURL("image/png"));
+  };
+  const clear = () => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    onChange(null);
+  };
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <canvas
+        ref={ref}
+        width={440}
+        height={120}
+        onPointerDown={start}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerLeave={end}
+        style={{ width: "100%", maxWidth: 440, height: 120, background: "#fffdf8", border: "1px dashed rgba(17,17,17,0.3)", borderRadius: 10, touchAction: "none", cursor: "crosshair", display: "block" }}
+      />
+      <button onClick={clear} style={{ ...tinyBtn, marginTop: 6 }}>Clear signature</button>
+    </div>
+  );
+}
+
+const editInput: CSSProperties = {
+  background: "#fffdf8",
+  color: "#15130f",
+  border: "1px solid rgba(17,17,17,0.18)",
+  borderRadius: 9,
+  padding: "9px 11px",
+  outline: "none",
+  fontSize: 13,
+  width: "100%",
+  fontFamily: "inherit",
+};
 
 // ─── Inbox ───────────────────────────────────────────────────────────────────
 // Mirrors the hello@vissionlink.com Zoho mailbox: lists recent mail, opens a

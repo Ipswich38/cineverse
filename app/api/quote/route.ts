@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
+import { generateDraft } from "@/lib/quotation";
 
 export const runtime = "nodejs";
 
@@ -16,8 +17,9 @@ export async function POST(req: NextRequest) {
   }
 
   const str = (v: unknown, n: number) => (typeof v === "string" ? v.slice(0, n) : "");
-  const row = {
-    id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  const id = `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const base = {
+    id,
     name: str(body.name, 200),
     company: str(body.company, 200),
     email: str(body.email, 200),
@@ -27,8 +29,16 @@ export async function POST(req: NextRequest) {
     date_to: body.dateTo || null,
     notes: str(body.notes, 4000),
     items: body.items,
+  };
+  // Auto-generate the editable draft quotation from the BMR rate card. Never
+  // auto-sent — the provider reviews and sends from /admin.
+  const draft = generateDraft(base);
+  const row = {
+    ...base,
     est_total: Number(body.estTotal) || 0,
     status: "pending",
+    quotation: draft,
+    quotation_status: "draft",
   };
 
   const db = supabaseAdmin()!;
