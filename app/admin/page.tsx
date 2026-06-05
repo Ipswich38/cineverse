@@ -1676,6 +1676,85 @@ function MonitoringPanel({ authCode }: { authCode: string }) {
   );
 }
 
+// ─── Auto-assign physical units to a contract ─────────────────────────────────
+type PlanUnit = { id: string; name: string; serial: string | null };
+type PlanLine = { lineId: string; description: string; qty: number; shortfall: number; units: PlanUnit[] };
+type AssignPlan = { lines: PlanLine[]; totalRequested: number; totalAssigned: number; totalShortfall: number; committed?: boolean };
+
+function UnitAssignPanel({ requestId, authCode }: { requestId: string; authCode: string }) {
+  const [plan, setPlan] = useState<AssignPlan | null>(null);
+  const [committed, setCommitted] = useState(false);
+  const [busy, setBusy] = useState<null | "preview" | "apply" | "release">(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const call = async (method: "GET" | "POST" | "DELETE", kind: "preview" | "apply" | "release") => {
+    setBusy(kind); setError(null);
+    try {
+      const res = await fetch(`/api/admin/units/assign?requestId=${encodeURIComponent(requestId)}`, {
+        method, headers: { Authorization: `Bearer ${authCode}`, "Content-Type": "application/json" },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(json.error || "Could not reach the assignment service."); return; }
+      if (method === "DELETE") { setPlan(null); setCommitted(false); return; }
+      setPlan(json as AssignPlan);
+      setCommitted(Boolean((json as AssignPlan).committed));
+    } finally { setBusy(null); }
+  };
+
+  return (
+    <div className="surface" style={{ padding: 14, border: "1px solid rgba(17,17,17,0.1)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Boxes size={16} />
+          <strong style={{ fontFamily: '"Jost", sans-serif' }}>Equipment units</strong>
+        </div>
+        <button onClick={() => call("GET", "preview")} disabled={busy !== null} style={{ ...miniBtn, opacity: busy ? 0.6 : 1 }}>
+          {busy === "preview" ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Match available units
+        </button>
+      </div>
+      <p style={{ color: "#6c675f", fontSize: 12, margin: "6px 0 0" }}>Matches each equipment line to free units in inventory. Save the contract first — matching uses the saved equipment lines.</p>
+      {error && <p style={{ color: "#c0392b", fontSize: 13, margin: "8px 0 0" }}>{error}</p>}
+
+      {plan && (
+        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+          {plan.lines.map((l) => (
+            <div key={l.lineId} style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.12)", borderRadius: 10, padding: "8px 10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>{l.description || "—"}</span>
+                <span style={{ fontSize: 12, color: l.shortfall > 0 ? "#b06a00" : "#2f6b46", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {l.units.length}/{l.qty} matched{l.shortfall > 0 ? ` · ${l.shortfall} short` : ""}
+                </span>
+              </div>
+              {l.units.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                  {l.units.map((u) => (
+                    <span key={u.id} style={{ fontSize: 11, fontWeight: 700, background: "rgba(47,107,70,0.12)", color: "#2f6b46", borderRadius: 999, padding: "2px 8px" }}>{u.name}</span>
+                  ))}
+                </div>
+              )}
+              {l.shortfall > 0 && <div style={{ fontSize: 11, color: "#b06a00", marginTop: 5 }}>Not enough matching units in stock — register more under Equipment Monitoring or adjust the line.</div>}
+            </div>
+          ))}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", paddingTop: 4 }}>
+            <span style={{ fontSize: 12, color: "#6c675f" }}>
+              {committed ? <span style={{ color: "#2f6b46", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><PackageCheck size={13} /> Reserved {plan.totalAssigned} unit{plan.totalAssigned === 1 ? "" : "s"}.</span>
+                : `${plan.totalAssigned} of ${plan.totalRequested} units matched${plan.totalShortfall > 0 ? ` · ${plan.totalShortfall} short` : ""}.`}
+            </span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button onClick={() => call("DELETE", "release")} disabled={busy !== null} style={{ ...tinyBtn, color: "#c0392b" }}>
+                {busy === "release" ? <Loader2 size={13} className="spin" /> : <Trash2 size={13} />} Release units
+              </button>
+              <button onClick={() => call("POST", "apply")} disabled={busy !== null || plan.totalAssigned === 0} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy || plan.totalAssigned === 0 ? 0.6 : 1 }}>
+                {busy === "apply" ? <Loader2 size={14} className="spin" /> : <PackageCheck size={14} />} {committed ? "Re-apply" : "Reserve these units"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Contract editor ──────────────────────────────────────────────────────────
 function ContractEditor({ request, authCode, onClose, onSent, onSaved }: { request: QuoteRequest; authCode: string; onClose: () => void; onSent: (id: string) => void; onSaved: (id: string) => void }) {
   const normalize = useCallback((d: ContractDoc) => ({ ...d, laborLines: d.laborLines ?? [] }), []);
@@ -1702,6 +1781,8 @@ function ContractEditor({ request, authCode, onClose, onSent, onSaved }: { reque
 
           <LineBand title="Equipment" lines={doc.lines} picker={equipmentPicker} onAdd={(p) => bandHelpers.add("lines", p)} onPatch={(id, p) => bandHelpers.patch("lines", id, p)} onRemove={(id) => bandHelpers.remove("lines", id)} />
           <LineBand title="Labor / Personnel" lines={doc.laborLines} picker={laborPicker} onAdd={(p) => bandHelpers.add("laborLines", p)} onPatch={(id, p) => bandHelpers.patch("laborLines", id, p)} onRemove={(id) => bandHelpers.remove("laborLines", id)} />
+
+          <UnitAssignPanel requestId={request.id} authCode={authCode} />
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div style={{ display: "grid", gap: 8 }}>
