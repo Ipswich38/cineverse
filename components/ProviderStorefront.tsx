@@ -147,10 +147,10 @@ const CSS = `
 /* ── Full-bleed brand banner ────────────────────────────────────────────── */
 .pstore-banner {
   color: #fffdf8;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-  padding-left: calc(50vw - 50%);
-  padding-right: calc(50vw - 50%);
+  margin-left: calc(50% - 50vw / var(--ui-scale));
+  margin-right: calc(50% - 50vw / var(--ui-scale));
+  padding-left: calc(50vw / var(--ui-scale) - 50%);
+  padding-right: calc(50vw / var(--ui-scale) - 50%);
   border-bottom: 1px solid rgba(255,255,255,.10);
 }
 .pstore-banner-inner {

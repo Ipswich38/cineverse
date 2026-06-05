@@ -190,8 +190,9 @@ export default function HomePage() {
 
 const CSS = `
 .landing-page .hero-video-section {
-  margin: 0 calc(50% - 50vw);
-  min-height: clamp(520px, calc(100vh - 132px), 720px);
+  /* Full-bleed; 50vw divided by --ui-scale to offset the body zoom (see globals). */
+  margin: 0 calc(50% - 50vw / var(--ui-scale));
+  min-height: clamp(520px, calc(100vh / var(--ui-scale) - 132px), 720px);
   padding: 0;
 }
 .landing-page .hero-panel {
@@ -228,7 +229,7 @@ const CSS = `
 }
 .landing-item-carousel {
   position: relative;
-  margin: 0 calc(50% - 50vw);
+  margin: 0 calc(50% - 50vw / var(--ui-scale));
   background: #fffdf8;
   border-top: 1px solid rgba(17,17,17,0.06);
   border-bottom: 1px solid rgba(17,17,17,0.06);

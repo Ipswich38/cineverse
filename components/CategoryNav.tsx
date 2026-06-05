@@ -81,7 +81,7 @@ const CSS = `
 /* Full-bleed: the black category strip spans the full viewport width while its
    links stay aligned to the centered container. Negative side margins pull the
    wrapper out to the viewport edges; equal padding pushes the content back in. */
-.desktop-category-row { background:#11100e; margin-top:9px; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding-left:calc(50vw - 50%); padding-right:calc(50vw - 50%); }
+.desktop-category-row { background:#11100e; margin-top:9px; margin-left:calc(50% - 50vw / var(--ui-scale)); margin-right:calc(50% - 50vw / var(--ui-scale)); padding-left:calc(50vw / var(--ui-scale) - 50%); padding-right:calc(50vw / var(--ui-scale) - 50%); }
 .desktop-category-row .cat-bar { background:transparent; border:0; box-shadow:none; margin-top:0; }
 
 .cat-bar { display:flex; flex-wrap:wrap; align-items:center; position:relative; row-gap:0; margin-top:9px; background:#11100e; border:1px solid rgba(255,255,255,.12); box-shadow:0 10px 24px rgba(17,17,17,.18); }

@@ -71,6 +71,10 @@
   --amber-strong: #d8a800;
   --film: #1f1f1f;
   --shadow: none;
+  /* Global UI scale (see body zoom). Full-bleed elements must divide their 50vw
+     reach by this factor — under zoom, 100vw is scaled down too, so an
+     uncompensated full-bleed renders narrower than the viewport. */
+  --ui-scale: 0.9;
 }
 
 * {
@@ -88,8 +92,10 @@ body {
   color: var(--text);
   font-family: "Montserrat", sans-serif;
   /* Global UI scale: render the whole site 10% smaller. zoom (unlike transform)
-     keeps layout flow intact and plays well with the sticky header. */
-  zoom: 0.9;
+     keeps layout flow intact and plays well with the sticky header. Full-bleed
+     elements compensate with `50vw / var(--ui-scale)` so they still reach the
+     viewport edges. */
+  zoom: var(--ui-scale);
 }
 
 /* Headings use Jost — matches cineforce.vissionlink.com typography. */
