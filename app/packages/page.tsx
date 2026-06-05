@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { Check, Clock, Package, Send } from "lucide-react";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import { PackageQuoteButton } from "@/components/PackageQuoteModal";
-import FeaturedProvider from "@/components/FeaturedProvider";
 import { PACKAGE_OFFERS, packagesForItemSlug } from "@/lib/package-offers";
 
 export default function PackagesPage() {
@@ -26,10 +25,6 @@ function PackagesContent() {
   return (
     <div className="app-container packages-page">
       <style>{CSS}</style>
-
-      <div style={{ marginBottom: 26 }}>
-        <FeaturedProvider />
-      </div>
 
       <header className="packages-hero">
         <div className="packages-hero-icon"><Package size={22} /></div>
