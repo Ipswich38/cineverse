@@ -68,3 +68,57 @@ export async function sendContactEmail(input: ContactInput): Promise<{ ok: boole
     return { ok: false, error: err instanceof Error ? err.message : 'send failed' }
   }
 }
+
+export interface QuoteRequestInput {
+  name: string
+  email: string
+  phone?: string
+  company?: string
+  project?: string
+  dateFrom?: string
+  dateTo?: string
+  notes?: string
+  providerName: string
+  packageName: string
+  priceRange?: string
+}
+
+// Quotation requests from the tabbed /contact form. Same Zoho mailbox as the
+// contact form (hello@vissionlink.com), but a quote-specific subject/body that
+// leads with the chosen provider and package.
+export async function sendQuoteRequestEmail(input: QuoteRequestInput): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  const to = process.env.CONTACT_TO || process.env.ZOHO_SMTP_USER || 'hello@vissionlink.com'
+  const subject = `Quotation request — ${input.packageName} (${input.providerName})`
+  const dates =
+    input.dateFrom || input.dateTo ? `${input.dateFrom || '—'} → ${input.dateTo || '—'}` : ''
+  const text =
+    `New quotation request from the VissionLink website\n\n` +
+    `Provider: ${input.providerName}\n` +
+    `Package:  ${input.packageName}${input.priceRange ? ` (${input.priceRange})` : ''}\n\n` +
+    `Name:     ${input.name}\n` +
+    `Email:    ${input.email}\n` +
+    (input.phone ? `Phone:    ${input.phone}\n` : '') +
+    (input.company ? `Company:  ${input.company}\n` : '') +
+    (input.project ? `Project:  ${input.project}\n` : '') +
+    (dates ? `Dates:    ${dates}\n` : '') +
+    (input.notes ? `\nNotes:\n${input.notes}\n` : '')
+
+  if (!hasContactMailConfig()) {
+    console.log('[quote:skipped] SMTP not configured. Request:\n' + text)
+    return { ok: true, skipped: true }
+  }
+
+  try {
+    await transporter().sendMail({
+      from: `Vissionlink Website <${process.env.ZOHO_SMTP_USER}>`,
+      to,
+      replyTo: `${input.name} <${input.email}>`,
+      subject,
+      text,
+    })
+    return { ok: true }
+  } catch (err) {
+    console.error('[quote:error]', err)
+    return { ok: false, error: err instanceof Error ? err.message : 'send failed' }
+  }
+}
