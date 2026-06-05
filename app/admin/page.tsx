@@ -2,7 +2,7 @@
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CornerUpLeft, ExternalLink, Eye, FileText, Loader2, LockKeyhole, LogOut, Mail, PackageCheck, Plus, RefreshCw, Save, Send, Shield, Trash2, Users, X } from "lucide-react";
+import { Boxes, Calculator, CornerUpLeft, ExternalLink, Eye, FileText, LayoutDashboard, Loader2, LockKeyhole, LogOut, Mail, MapPin, PackageCheck, Plus, QrCode, Radio, Receipt, RefreshCw, Save, ScrollText, Send, Shield, Trash2, Users, X } from "lucide-react";
 import { useStore } from "../providers";
 import { currency, slugify, type EquipmentItem } from "@/lib/catalog";
 import { CATEGORY_FLAT, categoryName, normalizeCategory } from "@/lib/categories";
@@ -14,6 +14,57 @@ import { type ClientPolicy } from "@/lib/clients";
 import { PERSONNEL_RATES, RATE_CARD } from "@/lib/bmr-rate-card";
 import { PACKAGE_OFFERS } from "@/lib/package-offers";
 
+// Admin mini-apps shown in the sidebar. ("ops"/"proposals" remain as views but
+// are no longer surfaced — equipment-listing editing was retired from admin.)
+type AdminView = "dashboard" | "inbox" | "quotations" | "contracts" | "invoicing" | "clients" | "accounting" | "inventory" | "monitoring" | "ops" | "proposals";
+const ADMIN_SECTIONS: { key: AdminView; label: string; icon: ReactNode }[] = [
+  { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={17} /> },
+  { key: "inbox", label: "Inbox", icon: <Mail size={17} /> },
+  { key: "quotations", label: "E-Quotations", icon: <FileText size={17} /> },
+  { key: "contracts", label: "E-Contracts", icon: <ScrollText size={17} /> },
+  { key: "invoicing", label: "Invoicing", icon: <Receipt size={17} /> },
+  { key: "clients", label: "Clients", icon: <Users size={17} /> },
+  { key: "accounting", label: "Accounting", icon: <Calculator size={17} /> },
+  { key: "inventory", label: "Inventory", icon: <Boxes size={17} /> },
+  { key: "monitoring", label: "Equipment Monitoring", icon: <Radio size={17} /> },
+];
+
+function AdminSidebar({ view, setView, onLogout }: { view: AdminView; setView: (v: AdminView) => void; onLogout: () => void }) {
+  return (
+    <aside style={{ width: 232, flexShrink: 0, background: "#15130f", color: "#fffdf8", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100dvh" }}>
+      <div style={{ padding: "20px 18px 14px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ fontFamily: '"Jost", sans-serif', fontSize: 20, fontWeight: 800, color: "#ffcc00" }}>BMR Admin</div>
+        <div style={{ fontSize: 11, color: "rgba(255,253,248,0.6)", marginTop: 2 }}>Operations console</div>
+      </div>
+      <nav style={{ flex: 1, overflowY: "auto", padding: "10px 10px" }}>
+        {ADMIN_SECTIONS.map((s) => {
+          const active = view === s.key;
+          return (
+            <button
+              key={s.key}
+              onClick={() => setView(s.key)}
+              style={{
+                width: "100%", textAlign: "left", border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 2,
+                borderRadius: 10, fontWeight: 700, fontSize: 14,
+                background: active ? "#ffcc00" : "transparent",
+                color: active ? "#15130f" : "rgba(255,253,248,0.82)",
+              }}
+            >
+              {s.icon}{s.label}
+            </button>
+          );
+        })}
+      </nav>
+      <div style={{ padding: 12, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+        <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, justifyContent: "center", background: "rgba(255,255,255,0.08)", color: "#fffdf8", border: "none", borderRadius: 10, padding: "10px", fontWeight: 700, cursor: "pointer" }}>
+          <LogOut size={15} /> Log out
+        </button>
+      </div>
+    </aside>
+  );
+}
+
 export default function AdminPage() {
   const { catalog, refreshCatalog } = useStore();
   const [code, setCode] = useState("");
@@ -21,7 +72,7 @@ export default function AdminPage() {
   const [unlocking, setUnlocking] = useState(false);
   const [unlockErr, setUnlockErr] = useState("");
   const [editing, setEditing] = useState<EquipmentItem | null>(null);
-  const [view, setView] = useState<"ops" | "quotes" | "clients" | "inbox" | "proposals">("ops");
+  const [view, setView] = useState<AdminView>("dashboard");
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
@@ -127,40 +178,28 @@ export default function AdminPage() {
     );
   }
 
+  const section = ADMIN_SECTIONS.find((s) => s.key === view);
+
   return (
-    <div className="app-container" style={{ padding: "28px 0 76px" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 18, alignItems: "center", flexWrap: "wrap" }}>
-        {([["ops", "Operations"], ["quotes", "Quotes"], ["clients", "Clients"], ["proposals", "Proposals"], ["inbox", "Inbox"]] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setView(key)}
-            style={{
-              border: "none",
-              borderRadius: 999,
-              padding: "9px 16px",
-              fontWeight: 800,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              background: view === key ? "#15130f" : "#f0ece3",
-              color: view === key ? "#fffdf8" : "#15130f",
-            }}
-          >
-            {key === "inbox" ? <Mail size={15} /> : key === "quotes" ? <PackageCheck size={15} /> : key === "clients" ? <Users size={15} /> : key === "proposals" ? <FileText size={15} /> : <Shield size={15} />}
-            {label}
-          </button>
-        ))}
-        <button onClick={logout} style={{ ...miniBtn, marginLeft: "auto" }} title="Log out"><LogOut size={14} /> Log out</button>
-      </div>
-
-      {view === "inbox" && <InboxPanel authCode={code} />}
-
-      {view === "clients" && <ClientsPanel authCode={code} />}
-
-      {view === "quotes" && <QuotesPanel authCode={code} />}
-
-      {view === "proposals" && <ProposalBuilder catalog={catalog} />}
+    <div style={{ display: "flex", minHeight: "100dvh", background: "#efece4", color: "#15130f" }}>
+      <AdminSidebar view={view} setView={setView} onLogout={logout} />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px clamp(14px,3vw,28px)", background: "#fffdf8", borderBottom: "1px solid rgba(17,17,17,0.1)", position: "sticky", top: 0, zIndex: 10 }}>
+          {section?.icon}
+          <h1 style={{ fontFamily: '"Jost", sans-serif', fontSize: 20, margin: 0 }}>{section?.label ?? "Admin"}</h1>
+          <span style={{ marginLeft: "auto", fontSize: 12, color: "#6c675f" }}>BMR Operations · VissionLink</span>
+        </header>
+        <main style={{ padding: "20px clamp(12px,3vw,28px) 64px", flex: 1, minWidth: 0 }}>
+          {view === "dashboard" && <DashboardPanel authCode={code} listingCount={approvedCount} setView={setView} />}
+          {view === "inbox" && <InboxPanel authCode={code} />}
+          {view === "quotations" && <QuotesPanel authCode={code} focus="quotations" />}
+          {view === "contracts" && <QuotesPanel authCode={code} focus="contracts" />}
+          {view === "invoicing" && <QuotesPanel authCode={code} focus="invoicing" />}
+          {view === "clients" && <ClientsPanel authCode={code} />}
+          {view === "accounting" && <AccountingPanel authCode={code} />}
+          {view === "inventory" && <InventoryPanel authCode={code} />}
+          {view === "monitoring" && <MonitoringPanel authCode={code} />}
+          {view === "proposals" && <ProposalBuilder catalog={catalog} />}
 
       {view === "ops" && (
       <>
@@ -221,6 +260,8 @@ export default function AdminPage() {
       </div>
       </>
       )}
+        </main>
+      </div>
     </div>
   );
 }
@@ -487,7 +528,7 @@ type QuoteRequest = {
   channel?: "web" | "direct" | null;
 };
 
-function QuotesPanel({ authCode }: { authCode: string }) {
+function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; focus?: "quotations" | "contracts" | "invoicing" }) {
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -556,17 +597,27 @@ function QuotesPanel({ authCode }: { authCode: string }) {
     }
   };
 
+  // E-Contracts / Invoicing only list rentals the client has agreed to.
+  const visible = focus === "quotations" ? quotes : quotes.filter((q) => q.quotation_agreed_at);
+  const COPY = {
+    quotations: { title: "E-Quotations", sub: "Web requests + quotations you start for call / walk-in clients.", empty: "No quote requests yet." },
+    contracts: { title: "E-Contracts", sub: "Agreed quotations ready to turn into a signed rental agreement.", empty: "No agreed quotations yet — mark a quotation agreed under E-Quotations." },
+    invoicing: { title: "Invoicing", sub: "Agreed rentals — issue invoices, record deposits & payments, track balances.", empty: "No agreed quotations yet — mark a quotation agreed under E-Quotations." },
+  }[focus];
+
   return (
     <div className="surface" style={{ padding: 18, border: "1px solid rgba(17,17,17,0.1)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <div>
-          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>Package quote requests</h2>
-          <p style={{ margin: "2px 0 0", color: "#6c675f", fontSize: 13 }}>Web requests + quotations you start for call / walk-in clients.</p>
+          <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, margin: 0 }}>{COPY.title}</h2>
+          <p style={{ margin: "2px 0 0", color: "#6c675f", fontSize: 13 }}>{COPY.sub}</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => setCreating(true)} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}>
-            <Plus size={14} /> New quotation
-          </button>
+          {focus === "quotations" && (
+            <button onClick={() => setCreating(true)} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}>
+              <Plus size={14} /> New quotation
+            </button>
+          )}
           <button onClick={loadQuotes} disabled={loading} style={{ ...miniBtn, opacity: loading ? 0.6 : 1 }}>
             {loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Refresh
           </button>
@@ -574,10 +625,10 @@ function QuotesPanel({ authCode }: { authCode: string }) {
       </div>
 
       {error && <p style={{ color: "#c0392b", fontSize: 13 }}>{error}</p>}
-      {!loading && !error && quotes.length === 0 && <p style={{ color: "#6c675f", fontSize: 13 }}>No package quote requests yet.</p>}
+      {!loading && !error && visible.length === 0 && <p style={{ color: "#6c675f", fontSize: 13 }}>{COPY.empty}</p>}
 
       <div style={{ display: "grid", gap: 12 }}>
-        {quotes.map((q) => {
+        {visible.map((q) => {
           const total = Number(q.est_total) || 0;
           return (
             <article key={q.id} style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.12)", padding: 14 }}>
@@ -1320,6 +1371,306 @@ function ClientsPanel({ authCode }: { authCode: string }) {
             </div>
           </article>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+type RentalRow = QuoteRequest & { invoice?: InvoiceDoc | null };
+
+function useAuthList<T>(url: string, authCode: string): { data: T[]; loading: boolean; error: string; reload: () => void } {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${authCode}` } });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Could not load.");
+      setData(Array.isArray(j) ? j : []);
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not load."); }
+    finally { setLoading(false); }
+  }, [url, authCode]);
+  useEffect(() => { load(); }, [load]);
+  return { data, loading, error, reload: load };
+}
+
+function DashboardPanel({ authCode, listingCount, setView }: { authCode: string; listingCount: number; setView: (v: AdminView) => void }) {
+  const { data: rentals } = useAuthList<RentalRow>("/api/admin/quotes", authCode);
+  const { data: clients } = useAuthList<{ email: string }>("/api/admin/clients", authCode);
+
+  const m = useMemo(() => {
+    let revenue = 0, receivables = 0, deposits = 0, invoicesOpen = 0;
+    for (const r of rentals) {
+      if (!r.invoice) continue;
+      const money = computeInvoiceMoney(r.invoice);
+      revenue += money.paid; receivables += money.balance; deposits += money.depositReceived;
+      if (money.balance > 0.01) invoicesOpen++;
+    }
+    return {
+      openRequests: rentals.filter((r) => r.status === "pending").length,
+      quotationsSent: rentals.filter((r) => r.quotation_status === "sent").length,
+      contracts: rentals.filter((r) => r.contract_status && r.contract_status !== "none").length,
+      invoicesOpen, revenue, receivables, deposits,
+    };
+  }, [rentals]);
+
+  const card = (label: string, value: string, to?: AdminView, accent?: boolean) => (
+    <button onClick={() => to && setView(to)} style={{ textAlign: "left", cursor: to ? "pointer" : "default", background: accent ? "#15130f" : "#fffdf8", color: accent ? "#ffcc00" : "#15130f", border: "1px solid rgba(17,17,17,0.12)", borderRadius: 14, padding: 16 }}>
+      <div style={{ fontSize: 12, color: accent ? "rgba(255,204,0,0.8)" : "#6c675f", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontFamily: '"Jost", sans-serif', fontSize: 26, fontWeight: 800, marginTop: 4 }}>{value}</div>
+    </button>
+  );
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        {card("Revenue collected", formatPHP(m.revenue), "accounting", true)}
+        {card("Receivables outstanding", formatPHP(m.receivables), "invoicing")}
+        {card("Deposits held", formatPHP(m.deposits))}
+        {card("Open requests", String(m.openRequests), "quotations")}
+        {card("Quotations sent", String(m.quotationsSent), "quotations")}
+        {card("Contracts", String(m.contracts), "contracts")}
+        {card("Open invoices", String(m.invoicesOpen), "invoicing")}
+        {card("Clients", String(clients.length), "clients")}
+        {card("Live listings", String(listingCount))}
+      </div>
+      <div className="surface" style={{ padding: 16, border: "1px solid rgba(17,17,17,0.1)" }}>
+        <h3 style={{ fontFamily: '"Jost", sans-serif', margin: "0 0 8px" }}>Quick start</h3>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => setView("quotations")} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00" }}><FileText size={14} /> New / manage quotations</button>
+          <button onClick={() => setView("invoicing")} style={miniBtn}><Receipt size={14} /> Invoicing & payments</button>
+          <button onClick={() => setView("accounting")} style={miniBtn}><Calculator size={14} /> Accounting</button>
+          <button onClick={() => setView("inventory")} style={miniBtn}><Boxes size={14} /> Inventory</button>
+          <button onClick={() => setView("monitoring")} style={miniBtn}><Radio size={14} /> Equipment monitoring</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Accounting (mini-QuickBooks) ─────────────────────────────────────────────
+const EXPENSE_CATEGORIES = ["gear", "transport", "crew", "maintenance", "ops", "tax", "other"];
+type Expense = { id: string; date: string; category: string; description: string; amount: number };
+
+function AccountingPanel({ authCode }: { authCode: string }) {
+  const { data: rentals } = useAuthList<RentalRow>("/api/admin/quotes", authCode);
+  const { data: expenses, reload: reloadExpenses } = useAuthList<Expense>("/api/admin/expenses", authCode);
+  const [form, setForm] = useState({ date: "", category: "gear", description: "", amount: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const income = useMemo(() => {
+    let revenue = 0, receivables = 0, deposits = 0, incidents = 0;
+    const rows: { number: string; client: string; paid: number; balance: number }[] = [];
+    for (const r of rentals) {
+      if (!r.invoice) continue;
+      const m = computeInvoiceMoney(r.invoice);
+      revenue += m.paid; receivables += m.balance; deposits += m.depositReceived; incidents += m.incidentsTotal;
+      rows.push({ number: r.invoice.number, client: r.invoice.client.name || r.email, paid: m.paid, balance: m.balance });
+    }
+    return { revenue, receivables, deposits, incidents, rows };
+  }, [rentals]);
+  const expenseTotal = useMemo(() => expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0), [expenses]);
+  const net = income.revenue - expenseTotal;
+
+  const addExpense = async () => {
+    if (!form.date || !(Number(form.amount) > 0)) { setError("Date and a positive amount are required."); return; }
+    setBusy(true); setError("");
+    try {
+      const res = await fetch("/api/admin/expenses", { method: "POST", headers: { Authorization: `Bearer ${authCode}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...form, amount: Number(form.amount) }) });
+      const j = await res.json();
+      if (!res.ok || !j.ok) throw new Error(j.error || "Could not save expense.");
+      setForm({ date: "", category: "gear", description: "", amount: "" });
+      reloadExpenses();
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not save expense."); }
+    finally { setBusy(false); }
+  };
+  const removeExpense = async (id: string) => {
+    await fetch(`/api/admin/expenses?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${authCode}` } });
+    reloadExpenses();
+  };
+
+  const stat = (label: string, value: string, color = "#15130f") => (
+    <div style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.12)", borderRadius: 14, padding: 16 }}>
+      <div style={{ fontSize: 12, color: "#6c675f", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontFamily: '"Jost", sans-serif', fontSize: 24, fontWeight: 800, marginTop: 4, color }}>{value}</div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
+        {stat("Revenue collected", formatPHP(income.revenue), "#2f6b46")}
+        {stat("Receivables", formatPHP(income.receivables), "#b06a00")}
+        {stat("Deposits held", formatPHP(income.deposits))}
+        {stat("Expenses", formatPHP(expenseTotal), "#c0392b")}
+        {stat("Net (P&L)", formatPHP(net), net >= 0 ? "#2f6b46" : "#c0392b")}
+      </div>
+
+      <div className="surface" style={{ padding: 16, border: "1px solid rgba(17,17,17,0.1)" }}>
+        <h3 style={{ fontFamily: '"Jost", sans-serif', margin: "0 0 10px" }}>Record an expense</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "130px 130px 1fr 120px auto", gap: 8, alignItems: "end" }}>
+          <LabeledField label="Date"><input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} style={editInput} /></LabeledField>
+          <LabeledField label="Category"><select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} style={editInput}>{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></LabeledField>
+          <LabeledField label="Description"><input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={editInput} /></LabeledField>
+          <LabeledField label="Amount (₱)"><input type="number" min={0} value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={editInput} /></LabeledField>
+          <button onClick={addExpense} disabled={busy} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy ? 0.6 : 1 }}>{busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Add</button>
+        </div>
+        {error && <p style={{ color: "#c0392b", fontSize: 13, margin: "8px 0 0" }}>{error}</p>}
+        <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
+          {expenses.length === 0 && <p style={{ color: "#6c675f", fontSize: 13, margin: 0 }}>No expenses recorded.</p>}
+          {expenses.map((e) => (
+            <div key={e.id} style={{ display: "grid", gridTemplateColumns: "90px 90px 1fr 110px 26px", gap: 8, alignItems: "center", fontSize: 13, borderBottom: "1px solid rgba(17,17,17,0.08)", paddingBottom: 6 }}>
+              <span style={{ color: "#6c675f" }}>{e.date}</span>
+              <span><DocChip label={e.category} on={false} /></span>
+              <span>{e.description}</span>
+              <span style={{ textAlign: "right", fontWeight: 700, color: "#c0392b" }}>{formatPHP(Number(e.amount) || 0)}</span>
+              <button onClick={() => removeExpense(e.id)} style={{ ...tinyBtn, padding: 4, color: "#c0392b" }} aria-label="Delete"><Trash2 size={13} /></button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: 16, border: "1px solid rgba(17,17,17,0.1)" }}>
+        <h3 style={{ fontFamily: '"Jost", sans-serif', margin: "0 0 10px" }}>Invoice income</h3>
+        {income.rows.length === 0 ? <p style={{ color: "#6c675f", fontSize: 13, margin: 0 }}>No invoices yet.</p> : (
+          <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 120px", gap: 8, fontSize: 11, color: "#6c675f", fontWeight: 700 }}>
+              <span>Invoice</span><span>Client</span><span style={{ textAlign: "right" }}>Collected</span><span style={{ textAlign: "right" }}>Balance</span>
+            </div>
+            {income.rows.map((r, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 120px", gap: 8, fontSize: 13, borderBottom: "1px solid rgba(17,17,17,0.08)", paddingBottom: 6 }}>
+                <span>{r.number}</span><span>{r.client}</span>
+                <span style={{ textAlign: "right", color: "#2f6b46", fontWeight: 700 }}>{formatPHP(r.paid)}</span>
+                <span style={{ textAlign: "right", color: r.balance > 0 ? "#b06a00" : "#6c675f" }}>{formatPHP(r.balance)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Inventory + Equipment Monitoring ─────────────────────────────────────────
+type Unit = { id: string; name: string; category: string | null; serial: string | null; status: "available" | "rented" | "maintenance" | "retired"; location_label: string | null; lat: number | null; lng: number | null; last_seen: string | null; assigned_request_id: string | null; notes: string | null };
+const UNIT_STATUSES = ["available", "rented", "maintenance", "retired"] as const;
+const STATUS_COLOR: Record<string, string> = { available: "#2f6b46", rented: "#b06a00", maintenance: "#7a6f00", retired: "#888" };
+
+function InventoryPanel({ authCode }: { authCode: string }) {
+  const { data: units, loading, reload } = useAuthList<Unit>("/api/admin/units", authCode);
+  const byType = useMemo(() => {
+    const map = new Map<string, { total: number; available: number; rented: number; maintenance: number; retired: number }>();
+    for (const u of units) {
+      const k = u.name;
+      const e = map.get(k) ?? { total: 0, available: 0, rented: 0, maintenance: 0, retired: 0 };
+      e.total++; e[u.status]++; map.set(k, e);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [units]);
+  const totals = useMemo(() => units.reduce((a, u) => { a.total++; a[u.status]++; return a; }, { total: 0, available: 0, rented: 0, maintenance: 0, retired: 0 } as Record<string, number>), [units]);
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+        <Metric label="Total units" value={String(totals.total)} />
+        <Metric label="Available" value={String(totals.available)} />
+        <Metric label="Rented out" value={String(totals.rented)} />
+        <Metric label="Maintenance" value={String(totals.maintenance)} />
+      </div>
+      <div className="surface" style={{ padding: 16, border: "1px solid rgba(17,17,17,0.1)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <h3 style={{ fontFamily: '"Jost", sans-serif', margin: 0 }}>Availability by type</h3>
+          <button onClick={reload} disabled={loading} style={{ ...miniBtn, opacity: loading ? 0.6 : 1 }}>{loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Refresh</button>
+        </div>
+        <p style={{ color: "#6c675f", fontSize: 12, marginTop: 0 }}>Auto-updates as units are checked out under Equipment Monitoring.</p>
+        {byType.length === 0 ? <p style={{ color: "#6c675f", fontSize: 13 }}>No units registered yet — add them under Equipment Monitoring.</p> : (
+          <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 80px 90px", gap: 8, fontSize: 11, color: "#6c675f", fontWeight: 700 }}>
+              <span>Type</span><span style={{ textAlign: "right" }}>Total</span><span style={{ textAlign: "right" }}>Available</span><span style={{ textAlign: "right" }}>Rented</span><span style={{ textAlign: "right" }}>Maint.</span>
+            </div>
+            {byType.map(([name, e]) => (
+              <div key={name} style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 80px 90px", gap: 8, fontSize: 13, borderBottom: "1px solid rgba(17,17,17,0.08)", paddingBottom: 6 }}>
+                <span>{name}</span>
+                <span style={{ textAlign: "right" }}>{e.total}</span>
+                <span style={{ textAlign: "right", color: "#2f6b46", fontWeight: 700 }}>{e.available}</span>
+                <span style={{ textAlign: "right", color: "#b06a00" }}>{e.rented}</span>
+                <span style={{ textAlign: "right" }}>{e.maintenance}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MonitoringPanel({ authCode }: { authCode: string }) {
+  const { data: units, loading, error, reload } = useAuthList<Unit>("/api/admin/units", authCode);
+  const [form, setForm] = useState({ name: "", category: "", serial: "", location_label: "" });
+  const [busy, setBusy] = useState(false);
+
+  const add = async () => {
+    if (!form.name.trim()) return;
+    setBusy(true);
+    try {
+      await fetch("/api/admin/units", { method: "POST", headers: { Authorization: `Bearer ${authCode}`, "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      setForm({ name: "", category: "", serial: "", location_label: "" });
+      reload();
+    } finally { setBusy(false); }
+  };
+  const patch = async (id: string, body: Record<string, unknown>) => {
+    await fetch(`/api/admin/units?id=${encodeURIComponent(id)}`, { method: "PATCH", headers: { Authorization: `Bearer ${authCode}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    reload();
+  };
+  const remove = async (id: string) => { if (!confirm("Delete this unit?")) return; await fetch(`/api/admin/units?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${authCode}` } }); reload(); };
+  const qrSrc = (u: Unit) => `https://api.qrserver.com/v1/create-qr-code/?size=96x96&margin=4&data=${encodeURIComponent(`https://vissionlink.com/admin?unit=${u.id}`)}`;
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div className="surface" style={{ padding: 16, border: "1px solid rgba(17,17,17,0.1)" }}>
+        <h3 style={{ fontFamily: '"Jost", sans-serif', margin: "0 0 4px" }}>Register a unit</h3>
+        <p style={{ color: "#6c675f", fontSize: 12, marginTop: 0 }}>Each unit gets a QR (links to the unit) and a status. GPS lat/lng are last-known — wire physical tags later to auto-update location.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px 1fr auto", gap: 8, alignItems: "end" }}>
+          <LabeledField label="Equipment name"><input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="RED KOMODO 6K body" style={editInput} /></LabeledField>
+          <LabeledField label="Category"><input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} style={editInput} /></LabeledField>
+          <LabeledField label="Serial"><input value={form.serial} onChange={(e) => setForm((f) => ({ ...f, serial: e.target.value }))} style={editInput} /></LabeledField>
+          <LabeledField label="Location"><input value={form.location_label} onChange={(e) => setForm((f) => ({ ...f, location_label: e.target.value }))} placeholder="Warehouse shelf A3" style={editInput} /></LabeledField>
+          <button onClick={add} disabled={busy} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy ? 0.6 : 1 }}>{busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Add</button>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: 16, border: "1px solid rgba(17,17,17,0.1)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <h3 style={{ fontFamily: '"Jost", sans-serif', margin: 0 }}>Units</h3>
+          <button onClick={reload} disabled={loading} style={{ ...miniBtn, opacity: loading ? 0.6 : 1 }}>{loading ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Refresh</button>
+        </div>
+        {error && <p style={{ color: "#c0392b", fontSize: 13 }}>{error}</p>}
+        {!loading && units.length === 0 && <p style={{ color: "#6c675f", fontSize: 13 }}>No units yet.</p>}
+        <div style={{ display: "grid", gap: 10 }}>
+          {units.map((u) => (
+            <div key={u.id} style={{ display: "flex", gap: 12, alignItems: "center", background: "#fffdf8", border: "1px solid rgba(17,17,17,0.12)", borderRadius: 12, padding: 12, flexWrap: "wrap" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrSrc(u)} alt="QR" width={72} height={72} style={{ borderRadius: 8, background: "#fff", flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 8 }}>{u.name}<span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: STATUS_COLOR[u.status], borderRadius: 999, padding: "2px 8px" }}>{u.status}</span></div>
+                <div style={{ fontSize: 12, color: "#6c675f", marginTop: 2 }}>{[u.category, u.serial && `SN ${u.serial}`].filter(Boolean).join(" · ") || "—"}</div>
+                <div style={{ fontSize: 12, color: "#6c675f", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 2 }}><MapPin size={12} /> {u.location_label || "Unknown"}{u.last_seen ? ` · ${fmtDate(u.last_seen)}` : ""}</div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <select value={u.status} onChange={(e) => patch(u.id, { status: e.target.value })} style={{ ...editInput, fontSize: 12, width: "auto" }}>
+                  {UNIT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <button onClick={() => { const loc = prompt("Update location label", u.location_label || ""); if (loc !== null) void patch(u.id, { location_label: loc }); }} style={tinyBtn}><MapPin size={13} /> Set location</button>
+                <a href={qrSrc(u).replace("96x96", "300x300")} target="_blank" rel="noreferrer" style={{ ...tinyBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}><QrCode size={13} /> QR</a>
+                <button onClick={() => remove(u.id)} style={{ ...tinyBtn, color: "#c0392b" }}><Trash2 size={13} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

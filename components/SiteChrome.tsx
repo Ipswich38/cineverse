@@ -76,6 +76,10 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
   };
 
 
+  // The admin area has its own dedicated chrome (sidebar + admin top bar) — skip
+  // the public storefront header/footer entirely on /admin.
+  if (pathname.startsWith("/admin")) return <>{children}</>;
+
   return (
     <div className="app-shell">
       <header className="topbar">
