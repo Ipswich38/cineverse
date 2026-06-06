@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { CartItem, EquipmentItem } from "@/lib/catalog";
 import { INITIAL_CATALOG } from "@/lib/catalog";
+import { rentalTotals } from "@/lib/rental-pricing";
 
 type StoreContextValue = {
   catalog: EquipmentItem[];
@@ -18,6 +19,10 @@ type StoreContextValue = {
   cartCount: number;
   subtotal: number;
   downpayment: number;
+  /** Refundable security deposit total for the cart (policy-based; see lib/rental-pricing). */
+  securityTotal: number;
+  /** Amount charged at checkout = rental subtotal + security deposit. */
+  payNowTotal: number;
 };
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -105,11 +110,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const removeFromCart = (itemId: string) => setCart((prev) => prev.filter((entry) => entry.itemId !== itemId));
   const clearCart = () => setCart([]);
 
-  const subtotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.ratePerDay * item.days * item.quantity, 0),
-    [cart],
+  // Join cart → catalog so security deposits use any explicit per-item value
+  // (cart rows predate that field); falls back to the rate-based policy.
+  const totals = useMemo(
+    () =>
+      rentalTotals(
+        cart.map((item) => ({
+          ratePerDay: item.ratePerDay,
+          days: item.days,
+          quantity: item.quantity,
+          securityDeposit: catalog.find((c) => c.id === item.itemId)?.securityDeposit,
+        })),
+      ),
+    [cart, catalog],
   );
 
+  const subtotal = totals.rental;
+  const securityTotal = totals.security;
+  const payNowTotal = totals.payNow;
   const downpayment = Math.round(subtotal * 0.3);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -126,6 +144,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     cartCount,
     subtotal,
     downpayment,
+    securityTotal,
+    payNowTotal,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

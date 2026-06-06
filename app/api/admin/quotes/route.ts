@@ -81,6 +81,19 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // Advance an instant-rent order's fulfillment: paid → shipped → returned →
+  // settled (security reconciled). Each stamps its own timestamp.
+  if (typeof body.fulfillment === "string") {
+    const STAMP: Record<string, string> = { shipped: "shipped_at", returned: "returned_at", settled: "settled_at" };
+    const next = body.fulfillment;
+    if (!STAMP[next] && next !== "cancelled") return NextResponse.json({ error: "Invalid fulfillment state." }, { status: 400 });
+    const patch: Record<string, unknown> = { fulfillment_status: next };
+    if (STAMP[next]) patch[STAMP[next]] = new Date().toISOString();
+    const { error } = await db.from(TABLE).update(patch).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
   const status = body.status as string;
   if (!["pending", "responded", "closed"].includes(status)) {
     return NextResponse.json({ error: "Invalid status." }, { status: 400 });

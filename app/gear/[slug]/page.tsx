@@ -2,16 +2,19 @@
 
 import type { ComponentType } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useMemo } from "react";
-import { ArrowLeft, ArrowUpRight, CalendarDays, CheckCircle2, MapPin, Package, ShieldAlert } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { ArrowLeft, CalendarDays, CheckCircle2, FileText, MapPin, Minus, Package, Plus, ShieldCheck, ShoppingCart } from "lucide-react";
 import { useStore } from "@/app/providers";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import { categoryName, normalizeCategory } from "@/lib/categories";
+import { peso, unitSecurityDeposit } from "@/lib/rental-pricing";
 
 export default function GearDetailPage() {
   const params = useParams<{ slug: string }>();
-  const { catalog } = useStore();
+  const { catalog, addToCart } = useStore();
+  const router = useRouter();
+  const [days, setDays] = useState(1);
 
   const item = useMemo(() => catalog.find((entry) => entry.slug === params.slug), [catalog, params.slug]);
 
@@ -39,40 +42,48 @@ export default function GearDetailPage() {
           <h1 style={{ fontFamily: '"Jost", sans-serif', fontSize: "clamp(2rem, 4vw, 3rem)", lineHeight: 0.98, letterSpacing: "-0.045em", margin: "6px 0 10px" }}>{item.name}</h1>
           <p style={{ color: "#6c675f", fontSize: 14, lineHeight: 1.6 }}>{item.description}</p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 20 }}>
+            <Stat label="Daily rate" value={`${peso(item.ratePerDay)}/day`} />
+            <Stat label="Refundable deposit" value={peso(unitSecurityDeposit(item.ratePerDay, item.securityDeposit))} />
             <Stat label="Stock" value={`${item.stock}`} />
-            <Stat label="Pricing" value="Quoted by admin" />
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
-            <Link
-              href="/providers"
-              style={{
-                border: "none",
-                background: "#f5c518",
-                color: "#15130f",
-                fontWeight: 800,
-                borderRadius: 999,
-                padding: "11px 20px",
-                fontSize: 13,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                textDecoration: "none",
-              }}
-            >
-              <ArrowUpRight size={16} /> View Package
-            </Link>
-            <div style={{ padding: "10px 12px", borderRadius: 0, background: "#fff7e6", border: "1px solid rgba(180,120,0,0.22)", color: "#8a5b00", display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-              <ShieldAlert size={15} /> Final rate reviewed before booking
+          {/* Rent now: pick days → add to cart → cart. Quotation path kept alongside. */}
+          <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "grid", gap: 5 }}>
+                <span style={{ color: "#6c675f", fontSize: 12, fontWeight: 700 }}>Rental days</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#fffdf8", border: "1px solid rgba(17,17,17,0.14)", borderRadius: 999, padding: "6px 12px" }}>
+                  <button aria-label="Fewer days" onClick={() => setDays((d) => Math.max(1, d - 1))} style={{ background: "none", border: "none", color: "#15130f", cursor: "pointer" }}><Minus size={15} /></button>
+                  <span style={{ minWidth: 24, textAlign: "center", fontWeight: 800 }}>{days}</span>
+                  <button aria-label="More days" onClick={() => setDays((d) => d + 1)} style={{ background: "none", border: "none", color: "#15130f", cursor: "pointer" }}><Plus size={15} /></button>
+                </div>
+              </div>
+              <div style={{ lineHeight: 1.2 }}>
+                <span style={{ color: "#6c675f", fontSize: 12, fontWeight: 700 }}>Rental subtotal</span>
+                <div style={{ fontFamily: '"Jost", sans-serif', fontWeight: 800, fontSize: 22 }}>{peso(item.ratePerDay * days)}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <button
+                onClick={() => { addToCart(item, days, 1); router.push("/cart"); }}
+                disabled={item.stock <= 0}
+                style={{ border: "none", background: item.stock > 0 ? "#f5c518" : "#e3ddd2", color: "#15130f", fontWeight: 800, borderRadius: 999, padding: "12px 22px", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 8, cursor: item.stock > 0 ? "pointer" : "not-allowed" }}
+              >
+                <ShoppingCart size={16} /> {item.stock > 0 ? "Rent now" : "Out of stock"}
+              </button>
+              <Link href={{ pathname: "/contact", query: { type: "quote" } }} style={{ background: "transparent", color: "#15130f", fontWeight: 700, borderRadius: 999, padding: "12px 20px", fontSize: 13, border: "1px solid rgba(17,17,17,0.2)", display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+                <FileText size={15} /> Request a quotation
+              </Link>
             </div>
           </div>
 
           <div style={{ marginTop: 22, display: "grid", gap: 10 }}>
             <InfoRow icon={MapPin} text={item.location} />
             <InfoRow icon={Package} text={`Managed by ${item.owner}`} />
-            <InfoRow icon={CalendarDays} text="Rental schedule reviewed by admin" />
-            <InfoRow icon={CheckCircle2} text="Available for quotation requests" />
+            <InfoRow icon={ShieldCheck} text="Pay rental + refundable security deposit at checkout — deposit returned after the gear comes back." />
+            <InfoRow icon={CalendarDays} text="Pickup / delivery arranged after payment." />
+            <InfoRow icon={CheckCircle2} text="Invoice + lease contract emailed instantly." />
           </div>
 
           <div style={{ marginTop: 22 }}>

@@ -2,7 +2,7 @@
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Boxes, Calculator, CornerUpLeft, ExternalLink, Eye, FileText, LayoutDashboard, Loader2, LockKeyhole, LogOut, Mail, MapPin, PackageCheck, Pencil, Plus, QrCode, Radio, Receipt, RefreshCw, Save, ScrollText, Send, Shield, Trash2, Users, X } from "lucide-react";
+import { Boxes, Calculator, CornerUpLeft, ExternalLink, Eye, FileText, LayoutDashboard, Loader2, LockKeyhole, LogOut, Mail, MapPin, PackageCheck, Pencil, Plus, QrCode, Radio, Receipt, RefreshCw, Save, ScrollText, Send, Shield, Trash2, Truck, Users, X } from "lucide-react";
 import { useStore } from "../providers";
 import { currency, slugify, type EquipmentItem } from "@/lib/catalog";
 import { CATEGORY_FLAT, categoryName, normalizeCategory } from "@/lib/categories";
@@ -525,7 +525,10 @@ type QuoteRequest = {
   quotation_agreed_at?: string | null;
   contract_status?: "none" | "draft" | "sent" | "signed" | null;
   invoice_status?: "none" | "draft" | "sent" | null;
-  channel?: "web" | "direct" | null;
+  channel?: "web" | "direct" | "rent" | null;
+  fulfillment_status?: "pending_payment" | "processing" | "paid" | "shipped" | "returned" | "settled" | "cancelled" | null;
+  security_deposit?: number | string | null;
+  delivery_address?: string | null;
 };
 
 function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; focus?: "quotations" | "contracts" | "invoicing" }) {
@@ -610,6 +613,22 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
       setQuotes((prev) => prev.filter((x) => x.id !== q.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete request.");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  // Advance an instant-rent order: paid → shipped → returned → settled.
+  const setFulfillment = async (id: string, fulfillment: string) => {
+    setUpdating(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/quotes?id=${encodeURIComponent(id)}`, { method: "PATCH", headers: { ...headers(), "Content-Type": "application/json" }, body: JSON.stringify({ fulfillment }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not update.");
+      setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, fulfillment_status: fulfillment as QuoteRequest["fulfillment_status"] } : q)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update.");
     } finally {
       setUpdating(null);
     }
@@ -730,6 +749,28 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
                       </button>
                       <button onClick={() => setAgreed(q.id, false)} disabled={updating === q.id} style={{ ...tinyBtn, color: "#6c675f" }} title="Undo agreed">undo</button>
                     </>
+                  )}
+                </div>
+              )}
+
+              {/* Instant-rent fulfillment: paid → shipped → returned → settled.
+                  Shown on rent orders (those that carry a fulfillment status). */}
+              {q.fulfillment_status && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 10, paddingTop: 10, borderTop: "1px dashed rgba(17,17,17,0.14)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#6c675f" }}><Truck size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} />Rental fulfillment</span>
+                  <DocChip label={q.fulfillment_status.replace("_", " ")} on={q.fulfillment_status === "settled"} tone={q.fulfillment_status === "settled" ? "green" : undefined} />
+                  {q.security_deposit != null && Number(q.security_deposit) > 0 && (
+                    <span style={{ fontSize: 12, color: "#6c675f" }}>deposit held {currency(Number(q.security_deposit))}</span>
+                  )}
+                  {q.delivery_address && <span style={{ fontSize: 12, color: "#6c675f", display: "inline-flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {q.delivery_address}</span>}
+                  {q.fulfillment_status === "paid" && (
+                    <button onClick={() => setFulfillment(q.id, "shipped")} disabled={updating === q.id} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: updating === q.id ? 0.6 : 1 }}><Truck size={14} /> Mark shipped</button>
+                  )}
+                  {q.fulfillment_status === "shipped" && (
+                    <button onClick={() => setFulfillment(q.id, "returned")} disabled={updating === q.id} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: updating === q.id ? 0.6 : 1 }}><CornerUpLeft size={14} /> Mark returned</button>
+                  )}
+                  {q.fulfillment_status === "returned" && (
+                    <button onClick={() => { if (confirm("Settle this rental? Record any damage charges on the invoice first (the deposit absorbs them); the remaining deposit is then refunded off-app.")) void setFulfillment(q.id, "settled"); }} disabled={updating === q.id} style={{ ...miniBtn, background: "#2f6b46", color: "#fff", opacity: updating === q.id ? 0.6 : 1 }}><PackageCheck size={14} /> Settle</button>
                   )}
                 </div>
               )}

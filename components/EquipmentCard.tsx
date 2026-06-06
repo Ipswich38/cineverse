@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, MapPin, Package } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ShoppingCart, MapPin, Package } from "lucide-react";
 import GearImagePlaceholder from "./GearImagePlaceholder";
 import type { EquipmentItem } from "@/lib/catalog";
 import { categoryName, normalizeCategory } from "@/lib/categories";
+import { peso } from "@/lib/rental-pricing";
+import { useStore } from "@/app/providers";
 
 export default function EquipmentCard({ item }: { item: EquipmentItem }) {
+  const { addToCart } = useStore();
+  const router = useRouter();
+  const rent = () => { addToCart(item, 1, 1); router.push("/cart"); };
   return (
     <article className="equipment-card">
       <Link href={`/gear/${item.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
@@ -45,13 +51,14 @@ export default function EquipmentCard({ item }: { item: EquipmentItem }) {
         </div>
       </div>
 
-      <div style={{ padding: 0, display: "grid", gap: 10 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href="/providers" className="card-pill-cta primary">
-            View Package
-            <ArrowUpRight size={13} />
-          </Link>
+      <div style={{ padding: 0, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <div style={{ lineHeight: 1.1 }}>
+          <span style={{ fontFamily: '"Jost", sans-serif', fontWeight: 800, fontSize: 16, color: "#15130f" }}>{peso(item.ratePerDay)}</span>
+          <span style={{ color: "#6c675f", fontSize: 11 }}> /day</span>
         </div>
+        <button onClick={rent} className="card-pill-cta primary" style={{ border: "none", cursor: "pointer" }}>
+          <ShoppingCart size={13} /> Rent
+        </button>
       </div>
     </article>
   );
