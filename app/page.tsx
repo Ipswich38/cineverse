@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Package, Store } f
 import { useStore } from "./providers";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import EquipmentCard from "@/components/EquipmentCard";
+import WhyBmr from "@/components/WhyBmr";
 import type { EquipmentItem } from "@/lib/catalog";
 import { COMPANY } from "@/lib/company";
 import { peso } from "@/lib/rental-pricing";
@@ -161,6 +162,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <WhyBmr />
 
       <section style={{ marginTop: 26 }}>
         <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>
