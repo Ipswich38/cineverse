@@ -2,7 +2,7 @@
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Boxes, Calculator, CornerUpLeft, ExternalLink, Eye, FileText, LayoutDashboard, Loader2, LockKeyhole, LogOut, Mail, MapPin, PackageCheck, Plus, QrCode, Radio, Receipt, RefreshCw, Save, ScrollText, Send, Shield, Trash2, Users, X } from "lucide-react";
+import { Boxes, Calculator, CornerUpLeft, ExternalLink, Eye, FileText, LayoutDashboard, Loader2, LockKeyhole, LogOut, Mail, MapPin, PackageCheck, Pencil, Plus, QrCode, Radio, Receipt, RefreshCw, Save, ScrollText, Send, Shield, Trash2, Users, X } from "lucide-react";
 import { useStore } from "../providers";
 import { currency, slugify, type EquipmentItem } from "@/lib/catalog";
 import { CATEGORY_FLAT, categoryName, normalizeCategory } from "@/lib/categories";
@@ -597,6 +597,24 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
     }
   };
 
+  // Delete the whole request (and its quotation/contract/invoice + stored PDFs +
+  // released units — handled server-side).
+  const deleteQuote = async (q: QuoteRequest) => {
+    if (!confirm(`Delete the request from ${q.name}? This removes its quotation, contract, invoice and stored PDFs. This cannot be undone.`)) return;
+    setUpdating(q.id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/quotes?id=${encodeURIComponent(q.id)}`, { method: "DELETE", headers: headers() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not delete request.");
+      setQuotes((prev) => prev.filter((x) => x.id !== q.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete request.");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   // E-Contracts / Invoicing only list rentals the client has agreed to.
   const visible = focus === "quotations" ? quotes : quotes.filter((q) => q.quotation_agreed_at);
   const COPY = {
@@ -687,6 +705,9 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
                       {status}
                     </button>
                   ))}
+                  <button onClick={() => deleteQuote(q)} disabled={updating === q.id} style={{ ...miniBtn, color: "#c0392b", opacity: updating === q.id ? 0.55 : 1 }} title="Delete this request and all its documents">
+                    <Trash2 size={14} /> Delete
+                  </button>
                 </div>
               </div>
 
@@ -756,6 +777,7 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
             setBuilding(null);
           }}
           onSaved={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, quotation_status: q.quotation_status === "sent" ? "sent" : "draft" } : q)))}
+          onDiscarded={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, quotation_status: "none", quotation_sent_at: null } : q)))}
         />
       )}
 
@@ -766,6 +788,7 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
           onClose={() => setBuildingContract(null)}
           onSent={(id) => { setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, contract_status: "sent" } : q))); setBuildingContract(null); }}
           onSaved={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, contract_status: q.contract_status && q.contract_status !== "none" ? q.contract_status : "draft" } : q)))}
+          onDiscarded={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, contract_status: "none" } : q)))}
         />
       )}
 
@@ -776,6 +799,7 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
           onClose={() => setBuildingInvoice(null)}
           onSent={(id) => { setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, invoice_status: "sent" } : q))); setBuildingInvoice(null); }}
           onSaved={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, invoice_status: q.invoice_status === "sent" ? "sent" : "draft" } : q)))}
+          onDiscarded={(id) => setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, invoice_status: "none" } : q)))}
         />
       )}
     </div>
@@ -877,12 +901,14 @@ function QuotationEditor({
   onClose,
   onSent,
   onSaved,
+  onDiscarded,
 }: {
   request: QuoteRequest;
   authCode: string;
   onClose: () => void;
   onSent: (id: string) => void;
   onSaved: (id: string) => void;
+  onDiscarded: (id: string) => void;
 }) {
   const [doc, setDoc] = useState<QuotationDoc | null>(null);
   const [loading, setLoading] = useState(true);
@@ -978,6 +1004,24 @@ function QuotationEditor({
     } catch (err) {
       if (win) win.close();
       setError(err instanceof Error ? err.message : "Could not render PDF preview.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const discard = async () => {
+    if (!doc) return;
+    if (!confirm(`Discard quotation ${doc.number}? The draft and its stored PDF are deleted; a fresh draft is rebuilt next time you open it.`)) return;
+    setBusy("save");
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/quotations?requestId=${encodeURIComponent(request.id)}`, { method: "DELETE", headers: headers() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not discard.");
+      onDiscarded(request.id);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not discard.");
     } finally {
       setBusy(null);
     }
@@ -1091,6 +1135,9 @@ function QuotationEditor({
             {notice && <p style={{ color: "#15130f", background: "rgba(245,197,24,0.22)", padding: 10, borderRadius: 10, fontSize: 13, margin: 0 }}>{notice}</p>}
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button onClick={discard} disabled={busy !== null} style={{ ...miniBtn, color: "#c0392b", marginRight: "auto", opacity: busy ? 0.6 : 1 }} title="Delete this draft and its stored PDF">
+                <Trash2 size={14} /> Discard
+              </button>
               <button onClick={preview} disabled={busy !== null} style={{ ...miniBtn, opacity: busy ? 0.6 : 1 }} title="Opens the PDF in a new tab — print or save from there">
                 {busy === "preview" ? <Loader2 size={14} className="spin" /> : <Eye size={14} />} Preview / Print PDF
               </button>
@@ -1294,7 +1341,19 @@ function useDocEditor<T extends object>(endpoint: string, requestId: string, aut
     finally { setBusy(null); }
   };
 
-  return { doc, setDoc, loading, error, busy, notice, meta, save, preview, send };
+  // DELETE the saved doc (clears its columns server-side) so it can be rebuilt.
+  const discard = async (onDone: () => void) => {
+    setBusy("save"); setError(""); setNotice("");
+    try {
+      const res = await fetch(url, { method: "DELETE", headers: headers() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not discard.");
+      onDone();
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not discard."); }
+    finally { setBusy(null); }
+  };
+
+  return { doc, setDoc, loading, error, busy, notice, meta, save, preview, send, discard };
 }
 
 // Modal shell shared by the contract & invoice editors.
@@ -1313,9 +1372,14 @@ function DocModal({ title, onClose, children }: { title: string; onClose: () => 
 }
 
 // Action footer shared by contract & invoice editors.
-function DocActions({ busy, onPreview, onSave, onSend }: { busy: "save" | "send" | "preview" | null; onPreview: () => void; onSave: () => void; onSend: () => void }) {
+function DocActions({ busy, onPreview, onSave, onSend, onDiscard }: { busy: "save" | "send" | "preview" | null; onPreview: () => void; onSave: () => void; onSend: () => void; onDiscard?: () => void }) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+      {onDiscard && (
+        <button onClick={onDiscard} disabled={busy !== null} style={{ ...miniBtn, color: "#c0392b", marginRight: "auto", opacity: busy ? 0.6 : 1 }} title="Delete this draft and its stored PDF">
+          <Trash2 size={14} /> Discard
+        </button>
+      )}
       <button onClick={onPreview} disabled={busy !== null} style={{ ...miniBtn, opacity: busy ? 0.6 : 1 }} title="Opens the PDF in a new tab — print or save from there">
         {busy === "preview" ? <Loader2 size={14} className="spin" /> : <Eye size={14} />} Preview / Print PDF
       </button>
@@ -1367,6 +1431,18 @@ function ClientsPanel({ authCode }: { authCode: string }) {
     finally { setBusy(null); }
   };
 
+  const removeClient = async (email: string) => {
+    if (!confirm(`Delete ${email} from the client ledger? Their tier/standing rebuild from invoices on the next clean settlement.`)) return;
+    setBusy(email); setError("");
+    try {
+      const res = await fetch(`/api/admin/clients?email=${encodeURIComponent(email)}`, { method: "DELETE", headers: headers() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Could not delete client.");
+      setClients((prev) => prev.filter((c) => c.email !== email));
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not delete client."); }
+    finally { setBusy(null); }
+  };
+
   return (
     <div className="surface" style={{ padding: 18, border: "1px solid rgba(17,17,17,0.1)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
@@ -1406,6 +1482,7 @@ function ClientsPanel({ authCode }: { authCode: string }) {
                 <div style={{ display: "flex", gap: 6 }}>
                   <button onClick={() => { if (confirm("Record a LATE settlement? Demotes to watch and resets the loyalty streak.")) void act(c.email, { delinquency: "late" }); }} disabled={busy === c.email} style={{ ...tinyBtn, color: "#c0392b" }}>+ late</button>
                   <button onClick={() => { if (confirm("Record a BOUNCED cheque? Demotes to watch and resets the loyalty streak.")) void act(c.email, { delinquency: "bounced" }); }} disabled={busy === c.email} style={{ ...tinyBtn, color: "#c0392b" }}>+ bounced</button>
+                  <button onClick={() => removeClient(c.email)} disabled={busy === c.email} style={{ ...tinyBtn, color: "#c0392b" }} aria-label="Delete client"><Trash2 size={13} /></button>
                 </div>
               </div>
             </div>
@@ -1499,6 +1576,7 @@ function AccountingPanel({ authCode }: { authCode: string }) {
   const { data: rentals } = useAuthList<RentalRow>("/api/admin/quotes", authCode);
   const { data: expenses, reload: reloadExpenses } = useAuthList<Expense>("/api/admin/expenses", authCode);
   const [form, setForm] = useState({ date: "", category: "gear", description: "", amount: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -1516,19 +1594,25 @@ function AccountingPanel({ authCode }: { authCode: string }) {
   const expenseTotal = useMemo(() => expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0), [expenses]);
   const net = income.revenue - expenseTotal;
 
-  const addExpense = async () => {
+  const resetForm = () => { setForm({ date: "", category: "gear", description: "", amount: "" }); setEditingId(null); };
+  // POST a new expense or PATCH the one being edited.
+  const saveExpense = async () => {
     if (!form.date || !(Number(form.amount) > 0)) { setError("Date and a positive amount are required."); return; }
     setBusy(true); setError("");
     try {
-      const res = await fetch("/api/admin/expenses", { method: "POST", headers: { Authorization: `Bearer ${authCode}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...form, amount: Number(form.amount) }) });
+      const url = editingId ? `/api/admin/expenses?id=${encodeURIComponent(editingId)}` : "/api/admin/expenses";
+      const res = await fetch(url, { method: editingId ? "PATCH" : "POST", headers: { Authorization: `Bearer ${authCode}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...form, amount: Number(form.amount) }) });
       const j = await res.json();
       if (!res.ok || !j.ok) throw new Error(j.error || "Could not save expense.");
-      setForm({ date: "", category: "gear", description: "", amount: "" });
+      resetForm();
       reloadExpenses();
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save expense."); }
     finally { setBusy(false); }
   };
+  const startEdit = (e: Expense) => { setEditingId(e.id); setForm({ date: e.date, category: e.category, description: e.description, amount: String(e.amount) }); setError(""); };
   const removeExpense = async (id: string) => {
+    if (!confirm("Delete this expense?")) return;
+    if (editingId === id) resetForm();
     await fetch(`/api/admin/expenses?id=${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${authCode}` } });
     reloadExpenses();
   };
@@ -1551,23 +1635,27 @@ function AccountingPanel({ authCode }: { authCode: string }) {
       </div>
 
       <div className="surface" style={{ padding: 16, border: "1px solid rgba(17,17,17,0.1)" }}>
-        <h3 style={{ fontFamily: '"Jost", sans-serif', margin: "0 0 10px" }}>Record an expense</h3>
+        <h3 style={{ fontFamily: '"Jost", sans-serif', margin: "0 0 10px" }}>{editingId ? "Edit expense" : "Record an expense"}</h3>
         <div style={{ display: "grid", gridTemplateColumns: "130px 130px 1fr 120px auto", gap: 8, alignItems: "end" }}>
           <LabeledField label="Date"><input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} style={editInput} /></LabeledField>
           <LabeledField label="Category"><select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} style={editInput}>{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></LabeledField>
           <LabeledField label="Description"><input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={editInput} /></LabeledField>
           <LabeledField label="Amount (₱)"><input type="number" min={0} value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={editInput} /></LabeledField>
-          <button onClick={addExpense} disabled={busy} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy ? 0.6 : 1 }}>{busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />} Add</button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={saveExpense} disabled={busy} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: busy ? 0.6 : 1 }}>{busy ? <Loader2 size={14} className="spin" /> : editingId ? <Save size={14} /> : <Plus size={14} />} {editingId ? "Save" : "Add"}</button>
+            {editingId && <button onClick={resetForm} disabled={busy} style={miniBtn}>Cancel</button>}
+          </div>
         </div>
         {error && <p style={{ color: "#c0392b", fontSize: 13, margin: "8px 0 0" }}>{error}</p>}
         <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
           {expenses.length === 0 && <p style={{ color: "#6c675f", fontSize: 13, margin: 0 }}>No expenses recorded.</p>}
           {expenses.map((e) => (
-            <div key={e.id} style={{ display: "grid", gridTemplateColumns: "90px 90px 1fr 110px 26px", gap: 8, alignItems: "center", fontSize: 13, borderBottom: "1px solid rgba(17,17,17,0.08)", paddingBottom: 6 }}>
+            <div key={e.id} style={{ display: "grid", gridTemplateColumns: "90px 90px 1fr 110px 26px 26px", gap: 8, alignItems: "center", fontSize: 13, borderBottom: "1px solid rgba(17,17,17,0.08)", paddingBottom: 6, background: editingId === e.id ? "rgba(245,197,24,0.14)" : undefined }}>
               <span style={{ color: "#6c675f" }}>{e.date}</span>
               <span><DocChip label={e.category} on={false} /></span>
               <span>{e.description}</span>
               <span style={{ textAlign: "right", fontWeight: 700, color: "#c0392b" }}>{formatPHP(Number(e.amount) || 0)}</span>
+              <button onClick={() => startEdit(e)} style={{ ...tinyBtn, padding: 4 }} aria-label="Edit"><Pencil size={13} /></button>
               <button onClick={() => removeExpense(e.id)} style={{ ...tinyBtn, padding: 4, color: "#c0392b" }} aria-label="Delete"><Trash2 size={13} /></button>
             </div>
           ))}
@@ -1796,9 +1884,9 @@ function UnitAssignPanel({ requestId, authCode }: { requestId: string; authCode:
 }
 
 // ─── Contract editor ──────────────────────────────────────────────────────────
-function ContractEditor({ request, authCode, onClose, onSent, onSaved }: { request: QuoteRequest; authCode: string; onClose: () => void; onSent: (id: string) => void; onSaved: (id: string) => void }) {
+function ContractEditor({ request, authCode, onClose, onSent, onSaved, onDiscarded }: { request: QuoteRequest; authCode: string; onClose: () => void; onSent: (id: string) => void; onSaved: (id: string) => void; onDiscarded: (id: string) => void }) {
   const normalize = useCallback((d: ContractDoc) => ({ ...d, laborLines: d.laborLines ?? [] }), []);
-  const { doc, setDoc, loading, error, busy, notice, save, preview, send } = useDocEditor<ContractDoc>("/api/admin/contracts", request.id, authCode, normalize);
+  const { doc, setDoc, loading, error, busy, notice, save, preview, send, discard } = useDocEditor<ContractDoc>("/api/admin/contracts", request.id, authCode, normalize);
   const [message, setMessage] = useState("");
   const totals = useMemo(() => (doc ? computeTotals(doc) : null), [doc]);
   const patch = (p: Partial<ContractDoc>) => setDoc((d) => (d ? { ...d, ...p } : d));
@@ -1861,7 +1949,7 @@ function ContractEditor({ request, authCode, onClose, onSent, onSaved }: { reque
 
           <LabeledField label="Message to client (optional, included in the email body)"><textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
           {notice && <p style={{ color: "#15130f", background: "rgba(245,197,24,0.22)", padding: 10, borderRadius: 10, fontSize: 13, margin: 0 }}>{notice}</p>}
-          <DocActions busy={busy} onPreview={preview} onSave={() => save(() => onSaved(request.id))} onSend={() => { if (confirm(`Send contract ${doc.number} to ${doc.client.email}?`)) void send(message, () => onSent(request.id), () => onSaved(request.id)); }} />
+          <DocActions busy={busy} onPreview={preview} onSave={() => save(() => onSaved(request.id))} onSend={() => { if (confirm(`Send contract ${doc.number} to ${doc.client.email}?`)) void send(message, () => onSent(request.id), () => onSaved(request.id)); }} onDiscard={() => { if (confirm(`Discard contract ${doc.number}? The draft and its stored PDF are deleted; you can rebuild it from the agreed quotation.`)) void discard(() => { onDiscarded(request.id); onClose(); }); }} />
         </div>
       )}
     </DocModal>
@@ -1869,9 +1957,9 @@ function ContractEditor({ request, authCode, onClose, onSent, onSaved }: { reque
 }
 
 // ─── Invoice editor ───────────────────────────────────────────────────────────
-function InvoiceEditor({ request, authCode, onClose, onSent, onSaved }: { request: QuoteRequest; authCode: string; onClose: () => void; onSent: (id: string) => void; onSaved: (id: string) => void }) {
+function InvoiceEditor({ request, authCode, onClose, onSent, onSaved, onDiscarded }: { request: QuoteRequest; authCode: string; onClose: () => void; onSent: (id: string) => void; onSaved: (id: string) => void; onDiscarded: (id: string) => void }) {
   const normalize = useCallback((d: InvoiceDoc) => ({ ...d, laborLines: d.laborLines ?? [], payments: d.payments ?? [], incidents: d.incidents ?? [], acceptedChannels: d.acceptedChannels ?? [...ALL_CHANNELS] }), []);
-  const { doc, setDoc, loading, error, busy, notice, meta, save, preview, send } = useDocEditor<InvoiceDoc>("/api/admin/invoices", request.id, authCode, normalize);
+  const { doc, setDoc, loading, error, busy, notice, meta, save, preview, send, discard } = useDocEditor<InvoiceDoc>("/api/admin/invoices", request.id, authCode, normalize);
   const [message, setMessage] = useState("");
   const money = useMemo(() => (doc ? computeInvoiceMoney(doc) : null), [doc]);
   const policy = (meta?.policy as ClientPolicy | undefined) ?? null;
@@ -1992,7 +2080,7 @@ function InvoiceEditor({ request, authCode, onClose, onSent, onSaved }: { reques
 
           <LabeledField label="Message to client (optional, included in the email body)"><textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} style={{ ...editInput, resize: "vertical" }} /></LabeledField>
           {notice && <p style={{ color: "#15130f", background: "rgba(245,197,24,0.22)", padding: 10, borderRadius: 10, fontSize: 13, margin: 0 }}>{notice}</p>}
-          <DocActions busy={busy} onPreview={preview} onSave={() => save(() => onSaved(request.id))} onSend={() => { if (confirm(`Send invoice ${doc.number} to ${doc.client.email}?`)) void send(message, () => onSent(request.id), () => onSaved(request.id)); }} />
+          <DocActions busy={busy} onPreview={preview} onSave={() => save(() => onSaved(request.id))} onSend={() => { if (confirm(`Send invoice ${doc.number} to ${doc.client.email}?`)) void send(message, () => onSent(request.id), () => onSaved(request.id)); }} onDiscard={() => { if (confirm(`Discard invoice ${doc.number}? The draft and its stored PDF are deleted; you can rebuild it from the agreed quotation.`)) void discard(() => { onDiscarded(request.id); onClose(); }); }} />
         </div>
       )}
     </DocModal>

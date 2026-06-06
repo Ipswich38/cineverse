@@ -34,6 +34,28 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, expense: row });
 }
 
+// PATCH ?id=… — edit an existing expense (date / category / description / amount).
+export async function PATCH(req: NextRequest) {
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasSupabase()) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
+  const b = await req.json().catch(() => ({}));
+  const patch: Record<string, unknown> = {};
+  if (b.date) patch.date = String(b.date).slice(0, 10);
+  if (typeof b.category === "string") patch.category = b.category.slice(0, 40);
+  if (typeof b.description === "string") patch.description = b.description.slice(0, 400);
+  if (b.amount !== undefined) {
+    const amount = Number(b.amount);
+    if (!(amount > 0)) return NextResponse.json({ error: "Amount must be a positive number." }, { status: 400 });
+    patch.amount = amount;
+  }
+  if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
+  const { data, error } = await supabaseAdmin()!.from(TABLE).update(patch).eq("id", id).select("*").maybeSingle();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, expense: data });
+}
+
 export async function DELETE(req: NextRequest) {
   if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!hasSupabase()) return NextResponse.json({ error: "Database not configured." }, { status: 503 });

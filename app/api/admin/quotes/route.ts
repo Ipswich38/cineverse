@@ -89,3 +89,27 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+// DELETE ?id=… — remove a quote request and everything hanging off it: the row
+// (which carries the quotation/contract/invoice docs), the stored PDF copies in
+// each bucket, and any inventory units reserved against it (checked back in).
+export async function DELETE(req: NextRequest) {
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasSupabase()) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
+  const db = supabaseAdmin()!;
+
+  // Release any units reserved for this request before the row disappears.
+  await db.from("vissionlink_units").update({ status: "available", assigned_request_id: null, updated_at: new Date().toISOString() }).eq("assigned_request_id", id);
+
+  // Best-effort cleanup of stored document PDFs (one folder per request id).
+  for (const bucket of ["quotations", "contracts", "invoices"]) {
+    const { data: files } = await db.storage.from(bucket).list(id);
+    if (files?.length) await db.storage.from(bucket).remove(files.map((f) => `${id}/${f.name}`));
+  }
+
+  const { error } = await db.from(TABLE).delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

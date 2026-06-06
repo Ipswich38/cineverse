@@ -53,3 +53,16 @@ export async function PATCH(req: NextRequest) {
   const updated = await getClient(email);
   return NextResponse.json({ ok: true, client: updated, policy: policyFor(updated) });
 }
+
+// DELETE ?email=… — remove a client from the ledger. (Their loyalty tier/standing
+// are rebuilt from invoices on the next clean settlement, so this just clears the
+// manual record.)
+export async function DELETE(req: NextRequest) {
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasSupabase()) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
+  const email = req.nextUrl.searchParams.get("email");
+  if (!email) return NextResponse.json({ error: "Missing email." }, { status: 400 });
+  const { error } = await supabaseAdmin()!.from(TABLE).delete().eq("email", email);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

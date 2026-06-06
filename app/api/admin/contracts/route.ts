@@ -124,3 +124,18 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, sentAt, pdfPath: path, emailSkipped: Boolean(mail.skipped) });
 }
+
+// DELETE ?requestId=… — discard the contract: clear its columns (the next open
+// regenerates a fresh draft from the agreed quotation) and drop the stored PDF.
+export async function DELETE(req: NextRequest) {
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasSupabase()) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
+  const id = req.nextUrl.searchParams.get("requestId");
+  if (!id) return NextResponse.json({ error: "Missing requestId." }, { status: 400 });
+  const db = supabaseAdmin()!;
+  const { data: files } = await db.storage.from(BUCKET).list(id);
+  if (files?.length) await db.storage.from(BUCKET).remove(files.map((f) => `${id}/${f.name}`));
+  const { error } = await db.from(TABLE).update({ contract: null, contract_status: "none", contract_pdf_path: null, contract_sent_at: null }).eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

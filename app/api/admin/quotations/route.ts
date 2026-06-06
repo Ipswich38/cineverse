@@ -144,3 +144,19 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, sentAt, pdfPath: path, emailSkipped: Boolean(mail.skipped) });
 }
+
+// DELETE ?requestId=… — discard the quotation: clear its columns (so the next
+// open rebuilds a fresh draft) and remove the stored PDF copy. Leaves the quote
+// request itself intact.
+export async function DELETE(req: NextRequest) {
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasSupabase()) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
+  const id = req.nextUrl.searchParams.get("requestId");
+  if (!id) return NextResponse.json({ error: "Missing requestId." }, { status: 400 });
+  const db = supabaseAdmin()!;
+  const { data: files } = await db.storage.from(BUCKET).list(id);
+  if (files?.length) await db.storage.from(BUCKET).remove(files.map((f) => `${id}/${f.name}`));
+  const { error } = await db.from(TABLE).update({ quotation: null, quotation_status: "none", quotation_pdf_path: null, quotation_sent_at: null }).eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
