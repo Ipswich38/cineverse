@@ -14,6 +14,7 @@ import { useStore } from "@/app/providers";
 import { bookedDateSet, isItemAvailable } from "@/lib/catalog";
 import { COMPANY } from "@/lib/company";
 import CategoryNav from "./CategoryNav";
+import ChatWidget from "@/components/ChatWidget";
 
 const navItems: { href: string; label: string; icon: typeof Home }[] = [
   { href: "/", label: "Home", icon: Home },
@@ -220,6 +221,15 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                 Search
               </button>
               <button
+                className="filter-submit"
+                style={{ background: "transparent", color: "#15130f", border: "1px solid rgba(17,17,17,0.2)" }}
+                onClick={() => { setSearchOpen(false); setGearBarOpen(true); }}
+                title="Find gear by location and rental dates"
+              >
+                <Filter size={16} strokeWidth={2.2} />
+                Find by details
+              </button>
+              <button
                 aria-label="Close search"
                 className="filter-close"
                 onClick={() => setSearchOpen(false)}
@@ -231,10 +241,9 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <button className="floating-filter-button" onClick={() => setGearBarOpen(true)}>
-        <Filter size={16} strokeWidth={2.2} />
-        Find Gear
-      </button>
+      {/* Floating chat assistant (replaces the old Find Gear button — the Find
+          Gear form now opens from the search box via "Find by details"). */}
+      <ChatWidget />
 
       {gearBarOpen && (
         <div className="floating-filter-panel" role="dialog" aria-label="Find rental gear">
