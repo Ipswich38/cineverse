@@ -4,8 +4,11 @@ import type { CSSProperties } from "react";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Mail, MapPin, Send } from "lucide-react";
-import { PACKAGE_OFFERS } from "@/lib/package-offers";
+import { INITIAL_CATALOG } from "@/lib/catalog";
 import { PROVIDERS } from "@/lib/providers";
+
+// Quote dropdown lists the real rental sets (gear rents by set, not by piece).
+const QUOTE_SETS = INITIAL_CATALOG;
 
 const STORE_EMAIL = "hello@vissionlink.com";
 const STORE_LOCATION = "Metro Manila, Philippines";
@@ -198,11 +201,11 @@ function QuoteForm({ defaultPackage, defaultProvider }: { defaultPackage: string
             ))}
           </select>
         </Field>
-        <Field label="Package" required>
+        <Field label="Which set?" required>
           <select required value={form.package} onChange={set("package")} style={inputStyle}>
-            <option value="" disabled>Select a package…</option>
-            {PACKAGE_OFFERS.map((o) => (
-              <option key={o.slug} value={o.slug}>{o.name}</option>
+            <option value="" disabled>Select a rental set…</option>
+            {QUOTE_SETS.map((s) => (
+              <option key={s.slug} value={s.slug}>{s.name}</option>
             ))}
           </select>
         </Field>

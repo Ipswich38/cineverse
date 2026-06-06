@@ -24,9 +24,8 @@ const navItems: { href: string; label: string; icon: typeof Home }[] = [
 
 const primaryLinks: { href: string; label: string; external?: boolean }[] = [
   { href: "/store", label: "Store" },
-  // Providers & Packages share one menu: each provider opens its branded
-  // storefront (/providers), and "All packages" links the full package catalog.
-  { href: "/providers", label: "Providers & Packages" },
+  // BMR's branded storefront. (Curated "packages" were retired — gear rents by set.)
+  { href: "/providers", label: "Rentals" },
   // Hidden for now (per client) — re-enable when the crew cross-link returns.
   // { href: "https://cineforce.vissionlink.com", label: "Need A Crew", external: true },
   { href: "/about", label: "About" },

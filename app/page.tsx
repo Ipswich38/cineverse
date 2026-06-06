@@ -8,7 +8,7 @@ import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import EquipmentCard from "@/components/EquipmentCard";
 import type { EquipmentItem } from "@/lib/catalog";
 import { COMPANY } from "@/lib/company";
-import { PACKAGE_OFFERS } from "@/lib/package-offers";
+import { peso } from "@/lib/rental-pricing";
 
 const FALLBACK_IMAGES = {
   camera: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=900&q=80",
@@ -42,7 +42,7 @@ export default function HomePage() {
   const previewItems = catalog.slice(0, 6);
   const carouselItems = catalog.slice(0, 12);
   const bmrItems = catalog.filter((item) => item.owner === "Vissionlink Rentals" || item.owner === COMPANY.legalName);
-  const featuredPackages = PACKAGE_OFFERS.slice(0, 4);
+  const featuredSets = (bmrItems.filter((i) => i.featured).length ? bmrItems.filter((i) => i.featured) : bmrItems).slice(0, 4);
   const scrollCarousel = (direction: -1 | 1) => {
     const el = carouselRef.current;
     if (!el) return;
@@ -128,8 +128,7 @@ export default function HomePage() {
               The owner-operator behind VissionLink, offering reviewed camera, monitoring, lighting, grip, drone, and production support packages for film and commercial shoots.
             </p>
             <div className="landing-provider-stats">
-              <span><b>{bmrItems.length}</b> listed items</span>
-              <span><b>{PACKAGE_OFFERS.length}</b> package offers</span>
+              <span><b>{bmrItems.length}</b> rental sets</span>
             </div>
             <div className="landing-provider-actions">
               <Link href="/providers" className="landing-provider-link">
@@ -141,23 +140,23 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="landing-package-list" aria-label="BMR package offers">
-            {featuredPackages.map((offer) => (
-              <Link href={`/packages/${offer.slug}`} className="landing-package-card" key={offer.id}>
+          <div className="landing-package-list" aria-label="Featured BMR rental sets">
+            {featuredSets.map((it) => (
+              <Link href={`/gear/${it.slug}`} className="landing-package-card" key={it.id}>
                 <div className="landing-package-image">
-                  <GearImagePlaceholder name={offer.name} />
+                  <GearImagePlaceholder name={it.name} />
                 </div>
                 <div>
-                  <p>{offer.eyebrow}</p>
-                  <h3>{offer.name}</h3>
-                  <span>{offer.priceRange}</span>
+                  <p>Rental set</p>
+                  <h3>{it.name}</h3>
+                  <span>{peso(it.ratePerDay)}/day</span>
                 </div>
                 <ArrowRight className="landing-package-arrow" size={16} />
               </Link>
             ))}
-            <Link href="/providers" className="landing-package-all">
+            <Link href="/store" className="landing-package-all">
               <Package size={16} />
-              View all packages
+              Browse all sets
             </Link>
           </div>
         </div>

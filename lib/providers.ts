@@ -44,7 +44,7 @@ export const BMR_PROVIDER: ProviderProfile = {
   about:
     "The owner-operator behind VissionLink. BMR Cinema Operation Services supplies reviewed camera, monitoring, lighting, grip, drone, and production-support gear for film, TV, and commercial shoots across Metro Manila.",
   verified: true,
-  hasPackages: true,
+  hasPackages: false, // retired: BMR rents by SET, and those sets are the store catalog
   contactEmail: COMPANY.email,
   accent: "#f5c518",
   bannerFrom: "#161412",

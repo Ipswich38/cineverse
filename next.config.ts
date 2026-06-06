@@ -16,10 +16,13 @@ const nextConfig: NextConfig = {
       "./node_modules/fontkit/**/*.json",
     ],
   },
-  // The standalone /packages listing was retired — packages now live on the BMR
-  // provider storefront. Redirect old links (including ?item= deep-links) there.
+  // The curated "packages" were retired — BMR rents by SET and those sets ARE the
+  // store catalog now. Send any old package link to the store.
   async redirects() {
-    return [{ source: "/packages", destination: "/providers", permanent: false }];
+    return [
+      { source: "/packages", destination: "/store", permanent: false },
+      { source: "/packages/:slug*", destination: "/store", permanent: false },
+    ];
   },
 };
 

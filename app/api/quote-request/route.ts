@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { sendQuoteRequestEmail } from "@/lib/contact-mail";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
 import { PACKAGE_OFFERS } from "@/lib/package-offers";
+import { INITIAL_CATALOG } from "@/lib/catalog";
 import { providerBySlug } from "@/lib/providers";
 import { generateDraft } from "@/lib/quotation";
+import { peso } from "@/lib/rental-pricing";
 
 export const runtime = "nodejs";
 
@@ -42,9 +44,17 @@ export async function POST(req: Request) {
   }
 
   const provider = providerBySlug(providerSlug);
-  const offer = PACKAGE_OFFERS.find((o) => o.slug === packageSlug);
+  // Quote target is now a rental SET (catalog); fall back to a legacy curated
+  // package slug for any old links still in flight.
+  const set = INITIAL_CATALOG.find((s) => s.slug === packageSlug);
+  const legacy = PACKAGE_OFFERS.find((o) => o.slug === packageSlug);
+  const offer = set
+    ? { slug: set.slug, name: set.name, priceRange: `${peso(set.ratePerDay)}/day` }
+    : legacy
+      ? { slug: legacy.slug, name: legacy.name, priceRange: legacy.priceRange }
+      : undefined;
   if (!provider || !offer) {
-    return NextResponse.json({ ok: false, error: "Unknown provider or package." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Unknown provider or set." }, { status: 400 });
   }
 
   const phone = str(body.phone, 60);

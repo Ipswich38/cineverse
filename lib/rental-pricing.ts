@@ -4,23 +4,23 @@
 // the FULL rental fee plus a refundable security deposit up front; the deposit is
 // returned after the gear comes back (less any damages).
 //
-// Catalog items currently carry securityDeposit = 0, so the deposit defaults to a
-// transparent policy: ~SECURITY_DEPOSIT_DAYS × the daily rate per unit (a bounded
-// hold, NOT scaled by rental length). If an item ever sets an explicit
-// securityDeposit (> 0), that value is used instead. Tune the multiplier here.
+// The refundable security hold is a flat, predictable amount per unit
+// (DEFAULT_SECURITY_DEPOSIT) — easy for the client to read and trust. If a set
+// ever carries an explicit securityDeposit (> 0), that value is used instead, so
+// BMR can tune it per set/tier later. Edit the flat default here.
 
-export const SECURITY_DEPOSIT_DAYS = 2;
+export const DEFAULT_SECURITY_DEPOSIT = 5000;
 
 export type RentableLine = {
   ratePerDay: number;
   days: number;
   quantity: number;
-  securityDeposit?: number; // explicit per-unit deposit; 0/undefined → policy
+  securityDeposit?: number; // explicit per-unit deposit; 0/undefined → flat default
 };
 
 // Per-unit refundable security hold for one line.
-export function unitSecurityDeposit(ratePerDay: number, explicit?: number): number {
-  return explicit && explicit > 0 ? explicit : Math.round((Number(ratePerDay) || 0) * SECURITY_DEPOSIT_DAYS);
+export function unitSecurityDeposit(_ratePerDay: number, explicit?: number): number {
+  return explicit && explicit > 0 ? explicit : DEFAULT_SECURITY_DEPOSIT;
 }
 
 export function lineRental(line: RentableLine): number {
