@@ -56,9 +56,9 @@ export default function ChatWidget() {
         style={{
           position: "fixed", right: 18, bottom: 78, zIndex: 90,
           display: "inline-flex", alignItems: "center", gap: 8,
-          background: "#15130f", color: "#ffcc00", border: "none", borderRadius: 999,
+          background: "#f5c518", color: "#15130f", border: "none", borderRadius: 999,
           padding: "12px 18px", fontWeight: 800, fontSize: 14, cursor: "pointer",
-          boxShadow: "0 10px 30px rgba(17,17,17,0.32)",
+          boxShadow: "0 10px 30px rgba(245,197,24,0.45)",
         }}
       >
         {open ? <X size={18} /> : <MessageCircle size={18} />} {open ? "Close" : "Ask us"}
@@ -76,9 +76,9 @@ export default function ChatWidget() {
             boxShadow: "0 24px 60px rgba(17,17,17,0.32)", overflow: "hidden",
           }}
         >
-          <div style={{ background: "#15130f", color: "#fffdf8", padding: "13px 16px" }}>
+          <div style={{ background: "#f5c518", color: "#15130f", padding: "13px 16px" }}>
             <div style={{ fontFamily: '"Jost", sans-serif', fontWeight: 800, fontSize: 16 }}>{COMPANY.brand} assistant</div>
-            <div style={{ fontSize: 11.5, color: "rgba(255,253,248,0.7)" }}>Gear · rates · how renting works</div>
+            <div style={{ fontSize: 11.5, color: "rgba(21,19,15,0.65)" }}>Gear · rates · how renting works</div>
           </div>
 
           <div ref={scroller} style={{ flex: 1, overflowY: "auto", padding: 14, display: "grid", gap: 10, alignContent: "start" }}>
@@ -88,8 +88,8 @@ export default function ChatWidget() {
                 style={{
                   justifySelf: m.role === "user" ? "end" : "start",
                   maxWidth: "85%",
-                  background: m.role === "user" ? "#f5c518" : "#fffdf8",
-                  color: "#15130f",
+                  background: m.role === "user" ? "#15130f" : "#fffdf8",
+                  color: m.role === "user" ? "#fffdf8" : "#15130f",
                   border: m.role === "user" ? "none" : "1px solid rgba(17,17,17,0.12)",
                   borderRadius: 14, padding: "9px 12px", fontSize: 13.5, lineHeight: 1.5, whiteSpace: "pre-wrap",
                 }}
