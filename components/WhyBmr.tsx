@@ -9,7 +9,7 @@ import { ArrowRight, CreditCard, FileCheck2, PackageCheck, Tags } from "lucide-r
 const ROWS: { label: string; others: string; bmr: string }[] = [
   { label: "Booking", others: "By inquiry, within office hours", bmr: "Online, anytime — in minutes" },
   { label: "Pricing", others: "Quoted per booking", bmr: "Published per-set day-rates" },
-  { label: "Payment", others: "Bank transfer or cash", bmr: "Card, GCash, Maya, GrabPay" },
+  { label: "Payment", others: "Bank transfer or cash", bmr: "Card, GCash, Maya & GrabPay — via PayMongo" },
   { label: "Paperwork", others: "Arranged manually", bmr: "Invoice + lease emailed instantly" },
   { label: "Gear", others: "Itemised à la carte", bmr: "Complete, checked sets & kits" },
   { label: "Availability", others: "Confirmed on request", bmr: "Live stock shown online" },
@@ -17,7 +17,7 @@ const ROWS: { label: string; others: string; bmr: string }[] = [
 ];
 
 const STRENGTHS = [
-  { icon: CreditCard, title: "Book & pay in minutes", body: "Reserve your dates and pay online — card, GCash, Maya or GrabPay. No back-and-forth, no waiting for office hours." },
+  { icon: CreditCard, title: "Book & pay in minutes", body: "Reserve your dates and pay online — card, GCash, Maya or GrabPay, securely via PayMongo. No back-and-forth, no waiting for office hours." },
   { icon: FileCheck2, title: "Invoice + lease in your inbox", body: "The moment payment clears, your official invoice and rental/lease contract are emailed automatically." },
   { icon: PackageCheck, title: "Complete sets, nothing missing", body: "Gear rents as a full set/kit with every accessory listed — what you see is exactly what arrives." },
   { icon: Tags, title: "Transparent pricing & deposit", body: "Clear per-set day-rates and a refundable security deposit shown up front. Need a multi-day discount? Request a quote." },
@@ -31,9 +31,10 @@ export default function WhyBmr() {
         <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 28, letterSpacing: "-0.04em", margin: "6px 0 6px" }}>
           Built for how productions actually work
         </h2>
-        <p style={{ color: "#6c675f", maxWidth: 660, lineHeight: 1.6, margin: 0, fontSize: 14 }}>
-          Great gear is the baseline — every house has it. BMR pairs it with a rental experience that
-          respects your time: <strong>book, pay, and receive your invoice and lease</strong> in one place.
+        <p style={{ color: "#6c675f", maxWidth: 680, lineHeight: 1.6, margin: 0, fontSize: 14 }}>
+          BMR Cinema Operation Services is one of Metro Manila&apos;s trusted camera and production-gear
+          rental providers — paired with a rental experience that respects your time:
+          <strong> book, pay, and receive your invoice and lease</strong> in one place.
         </p>
       </div>
 
