@@ -73,6 +73,9 @@ export default function CartPage() {
           <p style={{ display: "flex", gap: 7, color: "#6c675f", fontSize: 12, lineHeight: 1.5, margin: "12px 0 0" }}>
             <ShieldCheck size={26} style={{ flexShrink: 0, marginTop: -2 }} /> Pay just {Math.round(DOWNPAYMENT_RATE * 100)}% now to reserve your gear — the balance is settled before or upon handover. Invoice + rental contract are emailed once payment clears.
           </p>
+          <p style={{ color: "#6c675f", fontSize: 11.5, lineHeight: 1.5, margin: "8px 0 0" }}>
+            <strong style={{ color: "#15130f" }}>Pay with:</strong> GCash · Maya · GrabPay · Visa/Mastercard credit &amp; debit (incl. GoTyme).
+          </p>
           <Link
             href="/checkout"
             aria-disabled={cart.length === 0}

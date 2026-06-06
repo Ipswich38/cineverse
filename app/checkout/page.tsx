@@ -109,11 +109,16 @@ function CheckoutContent() {
           <button onClick={submit} disabled={busy} style={{ marginTop: 16, width: "100%", justifyContent: "center", display: "flex", alignItems: "center", gap: 8, background: "#f5c518", color: "#15130f", border: "none", fontWeight: 800, borderRadius: 999, padding: "13px 14px", fontSize: 14, cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>
             {busy ? <><Loader2 size={16} className="spin" /> Starting secure checkout…</> : <>Pay {peso(downpaymentTotal)} <ArrowRight size={16} /></>}
           </button>
-          <p style={{ display: "flex", alignItems: "center", gap: 6, color: "#6c675f", fontSize: 11, margin: "10px 0 0", justifyContent: "center" }}>
-            <Lock size={12} /> Secured by PayMongo · card, GCash, Maya, GrabPay
-          </p>
+          <div style={{ marginTop: 12, padding: "10px 12px", background: "#f7f5ef", border: "1px solid rgba(17,17,17,0.1)", borderRadius: 10 }}>
+            <p style={{ display: "flex", alignItems: "center", gap: 6, color: "#15130f", fontSize: 12, fontWeight: 700, margin: 0 }}>
+              <Lock size={13} /> Accepted payment methods
+            </p>
+            <p style={{ color: "#6c675f", fontSize: 11.5, lineHeight: 1.55, margin: "5px 0 0" }}>
+              GCash · Maya · GrabPay · Visa &amp; Mastercard credit and debit cards (including GoTyme and other bank cards) — securely via PayMongo.
+            </p>
+          </div>
           <p style={{ display: "flex", gap: 7, color: "#6c675f", fontSize: 11.5, lineHeight: 1.5, margin: "10px 0 0" }}>
-            <ShieldCheck size={24} style={{ flexShrink: 0, marginTop: -2 }} /> Your invoice and lease contract are emailed automatically once payment clears.
+            <ShieldCheck size={24} style={{ flexShrink: 0, marginTop: -2 }} /> Your invoice and rental contract are emailed automatically once payment clears.
           </p>
         </aside>
       </div>

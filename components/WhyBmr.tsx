@@ -9,7 +9,7 @@ import { ArrowRight, CreditCard, FileCheck2, PackageCheck, Tags } from "lucide-r
 const ROWS: { label: string; others: string; bmr: string }[] = [
   { label: "Booking", others: "By inquiry, within office hours", bmr: "Book online anytime — even after hours" },
   { label: "Pricing", others: "Quoted per booking", bmr: "Clear, published per-set rates" },
-  { label: "Payment", others: "Bank transfer or cash", bmr: "Card, GCash, Maya & GrabPay — via PayMongo" },
+  { label: "Payment", others: "Bank transfer or cash", bmr: "GCash, Maya, GrabPay & cards (incl. GoTyme) — via PayMongo" },
   { label: "Paperwork", others: "Arranged manually", bmr: "Invoice & rental contract emailed to you" },
   { label: "Gear", others: "Itemised à la carte", bmr: "Complete sets — checked & ready" },
   { label: "Availability", others: "Confirmed on request", bmr: "Real-time availability online" },
