@@ -13,6 +13,31 @@ export function hasLLM(): boolean {
   return Boolean(process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY);
 }
 
+// Temporary diagnostic: surface the raw provider response so we can see why a
+// configured key falls back to the FAQ. Remove once the chatbot is confirmed.
+export async function probeLLM(): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {
+    hasGemini: Boolean(process.env.GEMINI_API_KEY),
+    hasGroq: Boolean(process.env.GROQ_API_KEY),
+    groqModel: process.env.GROQ_MODEL || "gemma2-9b-it",
+  };
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+        body: JSON.stringify({ model: process.env.GROQ_MODEL || "gemma2-9b-it", max_tokens: 20, messages: [{ role: "user", content: "ping" }] }),
+      });
+      out.groqStatus = res.status;
+      const text = await res.text();
+      out.groqBody = text.slice(0, 400);
+    } catch (e) {
+      out.groqError = e instanceof Error ? e.message : String(e);
+    }
+  }
+  return out;
+}
+
 const MAX_OUTPUT = 600;
 
 export async function askLLM(system: string, messages: ChatMsg[]): Promise<string | null> {
