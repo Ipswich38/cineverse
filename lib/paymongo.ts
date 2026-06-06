@@ -53,11 +53,17 @@ export async function createCheckoutSession(opts: CreateCheckoutInput): Promise<
 
   const res = await fetch(`${BASE}/checkout_sessions`, {
     method: "POST",
-    headers: { Authorization: authHeader(), "Content-Type": "application/json" },
+    headers: { Authorization: authHeader(), "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(body),
   });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.errors?.[0]?.detail || `PayMongo checkout failed (HTTP ${res.status}).`);
+  const text = await res.text();
+  let json: { data?: { id: string; attributes: { checkout_url: string } }; errors?: { detail?: string }[] } = {};
+  try { json = JSON.parse(text); } catch { /* non-JSON body */ }
+  if (!res.ok) {
+    const detail = json?.errors?.[0]?.detail || text.slice(0, 300) || "no body";
+    throw new Error(`PayMongo HTTP ${res.status}: ${detail}`);
+  }
+  if (!json.data?.attributes?.checkout_url) throw new Error(`PayMongo returned no checkout_url: ${text.slice(0, 300)}`);
   return { id: json.data.id, checkoutUrl: json.data.attributes.checkout_url };
 }
 
