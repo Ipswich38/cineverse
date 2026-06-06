@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, Clock, ShieldCheck } from "lucide-react";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
-import { PackageQuoteButton } from "@/components/PackageQuoteModal";
+import { PackageQuoteButton, PackageRentButton } from "@/components/PackageQuoteModal";
 import { PACKAGE_OFFERS, packageBySlug } from "@/lib/package-offers";
+import { peso } from "@/lib/rental-pricing";
 
 export function generateStaticParams() {
   return PACKAGE_OFFERS.map((offer) => ({ slug: offer.slug }));
@@ -31,10 +32,11 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
           <p>{offer.description}</p>
         </div>
         <aside className="range-panel">
-          <span>Safe planning range</span>
-          <strong>{offer.priceRange}</strong>
-          <p>Final package price is reviewed and confirmed by admin after checking dates, scope, crew, transport, availability, VAT, and approved discounts.</p>
-          <PackageQuoteButton offer={offer}>Ask a quotation</PackageQuoteButton>
+          <span>Package rate</span>
+          <strong>{peso(offer.pricePerDay)}/day</strong>
+          <p>Rent now — pay the rental plus a refundable security deposit online and get your invoice and lease contract instantly. Planning a longer shoot and want a multi-day discount? Request a quote instead.</p>
+          <PackageRentButton offer={offer}>Rent now</PackageRentButton>
+          <PackageQuoteButton offer={offer} className="quote-button quote-button-secondary">Request a discount quote</PackageQuoteButton>
         </aside>
       </header>
 
@@ -220,6 +222,12 @@ const CSS = `
 .quote-button:disabled {
   opacity: 0.62;
   cursor: progress;
+}
+.range-panel .quote-button { width: 100%; margin-top: 10px; }
+.quote-button-secondary {
+  background: transparent;
+  border: 1px solid rgba(17,17,17,0.2);
+  font-weight: 600;
 }
 .quote-modal-backdrop {
   position: fixed;

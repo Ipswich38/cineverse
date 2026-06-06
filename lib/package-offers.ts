@@ -3,7 +3,11 @@ export type PackageOffer = {
   slug: string;
   name: string;
   eyebrow: string;
-  priceRange: string;
+  priceRange: string; // legacy "safe planning range" — still used by the quote flow
+  /** Fixed published rate (PHP/day) for instant Rent. PLACEHOLDER values below
+   *  (low end of each old range) — replace with BMR's real package prices
+   *  before taking live payments. */
+  pricePerDay: number;
   description: string;
   inclusions: string[];
   details: string[];
@@ -19,6 +23,7 @@ export const PACKAGE_OFFERS: PackageOffer[] = [
     name: "KOMODO Camera Package",
     eyebrow: "Camera package",
     priceRange: "₱15,000-₱25,000/day",
+    pricePerDay: 15000, // PLACEHOLDER — confirm with BMR
     description: "A focused KOMODO 6K setup for productions that need a cinema camera body with core accessories ready for shoot day.",
     inclusions: ["KOMODO 6K body", "Power and media support", "Monitor and matte box accessories", "Tripod, hi-hat, and camera support add-ons"],
     details: [
@@ -42,6 +47,7 @@ export const PACKAGE_OFFERS: PackageOffer[] = [
     name: "KOMODO + Prime Lens + Monitoring Package",
     eyebrow: "Camera and video village",
     priceRange: "₱35,000-₱65,000/day",
+    pricePerDay: 35000, // PLACEHOLDER — confirm with BMR
     description: "Built from BMR's invoice template: KOMODO body, DZOFilm prime lenses, Pyro wireless video, and director monitoring support.",
     inclusions: ["KOMODO 6K body package", "DZOFilm Arles FF/VV prime lens set", "Pyro S wireless video", "21 inch floor monitor or handheld director monitor"],
     details: [
@@ -72,6 +78,7 @@ export const PACKAGE_OFFERS: PackageOffer[] = [
     name: "Full Production Lighting and Grip Package",
     eyebrow: "Lighting, grip, and utilities",
     priceRange: "₱80,000-₱160,000/day",
+    pricePerDay: 80000, // PLACEHOLDER — confirm with BMR
     description: "A larger package based on BMR's cost estimate template with camera, drone, lighting, grip, and production support items reviewed together.",
     inclusions: ["KOMODO and selected camera support", "DJI Mavic aerial option", "Nanlux, Aputure, Amaran, and Pavotube lighting", "C-stands, clamps, overheads, apple boxes, sandbags, and extensions"],
     details: [
@@ -148,6 +155,7 @@ export const PACKAGE_OFFERS: PackageOffer[] = [
     name: "Assistant Cameraman + AC Kit",
     eyebrow: "Service and gear",
     priceRange: "₱18,000-₱35,000/day",
+    pricePerDay: 18000, // PLACEHOLDER — confirm with BMR
     description: "A service package based on the BMR service invoice structure, pairing assistant cameraman support with a complete AC kit.",
     inclusions: ["Assistant cameraman support", "Set 7 Assistant Cameraman Kit", "Wireless follow focus", "SmallHD monitor, Vaxis wireless video, and AC tools"],
     details: [
@@ -173,6 +181,7 @@ export const PACKAGE_OFFERS: PackageOffer[] = [
     name: "Gimbal Stabilizer Package",
     eyebrow: "Movement support",
     priceRange: "₱10,000-₱45,000/day",
+    pricePerDay: 10000, // PLACEHOLDER — confirm with BMR
     description: "A stabilization package that can be reviewed around RS3 Pro, Tilta Float, or Ronin 2 needs depending on camera payload and operating style.",
     inclusions: ["Ronin RS3 Pro combo option", "Tilta Float support option", "DJI Ronin 2 heavy-lift option", "Power, control, and wireless accessories as needed"],
     details: [
@@ -196,6 +205,13 @@ export const PACKAGE_OFFERS: PackageOffer[] = [
 
 export function packageBySlug(slug: string) {
   return PACKAGE_OFFERS.find((offer) => offer.slug === slug);
+}
+
+// Cart lines for a package use the id `pkg-<offer.id>`; resolve it back here.
+export function packageByCartId(cartItemId: string) {
+  if (!cartItemId.startsWith("pkg-")) return undefined;
+  const id = cartItemId.slice(4);
+  return PACKAGE_OFFERS.find((offer) => offer.id === id);
 }
 
 export function packagesForItemSlug(itemSlug: string) {

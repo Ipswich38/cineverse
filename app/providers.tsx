@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { CartItem, EquipmentItem } from "@/lib/catalog";
 import { INITIAL_CATALOG } from "@/lib/catalog";
+import type { PackageOffer } from "@/lib/package-offers";
 import { rentalTotals } from "@/lib/rental-pricing";
 
 type StoreContextValue = {
@@ -12,6 +13,7 @@ type StoreContextValue = {
   refreshCatalog: () => Promise<void>;
   cart: CartItem[];
   addToCart: (item: EquipmentItem, days: number, quantity?: number) => void;
+  addPackageToCart: (offer: PackageOffer, days: number, image: string, quantity?: number) => void;
   setDays: (itemId: string, days: number) => void;
   setQuantity: (itemId: string, quantity: number) => void;
   removeFromCart: (itemId: string) => void;
@@ -95,6 +97,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // A package rents as a single fixed-rate cart line (id `pkg-<offer.id>`); the
+  // server resolves the price from PACKAGE_OFFERS at checkout.
+  const addPackageToCart = (offer: PackageOffer, days: number, image: string, quantity = 1) => {
+    const itemId = `pkg-${offer.id}`;
+    setCart((prev) => {
+      const existing = prev.find((e) => e.itemId === itemId && e.days === days);
+      if (existing) return prev.map((e) => (e.itemId === itemId && e.days === days ? { ...e, quantity: e.quantity + quantity } : e));
+      return [...prev, { itemId, slug: offer.slug, name: offer.name, image, ratePerDay: offer.pricePerDay, days, quantity, owner: "BMR Cinema Operation Services" }];
+    });
+  };
+
   const setDays = (itemId: string, days: number) => {
     setCart((prev) => prev.map((entry) => (entry.itemId === itemId ? { ...entry, days } : entry)));
   };
@@ -137,6 +150,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     refreshCatalog,
     cart,
     addToCart,
+    addPackageToCart,
     setDays,
     setQuantity,
     removeFromCart,

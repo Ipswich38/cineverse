@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
 import { getCatalogCached } from "@/lib/catalog-data";
-import { rentalTotals, lineRental, lineSecurity, type RentableLine } from "@/lib/rental-pricing";
+import { packageByCartId } from "@/lib/package-offers";
+import { rentalTotals, lineRental, type RentableLine } from "@/lib/rental-pricing";
 import { createCheckoutSession, hasPaymongo } from "@/lib/paymongo";
 
 export const runtime = "nodejs";
@@ -43,10 +44,17 @@ export async function POST(req: NextRequest) {
   const byId = new Map(catalog.map((c) => [c.id, c]));
   const items: { id: string; name: string; qty: number; days: number; ratePerDay: number; securityDeposit: number }[] = [];
   for (const line of incoming) {
-    const item = byId.get(String(line.itemId));
-    if (!item) return NextResponse.json({ error: "An item in your cart is no longer available." }, { status: 409 });
+    const id = String(line.itemId);
     const days = Math.max(1, Math.floor(Number(line.days) || 0));
     const qty = Math.max(1, Math.floor(Number(line.quantity) || 0));
+    // Packages (id `pkg-…`) price from PACKAGE_OFFERS; gear from the catalog.
+    const pkg = packageByCartId(id);
+    if (pkg) {
+      items.push({ id, name: pkg.name, qty, days, ratePerDay: pkg.pricePerDay, securityDeposit: 0 });
+      continue;
+    }
+    const item = byId.get(id);
+    if (!item) return NextResponse.json({ error: "An item in your cart is no longer available." }, { status: 409 });
     if (item.stock > 0 && qty > item.stock) return NextResponse.json({ error: `Only ${item.stock} of ${item.name} in stock.` }, { status: 409 });
     items.push({ id: item.id, name: item.name, qty, days, ratePerDay: item.ratePerDay, securityDeposit: item.securityDeposit });
   }
