@@ -5,7 +5,7 @@
 //
 // Env (all optional — none set ⇒ chatbot runs on the FAQ fallback only):
 //   GEMINI_API_KEY   + optional GEMINI_MODEL (default gemini-2.0-flash)
-//   GROQ_API_KEY     + optional GROQ_MODEL   (default gemma2-9b-it)
+//   GROQ_API_KEY     + optional GROQ_MODEL   (default llama-3.3-70b-versatile)
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -19,14 +19,14 @@ export async function probeLLM(): Promise<Record<string, unknown>> {
   const out: Record<string, unknown> = {
     hasGemini: Boolean(process.env.GEMINI_API_KEY),
     hasGroq: Boolean(process.env.GROQ_API_KEY),
-    groqModel: process.env.GROQ_MODEL || "gemma2-9b-it",
+    groqModel: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
   };
   if (process.env.GROQ_API_KEY) {
     try {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-        body: JSON.stringify({ model: process.env.GROQ_MODEL || "gemma2-9b-it", max_tokens: 20, messages: [{ role: "user", content: "ping" }] }),
+        body: JSON.stringify({ model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile", max_tokens: 20, messages: [{ role: "user", content: "ping" }] }),
       });
       out.groqStatus = res.status;
       const text = await res.text();
@@ -68,7 +68,7 @@ async function askGemini(system: string, messages: ChatMsg[]): Promise<string | 
 
 // Groq (free tier) — OpenAI-compatible chat completions (serves Gemma, Llama, etc.).
 async function askGroq(system: string, messages: ChatMsg[]): Promise<string | null> {
-  const model = process.env.GROQ_MODEL || "gemma2-9b-it";
+  const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
