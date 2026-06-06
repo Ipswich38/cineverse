@@ -7,20 +7,20 @@ import { ArrowRight, CreditCard, FileCheck2, PackageCheck, Tags } from "lucide-r
 // the edge is doing the whole transaction (book, pay, get your contract) in one go.
 
 const ROWS: { label: string; others: string; bmr: string }[] = [
-  { label: "Booking", others: "By inquiry, within office hours", bmr: "Online, anytime — in minutes" },
-  { label: "Pricing", others: "Quoted per booking", bmr: "Published per-set day-rates" },
+  { label: "Booking", others: "By inquiry, within office hours", bmr: "Book online anytime — even after hours" },
+  { label: "Pricing", others: "Quoted per booking", bmr: "Clear, published per-set rates" },
   { label: "Payment", others: "Bank transfer or cash", bmr: "Card, GCash, Maya & GrabPay — via PayMongo" },
-  { label: "Paperwork", others: "Arranged manually", bmr: "Invoice + lease emailed instantly" },
-  { label: "Gear", others: "Itemised à la carte", bmr: "Complete, checked sets & kits" },
-  { label: "Availability", others: "Confirmed on request", bmr: "Live stock shown online" },
-  { label: "Deposit", others: "Case by case", bmr: "Transparent & refundable" },
+  { label: "Paperwork", others: "Arranged manually", bmr: "Invoice & rental contract emailed to you" },
+  { label: "Gear", others: "Itemised à la carte", bmr: "Complete sets — checked & ready" },
+  { label: "Availability", others: "Confirmed on request", bmr: "Real-time availability online" },
+  { label: "Deposit", others: "Case by case", bmr: "Clear security deposit, returned on safe return" },
 ];
 
 const STRENGTHS = [
-  { icon: CreditCard, title: "Book & pay in minutes", body: "Reserve your dates and pay online — card, GCash, Maya or GrabPay, securely via PayMongo. No back-and-forth, no waiting for office hours." },
-  { icon: FileCheck2, title: "Invoice + lease in your inbox", body: "The moment payment clears, your official invoice and rental/lease contract are emailed automatically." },
-  { icon: PackageCheck, title: "Complete sets, nothing missing", body: "Gear rents as a full set/kit with every accessory listed — what you see is exactly what arrives." },
-  { icon: Tags, title: "Transparent pricing & deposit", body: "Clear per-set day-rates and a refundable security deposit shown up front. Need a multi-day discount? Request a quote." },
+  { icon: CreditCard, title: "Book & pay online", body: "Reserve your dates and pay online — card, GCash, Maya or GrabPay, securely via PayMongo. No back-and-forth, no waiting for office hours." },
+  { icon: FileCheck2, title: "Invoice & contract in your inbox", body: "Once payment clears, your official invoice and rental contract are emailed to you automatically." },
+  { icon: PackageCheck, title: "Complete sets, nothing missing", body: "Gear rents as a full set or kit with every accessory listed — what you see is exactly what arrives, checked and ready." },
+  { icon: Tags, title: "Clear pricing & deposit", body: "Published per-set rates and a clearly stated security deposit, returned after the gear comes back in good condition. Planning a longer shoot? Request a discount quote." },
 ];
 
 export default function WhyBmr() {
