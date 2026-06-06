@@ -1,17 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, ChevronDown, Filter, Home, Menu, Store, ShoppingCart, Shield, Search, ShoppingBag, StoreIcon, X } from "lucide-react";
+import { ChevronDown, Home, Menu, Store, ShoppingCart, Shield, Search, ShoppingBag, StoreIcon, X } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import BrandLockup from "@/components/BrandLockup";
 import Footer from "@/components/Footer";
-import RentalCalendar from "@/components/RentalCalendar";
 import { useStore } from "@/app/providers";
-import { bookedDateSet, isItemAvailable } from "@/lib/catalog";
 import { COMPANY } from "@/lib/company";
 import CategoryNav from "./CategoryNav";
 import ChatWidget from "@/components/ChatWidget";
@@ -36,43 +34,16 @@ const primaryLinks: { href: string; label: string; external?: boolean }[] = [
 const PUBLIC_PROVIDERS = [{ name: COMPANY.legalName, queryOwner: "Vissionlink Rentals" }];
 
 export default function SiteChrome({ children }: { children: ReactNode }) {
-  const { cartCount, catalog } = useStore();
+  const { cartCount } = useStore();
   const pathname = usePathname();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [gearBarOpen, setGearBarOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
-  const [dateFrom, setDateFrom] = useState<string | null>(null);
-  const [dateTo, setDateTo] = useState<string | null>(null);
-  const [calOpen, setCalOpen] = useState(false);
-
-  const bookedDates = useMemo(() => bookedDateSet(catalog), [catalog]);
-  const availableCount = useMemo(
-    () => (dateFrom && dateTo ? catalog.filter((i) => isItemAvailable(i, dateFrom, dateTo)).length : null),
-    [catalog, dateFrom, dateTo],
-  );
-
-  const dateLabel = useMemo(() => {
-    const fmt = (s: string) => new Date(s + "T00:00:00").toLocaleDateString("en-PH", { month: "short", day: "numeric" });
-    if (dateFrom && dateTo) return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
-    if (dateFrom) return `From ${fmt(dateFrom)}`;
-    return "Pickup & return dates";
-  }, [dateFrom, dateTo]);
 
   const submitSearch = () => {
     const trimmed = query.trim();
     router.push(trimmed ? `/store?query=${encodeURIComponent(trimmed)}` : "/store");
-  };
-
-  const submitGearSearch = () => {
-    const p = new URLSearchParams();
-    if (query.trim()) p.set("query", query.trim());
-    if (location.trim()) p.set("location", location.trim());
-    if (dateFrom) p.set("from", dateFrom);
-    if (dateTo) p.set("to", dateTo);
-    router.push((`/store${p.toString() ? `?${p}` : ""}`) as Route);
   };
 
 
@@ -221,15 +192,6 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
                 Search
               </button>
               <button
-                className="filter-submit"
-                style={{ background: "transparent", color: "#15130f", border: "1px solid rgba(17,17,17,0.2)" }}
-                onClick={() => { setSearchOpen(false); setGearBarOpen(true); }}
-                title="Find gear by location and rental dates"
-              >
-                <Filter size={16} strokeWidth={2.2} />
-                Find by details
-              </button>
-              <button
                 aria-label="Close search"
                 className="filter-close"
                 onClick={() => setSearchOpen(false)}
@@ -241,123 +203,9 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      {/* Floating chat assistant (replaces the old Find Gear button — the Find
-          Gear form now opens from the search box via "Find by details"). */}
+      {/* Floating chat assistant — also runs the personalised "find gear" Q&A
+          (purpose, gear, dates), replacing the old Find Gear button + form. */}
       <ChatWidget />
-
-      {gearBarOpen && (
-        <div className="floating-filter-panel" role="dialog" aria-label="Find rental gear">
-          <div className="floating-filter-backdrop" onClick={() => setGearBarOpen(false)} />
-          <form
-            className="store-filter-bar floating-filter-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitGearSearch();
-              setCalOpen(false);
-              setGearBarOpen(false);
-            }}
-          >
-            <button
-              className="floating-filter-close"
-              type="button"
-              onClick={() => {
-                setCalOpen(false);
-                setGearBarOpen(false);
-              }}
-              aria-label="Close filter"
-            >
-              <X size={18} />
-            </button>
-            <label className="store-filter-field">
-              <span>Item / Equipment</span>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Camera, lens, drone..." />
-            </label>
-            <label className="store-filter-field">
-              <span>Location</span>
-              <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Anywhere" />
-            </label>
-            <div className="store-filter-field" style={{ position: "relative" }}>
-              <span>Duration of Rental</span>
-              <button
-                type="button"
-                onClick={() => setCalOpen((open) => !open)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  background: "transparent",
-                  border: 0,
-                  padding: 0,
-                  cursor: "pointer",
-                  color: dateFrom ? "#fffdf8" : "rgba(255,253,248,0.52)",
-                  fontSize: 14,
-                  textAlign: "left",
-                }}
-              >
-                <CalendarDays size={15} />
-                {dateLabel}
-              </button>
-
-              {calOpen && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "calc(100% + 16px)",
-                    left: 0,
-                    zIndex: 80,
-                    width: "min(340px, 86vw)",
-                    background: "#fffdf8",
-                    borderRadius: 18,
-                    border: "1px solid rgba(17,17,17,0.1)",
-                    boxShadow: "0 24px 60px rgba(17,17,17,0.28)",
-                    padding: 18,
-                  }}
-                >
-                  <RentalCalendar
-                    from={dateFrom}
-                    to={dateTo}
-                    bookedDates={bookedDates}
-                    onChange={(f, t) => {
-                      setDateFrom(f);
-                      setDateTo(t);
-                    }}
-                  />
-                  {availableCount !== null && (
-                    <p style={{ margin: "14px 0 0", fontSize: 12.5, fontWeight: 700, color: "#15130f" }}>
-                      {availableCount} of {catalog.length} gear available for these dates
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setCalOpen(false)}
-                    style={{
-                      marginTop: 12,
-                      width: "100%",
-                      background: "#15130f",
-                      color: "#fffdf8",
-                      border: 0,
-                      borderRadius: 999,
-                      padding: "11px 0",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Done
-                  </button>
-                </div>
-              )}
-            </div>
-            <label className="store-filter-field">
-              <span>Budget Optional</span>
-              <input placeholder="Daily or total budget" />
-            </label>
-            <button className="store-filter-submit" type="submit">
-              <Search size={16} strokeWidth={2.2} />
-              Find A Gear
-            </button>
-          </form>
-        </div>
-      )}
 
       <main className="mobile-pad">{children}</main>
 
