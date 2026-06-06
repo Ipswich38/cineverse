@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { MessageCircle, X, Send, Loader2, FileText } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, FileText, ShoppingCart, ArrowRight } from "lucide-react";
 import { COMPANY } from "@/lib/company";
 import { QUICK_TOPICS } from "@/lib/chatbot/faq";
+import { peso } from "@/lib/rental-pricing";
+import { useStore } from "@/app/providers";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -14,11 +16,20 @@ const GREETING: Msg = {
 };
 
 export default function ChatWidget() {
+  const { catalog } = useStore();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+
+  // Promote a few real sets (featured first, else priciest) as order CTAs.
+  const rentable = catalog.filter((i) => i.ratePerDay > 0);
+  const featured = (rentable.filter((i) => i.featured).length ? rentable.filter((i) => i.featured) : rentable)
+    .sort((a, b) => b.ratePerDay - a.ratePerDay)
+    .slice(0, 3);
+  const atGreeting = messages.length <= 1;
+  const showSuggestions = !busy && messages[messages.length - 1]?.role === "assistant";
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -102,13 +113,32 @@ export default function ChatWidget() {
                 <Loader2 size={14} className="spin" /> typing…
               </div>
             )}
-            {messages.length <= 1 && !busy && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
-                {QUICK_TOPICS.map((t) => (
-                  <button key={t} onClick={() => send(t)} style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.16)", borderRadius: 999, padding: "6px 11px", fontSize: 12, cursor: "pointer", color: "#15130f" }}>
-                    {t}
-                  </button>
-                ))}
+            {showSuggestions && (
+              <div style={{ display: "grid", gap: 10, marginTop: 2 }}>
+                {atGreeting && featured.length > 0 && (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: "#9a7100", textTransform: "uppercase", letterSpacing: "0.08em" }}>Popular sets</span>
+                    {featured.map((it) => (
+                      <Link
+                        key={it.id}
+                        href={`/gear/${it.slug}`}
+                        onClick={() => setOpen(false)}
+                        style={{ display: "flex", alignItems: "center", gap: 8, background: "#fffdf8", border: "1px solid rgba(17,17,17,0.14)", borderRadius: 12, padding: "8px 10px", textDecoration: "none", color: "#15130f" }}
+                      >
+                        <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, lineHeight: 1.2 }}>{it.name}</span>
+                        <span style={{ fontSize: 12, color: "#6c675f", whiteSpace: "nowrap" }}>{peso(it.ratePerDay)}/day</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#f5c518", borderRadius: 999, padding: "4px 9px", fontSize: 11, fontWeight: 800, whiteSpace: "nowrap" }}>Rent <ArrowRight size={11} /></span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {QUICK_TOPICS.map((t) => (
+                    <button key={t} onClick={() => send(t)} style={{ background: "#fffdf8", border: "1px solid rgba(17,17,17,0.16)", borderRadius: 999, padding: "6px 11px", fontSize: 12, cursor: "pointer", color: "#15130f" }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -126,6 +156,9 @@ export default function ChatWidget() {
                 <Send size={16} />
               </button>
             </div>
+            <Link href="/store" onClick={() => setOpen(false)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#f5c518", color: "#15130f", fontWeight: 800, borderRadius: 999, padding: "10px 14px", fontSize: 13, textDecoration: "none" }}>
+              <ShoppingCart size={15} /> Browse & rent gear
+            </Link>
             <Link href={{ pathname: "/contact", query: { type: "quote" } }} onClick={() => setOpen(false)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 11.5, color: "#6c675f", textDecoration: "none" }}>
               <FileText size={13} /> Need a custom build or discount? Chat with the team
             </Link>
