@@ -759,9 +759,6 @@ function QuotesPanel({ authCode, focus = "quotations" }: { authCode: string; foc
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 10, paddingTop: 10, borderTop: "1px dashed rgba(17,17,17,0.14)" }}>
                   <span style={{ fontSize: 12, fontWeight: 800, color: "#6c675f" }}><Truck size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} />Rental fulfillment</span>
                   <DocChip label={q.fulfillment_status.replace("_", " ")} on={q.fulfillment_status === "settled"} tone={q.fulfillment_status === "settled" ? "green" : undefined} />
-                  {q.security_deposit != null && Number(q.security_deposit) > 0 && (
-                    <span style={{ fontSize: 12, color: "#6c675f" }}>deposit held {currency(Number(q.security_deposit))}</span>
-                  )}
                   {q.delivery_address && <span style={{ fontSize: 12, color: "#6c675f", display: "inline-flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {q.delivery_address}</span>}
                   {q.fulfillment_status === "paid" && (
                     <button onClick={() => setFulfillment(q.id, "shipped")} disabled={updating === q.id} style={{ ...miniBtn, background: "#15130f", color: "#ffcc00", opacity: updating === q.id ? 0.6 : 1 }}><Truck size={14} /> Mark shipped</button>

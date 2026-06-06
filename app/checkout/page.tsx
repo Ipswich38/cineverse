@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { useStore } from "../providers";
-import { peso } from "@/lib/rental-pricing";
+import { peso, DOWNPAYMENT_RATE } from "@/lib/rental-pricing";
 
 export default function CheckoutPage() {
   return (
@@ -16,7 +16,7 @@ export default function CheckoutPage() {
 }
 
 function CheckoutContent() {
-  const { cart, subtotal, securityTotal, payNowTotal } = useStore();
+  const { cart, subtotal, downpaymentTotal, balanceTotal } = useStore();
   const params = useSearchParams();
   const cancelled = params.get("cancelled");
   const [form, setForm] = useState({ name: "", email: "", phone: "", company: "", deliveryAddress: "", dateFrom: "", dateTo: "", notes: "" });
@@ -83,7 +83,7 @@ function CheckoutContent() {
 
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "#3a362f", lineHeight: 1.5 }}>
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 3 }} />
-            <span>I have read and agree to the <Link href="/legal/terms" target="_blank">rental/lease terms</Link>. I authorise the rental charge plus a refundable security deposit, returned after the gear is checked back in.</span>
+            <span>I have read and agree to the <Link href="/legal/terms" target="_blank">rental/lease terms</Link>. I authorise a {Math.round(DOWNPAYMENT_RATE * 100)}% downpayment now to reserve the gear, with the balance settled before or upon handover.</span>
           </label>
         </div>
 
@@ -99,14 +99,15 @@ function CheckoutContent() {
           </div>
           <div style={{ height: 1, background: "rgba(17,17,17,0.12)", margin: "4px 0 12px" }} />
           <Row label="Rental subtotal" value={peso(subtotal)} />
-          <Row label="Refundable security deposit" value={peso(securityTotal)} />
+          <Row label={`Downpayment to reserve (${Math.round(DOWNPAYMENT_RATE * 100)}%)`} value={peso(downpaymentTotal)} />
+          <Row label="Balance — settled later" value={peso(balanceTotal)} />
           <div style={{ height: 1, background: "rgba(17,17,17,0.12)", margin: "10px 0" }} />
-          <Row label="Pay now" value={peso(payNowTotal)} bold />
+          <Row label="Pay now" value={peso(downpaymentTotal)} bold />
 
           {error && <p style={{ color: "#c0392b", fontSize: 13, margin: "12px 0 0" }}>{error}</p>}
 
           <button onClick={submit} disabled={busy} style={{ marginTop: 16, width: "100%", justifyContent: "center", display: "flex", alignItems: "center", gap: 8, background: "#f5c518", color: "#15130f", border: "none", fontWeight: 800, borderRadius: 999, padding: "13px 14px", fontSize: 14, cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>
-            {busy ? <><Loader2 size={16} className="spin" /> Starting secure checkout…</> : <>Pay {peso(payNowTotal)} <ArrowRight size={16} /></>}
+            {busy ? <><Loader2 size={16} className="spin" /> Starting secure checkout…</> : <>Pay {peso(downpaymentTotal)} <ArrowRight size={16} /></>}
           </button>
           <p style={{ display: "flex", alignItems: "center", gap: 6, color: "#6c675f", fontSize: 11, margin: "10px 0 0", justifyContent: "center" }}>
             <Lock size={12} /> Secured by PayMongo · card, GCash, Maya, GrabPay

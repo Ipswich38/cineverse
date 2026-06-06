@@ -34,7 +34,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
         <aside className="range-panel">
           <span>Package rate</span>
           <strong>{peso(offer.pricePerDay)}/day</strong>
-          <p>Rent now — pay the rental plus a refundable security deposit online and get your invoice and lease contract instantly. Planning a longer shoot and want a multi-day discount? Request a quote instead.</p>
+          <p>Rent now — pay just 15% online to reserve (balance settled before or upon handover) and get your invoice and rental contract instantly. Planning a longer shoot and want a multi-day discount? Request a quote instead.</p>
           <PackageRentButton offer={offer}>Rent now</PackageRentButton>
           <PackageQuoteButton offer={offer} className="quote-button quote-button-secondary">Request a discount quote</PackageQuoteButton>
         </aside>

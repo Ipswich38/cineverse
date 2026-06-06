@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { Minus, Plus, Trash2, ArrowRight, FileText, ShieldCheck } from "lucide-react";
 import { useStore } from "../providers";
-import { peso, unitSecurityDeposit } from "@/lib/rental-pricing";
+import { peso, DOWNPAYMENT_RATE } from "@/lib/rental-pricing";
 
 export default function CartPage() {
-  const { cart, catalog, setDays, setQuantity, removeFromCart, clearCart, subtotal, securityTotal, payNowTotal } = useStore();
-  const depositFor = (itemId: string, ratePerDay: number) =>
-    unitSecurityDeposit(ratePerDay, catalog.find((c) => c.id === itemId)?.securityDeposit);
+  const { cart, setDays, setQuantity, removeFromCart, clearCart, subtotal, downpaymentTotal, balanceTotal } = useStore();
 
   return (
     <div className="app-container" style={{ padding: "22px 0 64px" }}>
@@ -38,7 +36,7 @@ export default function CartPage() {
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                       <div>
                         <h3 style={{ fontFamily: '"Jost", sans-serif', fontSize: 22, margin: 0 }}>{item.name}</h3>
-                        <p style={{ color: "#6c675f", margin: "6px 0 0", fontSize: 13 }}>{peso(item.ratePerDay)}/day · deposit {peso(depositFor(item.itemId, item.ratePerDay))}/unit</p>
+                        <p style={{ color: "#6c675f", margin: "6px 0 0", fontSize: 13 }}>{peso(item.ratePerDay)}/day</p>
                       </div>
                       <button onClick={() => removeFromCart(item.itemId)} style={{ background: "none", border: "none", color: "#ff5858" }}>
                         <Trash2 size={16} />
@@ -67,12 +65,13 @@ export default function CartPage() {
           <h2 style={{ fontFamily: '"Jost", sans-serif', fontSize: 20, margin: 0 }}>Summary</h2>
           <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
             <SummaryRow label="Rental subtotal" value={peso(subtotal)} />
-            <SummaryRow label="Refundable security deposit" value={peso(securityTotal)} />
+            <SummaryRow label={`Downpayment to reserve (${Math.round(DOWNPAYMENT_RATE * 100)}%)`} value={peso(downpaymentTotal)} />
+            <SummaryRow label="Balance — settled later" value={peso(balanceTotal)} />
             <div style={{ height: 1, background: "rgba(17,17,17,0.12)" }} />
-            <SummaryRow label="Pay now" value={peso(payNowTotal)} bold />
+            <SummaryRow label="Pay now" value={peso(downpaymentTotal)} bold />
           </div>
           <p style={{ display: "flex", gap: 7, color: "#6c675f", fontSize: 12, lineHeight: 1.5, margin: "12px 0 0" }}>
-            <ShieldCheck size={26} style={{ flexShrink: 0, marginTop: -2 }} /> The security deposit is refunded after the gear is returned in good condition. Invoice + lease contract are emailed once payment clears.
+            <ShieldCheck size={26} style={{ flexShrink: 0, marginTop: -2 }} /> Pay just {Math.round(DOWNPAYMENT_RATE * 100)}% now to reserve your gear — the balance is settled before or upon handover. Invoice + rental contract are emailed once payment clears.
           </p>
           <Link
             href="/checkout"

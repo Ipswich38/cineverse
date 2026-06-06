@@ -8,7 +8,7 @@ import { ArrowLeft, CalendarDays, CheckCircle2, FileText, MapPin, Minus, Package
 import { useStore } from "@/app/providers";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import { categoryName, normalizeCategory } from "@/lib/categories";
-import { peso, unitSecurityDeposit } from "@/lib/rental-pricing";
+import { peso, DOWNPAYMENT_RATE } from "@/lib/rental-pricing";
 
 export default function GearDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -44,7 +44,7 @@ export default function GearDetailPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 20 }}>
             <Stat label="Daily rate" value={`${peso(item.ratePerDay)}/day`} />
-            <Stat label="Refundable deposit" value={peso(unitSecurityDeposit(item.ratePerDay, item.securityDeposit))} />
+            <Stat label="To reserve" value={`${Math.round(DOWNPAYMENT_RATE * 100)}% down`} />
             <Stat label="Stock" value={`${item.stock}`} />
           </div>
 
@@ -81,7 +81,7 @@ export default function GearDetailPage() {
           <div style={{ marginTop: 22, display: "grid", gap: 10 }}>
             <InfoRow icon={MapPin} text={item.location} />
             <InfoRow icon={Package} text={`Managed by ${item.owner}`} />
-            <InfoRow icon={ShieldCheck} text="Pay rental + refundable security deposit at checkout — deposit returned after the gear comes back." />
+            <InfoRow icon={ShieldCheck} text={`Pay just ${Math.round(DOWNPAYMENT_RATE * 100)}% online to reserve — the balance is settled before or upon handover.`} />
             <InfoRow icon={CalendarDays} text="Pickup / delivery arranged after payment." />
             <InfoRow icon={CheckCircle2} text="Invoice + lease contract emailed instantly." />
           </div>

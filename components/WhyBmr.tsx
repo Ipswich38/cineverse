@@ -13,14 +13,14 @@ const ROWS: { label: string; others: string; bmr: string }[] = [
   { label: "Paperwork", others: "Arranged manually", bmr: "Invoice & rental contract emailed to you" },
   { label: "Gear", others: "Itemised à la carte", bmr: "Complete sets — checked & ready" },
   { label: "Availability", others: "Confirmed on request", bmr: "Real-time availability online" },
-  { label: "Deposit", others: "Case by case", bmr: "Clear security deposit, returned on safe return" },
+  { label: "To book", others: "Pay up front", bmr: "Just 15% down to reserve — balance later" },
 ];
 
 const STRENGTHS = [
   { icon: CreditCard, title: "Book & pay online", body: "Reserve your dates and pay online — card, GCash, Maya or GrabPay, securely via PayMongo. No back-and-forth, no waiting for office hours." },
   { icon: FileCheck2, title: "Invoice & contract in your inbox", body: "Once payment clears, your official invoice and rental contract are emailed to you automatically." },
   { icon: PackageCheck, title: "Complete sets, nothing missing", body: "Gear rents as a full set or kit with every accessory listed — what you see is exactly what arrives, checked and ready." },
-  { icon: Tags, title: "Clear pricing & deposit", body: "Published per-set rates and a clearly stated security deposit, returned after the gear comes back in good condition. Planning a longer shoot? Request a discount quote." },
+  { icon: Tags, title: "Low downpayment to book", body: "Published per-set rates — reserve with just 15% online, settle the balance before or upon handover. Planning a longer shoot? Request a discount quote." },
 ];
 
 export default function WhyBmr() {

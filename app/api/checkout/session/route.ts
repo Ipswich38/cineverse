@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
 import { getCatalogCached } from "@/lib/catalog-data";
 import { packageByCartId } from "@/lib/package-offers";
-import { rentalTotals, lineRental, type RentableLine } from "@/lib/rental-pricing";
+import { rentalTotals, DOWNPAYMENT_RATE, type RentableLine } from "@/lib/rental-pricing";
 import { createCheckoutSession, hasPaymongo } from "@/lib/paymongo";
 
 export const runtime = "nodejs";
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   // Resolve every cart line against the catalog → authoritative price + deposit.
   const catalog = await getCatalogCached();
   const byId = new Map(catalog.map((c) => [c.id, c]));
-  const items: { id: string; name: string; qty: number; days: number; ratePerDay: number; securityDeposit: number }[] = [];
+  const items: { id: string; name: string; qty: number; days: number; ratePerDay: number }[] = [];
   for (const line of incoming) {
     const id = String(line.itemId);
     const days = Math.max(1, Math.floor(Number(line.days) || 0));
@@ -50,18 +50,18 @@ export async function POST(req: NextRequest) {
     // Packages (id `pkg-…`) price from PACKAGE_OFFERS; gear from the catalog.
     const pkg = packageByCartId(id);
     if (pkg) {
-      items.push({ id, name: pkg.name, qty, days, ratePerDay: pkg.pricePerDay, securityDeposit: 0 });
+      items.push({ id, name: pkg.name, qty, days, ratePerDay: pkg.pricePerDay });
       continue;
     }
     const item = byId.get(id);
     if (!item) return NextResponse.json({ error: "An item in your cart is no longer available." }, { status: 409 });
     if (item.stock > 0 && qty > item.stock) return NextResponse.json({ error: `Only ${item.stock} of ${item.name} in stock.` }, { status: 409 });
-    items.push({ id: item.id, name: item.name, qty, days, ratePerDay: item.ratePerDay, securityDeposit: item.securityDeposit });
+    items.push({ id: item.id, name: item.name, qty, days, ratePerDay: item.ratePerDay });
   }
 
-  const rentable: RentableLine[] = items.map((i) => ({ ratePerDay: i.ratePerDay, days: i.days, quantity: i.qty, securityDeposit: i.securityDeposit }));
-  const totals = rentalTotals(rentable);
-  if (totals.payNow < 100) return NextResponse.json({ error: "Minimum online payment is ₱100." }, { status: 400 });
+  const rentable: RentableLine[] = items.map((i) => ({ ratePerDay: i.ratePerDay, days: i.days, quantity: i.qty }));
+  const totals = rentalTotals(rentable); // { rental, downpayment, balance, payNow }
+  if (totals.payNow < 100) return NextResponse.json({ error: "Minimum online downpayment is ₱100." }, { status: 400 });
 
   // Pending order row (an auto-agreed rental; docs are generated on payment).
   const id = `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -74,7 +74,6 @@ export async function POST(req: NextRequest) {
     status: "pending",
     channel: "rent",
     fulfillment_status: "pending_payment",
-    security_deposit: totals.security,
     delivery_address: deliveryAddress,
   };
   let insert = await supabaseAdmin()!.from(TABLE).insert(row).select("id").maybeSingle();
@@ -84,10 +83,10 @@ export async function POST(req: NextRequest) {
   }
   if (insert.error) return NextResponse.json({ error: insert.error.message }, { status: 500 });
 
-  // PayMongo line items: one per gear line + a refundable security deposit line.
+  // PayMongo charges the downpayment now; the balance is settled later.
   const base = req.nextUrl.origin;
-  const lines = items.map((i) => ({ name: `${i.name} — ${i.days} day(s)`, amount: lineRental({ ratePerDay: i.ratePerDay, days: i.days, quantity: 1 }), quantity: i.qty }));
-  if (totals.security > 0) lines.push({ name: "Refundable security deposit", amount: totals.security, quantity: 1 });
+  const pct = Math.round(DOWNPAYMENT_RATE * 100);
+  const lines = [{ name: `Rental downpayment (${pct}%) — order ${id}`, amount: totals.downpayment, quantity: 1 }];
 
   try {
     const session = await createCheckoutSession({

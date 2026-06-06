@@ -20,11 +20,10 @@ type StoreContextValue = {
   clearCart: () => void;
   cartCount: number;
   subtotal: number;
-  downpayment: number;
-  /** Refundable security deposit total for the cart (policy-based; see lib/rental-pricing). */
-  securityTotal: number;
-  /** Amount charged at checkout = rental subtotal + security deposit. */
-  payNowTotal: number;
+  /** Downpayment charged online now (DOWNPAYMENT_RATE × rental). */
+  downpaymentTotal: number;
+  /** Balance settled later (before/upon handover). */
+  balanceTotal: number;
 };
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -123,25 +122,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const removeFromCart = (itemId: string) => setCart((prev) => prev.filter((entry) => entry.itemId !== itemId));
   const clearCart = () => setCart([]);
 
-  // Join cart → catalog so security deposits use any explicit per-item value
-  // (cart rows predate that field); falls back to the rate-based policy.
   const totals = useMemo(
-    () =>
-      rentalTotals(
-        cart.map((item) => ({
-          ratePerDay: item.ratePerDay,
-          days: item.days,
-          quantity: item.quantity,
-          securityDeposit: catalog.find((c) => c.id === item.itemId)?.securityDeposit,
-        })),
-      ),
-    [cart, catalog],
+    () => rentalTotals(cart.map((item) => ({ ratePerDay: item.ratePerDay, days: item.days, quantity: item.quantity }))),
+    [cart],
   );
 
   const subtotal = totals.rental;
-  const securityTotal = totals.security;
-  const payNowTotal = totals.payNow;
-  const downpayment = Math.round(subtotal * 0.3);
+  const downpaymentTotal = totals.downpayment;
+  const balanceTotal = totals.balance;
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const value: StoreContextValue = {
@@ -157,9 +145,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     clearCart,
     cartCount,
     subtotal,
-    downpayment,
-    securityTotal,
-    payNowTotal,
+    downpaymentTotal,
+    balanceTotal,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -13,6 +13,7 @@ import { generateInvoice, type InvoiceDoc, type PaymentEntry } from "@/lib/invoi
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
 import { sendDocumentEmail } from "@/lib/contact-mail";
 import { planAssignment, type AssignUnit } from "@/lib/unit-assign";
+import { DOWNPAYMENT_RATE } from "@/lib/rental-pricing";
 import { BMR_BUSINESS, FINANCE, QUOTATION_TERMS } from "@/lib/bmr-rate-card";
 
 const TABLE = "vissionlink_quote_requests";
@@ -94,17 +95,17 @@ export async function finalizeRentalOrder(orderId: string): Promise<FinalizeResu
     const items = Array.isArray(row.items) ? (row.items as OrderItem[]) : [];
     const quotation = buildQuotation(row, items, day);
     const rentalTotal = computeTotals(quotation).total;
-    const security = Number(row.security_deposit) || 0;
+    // The customer paid a downpayment online; the balance is settled later.
+    const downpayment = Math.round(rentalTotal * DOWNPAYMENT_RATE);
     const ref = String(row.payment_ref ?? orderId);
 
     const contract = generateContract(quotation, { rentalFrom: String(row.date_from ?? day), rentalTo: String(row.date_to ?? row.date_from ?? day), agreementDate: day });
 
     const invoice: InvoiceDoc = generateInvoice(quotation, { issueDate: day, depositRate: 0 });
-    invoice.depositRequired = security;
+    invoice.depositRequired = 0;
     const payments: PaymentEntry[] = [];
-    if (security > 0) payments.push({ id: `pay-${Date.now()}-d`, date: day, channel: "paymongo", amount: security, reference: ref, kind: "deposit" });
-    if (rentalTotal > 0) payments.push({ id: `pay-${Date.now()}-r`, date: day, channel: "paymongo", amount: rentalTotal, reference: ref, kind: "payment" });
-    invoice.payments = payments;
+    if (downpayment > 0) payments.push({ id: `pay-${Date.now()}-dp`, date: day, channel: "paymongo", amount: downpayment, reference: ref, kind: "payment" });
+    invoice.payments = payments; // balance (rental − downpayment) remains due
 
     const [contractPdf, invoicePdf] = await Promise.all([renderContractPdf(contract), renderInvoicePdf(invoice)]);
     const contractPath = `${orderId}/${contract.number}.pdf`;
@@ -112,7 +113,7 @@ export async function finalizeRentalOrder(orderId: string): Promise<FinalizeResu
     await Promise.all([storePdf("contracts", contractPath, contractPdf), storePdf("invoices", invoicePath, invoicePdf)]);
 
     // Email the customer both documents (best-effort; don't fail the order on a mail hiccup).
-    const note = "Thank you for your rental. Your lease contract and paid invoice are attached. We'll be in touch to arrange pickup / delivery for your dates.";
+    const note = "Thank you for your booking. Your rental contract and invoice are attached — the downpayment is recorded and the remaining balance is shown as due (settled before or upon handover). We'll be in touch to arrange pickup / delivery for your dates.";
     await Promise.allSettled([
       sendDocumentEmail({ to: quotation.client.email, clientName: quotation.client.name, kind: "Contract", number: contract.number, pdf: contractPdf, message: note }),
       sendDocumentEmail({ to: quotation.client.email, clientName: quotation.client.name, kind: "Invoice", number: invoice.number, pdf: invoicePdf, message: note }),
