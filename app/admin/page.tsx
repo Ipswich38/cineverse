@@ -7,6 +7,7 @@ import { useStore } from "../providers";
 import { currency, slugify, type EquipmentItem } from "@/lib/catalog";
 import { CATEGORY_FLAT, categoryName, normalizeCategory } from "@/lib/categories";
 import ProposalBuilder from "./ProposalBuilder";
+import AdminAssistant from "@/components/AdminAssistant";
 import { computeTotals, formatPHP, lineAmount, type QuotationDoc, type QuotationLine } from "@/lib/quotation";
 import { type ContractDoc } from "@/lib/contract";
 import { computeInvoiceMoney, CHANNEL_LABELS, ALL_CHANNELS, type InvoiceDoc, type PaymentChannel, type PaymentEntry, type Incident } from "@/lib/invoice";
@@ -182,6 +183,7 @@ export default function AdminPage() {
 
   return (
     <div style={{ display: "flex", minHeight: "100dvh", background: "#efece4", color: "#15130f" }}>
+      <AdminAssistant authCode={code} />
       <AdminSidebar view={view} setView={setView} onLogout={logout} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px clamp(14px,3vw,28px)", background: "#fffdf8", borderBottom: "1px solid rgba(17,17,17,0.1)", position: "sticky", top: 0, zIndex: 10 }}>
