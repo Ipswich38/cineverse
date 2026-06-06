@@ -29,6 +29,15 @@ export async function GET(req: NextRequest) {
     // server response / code so the cause (usually a Zoho-side setting) is visible.
     const e = err as { message?: string; responseText?: string; serverResponseCode?: string; authenticationFailed?: boolean }
     const detail = e.responseText || e.serverResponseCode || e.message || 'Inbox error'
+
+    // Zoho gates IMAP behind a paid plan — free mailboxes reject the login with
+    // "not available for your account" / "yet to enable IMAP". That's an expected
+    // plan limitation, not a fault, so report it as a calm 200 the UI can show
+    // gently rather than a red error. Sending (SMTP) is unaffected.
+    if (/imap/i.test(detail) && /(not available|yet to enable|paid|administrator)/i.test(detail)) {
+      return NextResponse.json({ unavailable: true, error: 'Mailbox mirroring needs a Zoho paid plan (IMAP). New enquiries still arrive under E-Quotations.' })
+    }
+
     const isAuth = Boolean(e.authenticationFailed) || /auth|login|credential/i.test(detail)
     const message = isAuth
       ? `Mailbox sign-in was rejected (${detail}). In Zoho Mail, enable IMAP access for hello@vissionlink.com and use an app-specific password (not the login password); set ZOHO_IMAP_HOST if your account is on a non-.com region.`

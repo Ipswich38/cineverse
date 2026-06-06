@@ -2261,6 +2261,7 @@ function InboxPanel({ authCode }: { authCode: string }) {
   const [list, setList] = useState<InboxMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState("");
+  const [unavailable, setUnavailable] = useState(""); // IMAP needs a Zoho paid plan
   const [selected, setSelected] = useState<InboxMessageFull | null>(null);
   const [opening, setOpening] = useState(false);
   const [reply, setReply] = useState("");
@@ -2275,7 +2276,10 @@ function InboxPanel({ authCode }: { authCode: string }) {
     try {
       const res = await fetch("/api/admin/inbox", { headers: headers() });
       const data = await res.json();
+      // Plan limitation (free Zoho = no IMAP) comes back as a calm 200 flag.
+      if (data && data.unavailable) { setUnavailable(data.error || "Mailbox mirroring needs a Zoho paid plan."); setList([]); return; }
       if (!res.ok) throw new Error(data.error || "Could not load inbox.");
+      setUnavailable("");
       setList(Array.isArray(data) ? data : []);
     } catch (err) {
       setListError(err instanceof Error ? err.message : "Could not load inbox.");
@@ -2340,6 +2344,21 @@ function InboxPanel({ authCode }: { authCode: string }) {
         </button>
       </div>
 
+      {unavailable && (
+        <div style={{ padding: 18, border: "1px solid rgba(17,17,17,0.12)", background: "#f0ece3", borderRadius: 12, fontSize: 13, color: "#15130f", display: "grid", gap: 8, justifyItems: "start" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 800 }}><Mail size={16} /> Mailbox mirroring isn’t active</span>
+          <p style={{ margin: 0, color: "#6c675f", lineHeight: 1.6, maxWidth: 560 }}>
+            Reading the mailbox here uses IMAP, which Zoho only offers on its <strong>paid plans</strong> — your mailbox is on the free tier. Sending still works, so all your quotation, contract and invoice emails go out normally.
+          </p>
+          <p style={{ margin: 0, color: "#6c675f", lineHeight: 1.6, maxWidth: 560 }}>
+            Nothing is missed: new enquiries land under <strong>E-Quotations</strong> and are also delivered to hello@vissionlink.com — open it in Zoho Mail directly to read &amp; reply.
+          </p>
+          <a href="https://www.zoho.com/mail/zohomail-pricing.html" target="_blank" rel="noreferrer" style={{ ...miniBtn, textDecoration: "none", marginTop: 2 }}>
+            <ExternalLink size={14} /> See Zoho paid plans
+          </a>
+        </div>
+      )}
+
       {listError && (
         <div style={{ padding: 14, border: "1px solid rgba(17,17,17,0.12)", background: "#f0ece3", fontSize: 13, color: "#15130f", marginBottom: 14 }}>
           {notConfigured ? (
@@ -2356,6 +2375,7 @@ function InboxPanel({ authCode }: { authCode: string }) {
         </div>
       )}
 
+      {!unavailable && (
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 300px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* Message list */}
         <div style={{ display: "grid", gap: 8, maxHeight: 560, overflowY: "auto" }}>
@@ -2464,6 +2484,7 @@ function InboxPanel({ authCode }: { authCode: string }) {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
