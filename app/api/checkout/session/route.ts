@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
 import { getCatalogCached } from "@/lib/catalog-data";
-import { packageByCartId } from "@/lib/package-offers";
-import { rentalTotals, DOWNPAYMENT_RATE, type RentableLine } from "@/lib/rental-pricing";
+import { packageByCartIdLive } from "@/lib/packages-data";
+import { rentalTotals, DOWNPAYMENT_RATE, isBalanceMethod, type RentableLine, type BalanceMethod } from "@/lib/rental-pricing";
 import { createCheckoutSession, hasPaymongo } from "@/lib/paymongo";
+import { clientIpFromHeaders, lookupLocation } from "@/lib/geo-ip";
+import { displayRentalOrderId } from "@/lib/display-ids";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +33,7 @@ export async function POST(req: NextRequest) {
   const project = str(b.project, 300);
   const notes = str(b.notes, 2000);
   const agree = b.agree === true;
+  const balanceMethod: BalanceMethod = isBalanceMethod(b.balanceMethod) ? b.balanceMethod : "standard";
   const incoming = Array.isArray(b.cart) ? (b.cart as IncomingLine[]) : [];
 
   if (!name || !email) return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
@@ -47,8 +50,8 @@ export async function POST(req: NextRequest) {
     const id = String(line.itemId);
     const days = Math.max(1, Math.floor(Number(line.days) || 0));
     const qty = Math.max(1, Math.floor(Number(line.quantity) || 0));
-    // Packages (id `pkg-…`) price from PACKAGE_OFFERS; gear from the catalog.
-    const pkg = packageByCartId(id);
+    // Packages (id `pkg-…`) price from the live DB packages; gear from the catalog.
+    const pkg = await packageByCartIdLive(id);
     if (pkg) {
       items.push({ id, name: pkg.name, qty, days, ratePerDay: pkg.pricePerDay });
       continue;
@@ -60,39 +63,63 @@ export async function POST(req: NextRequest) {
   }
 
   const rentable: RentableLine[] = items.map((i) => ({ ratePerDay: i.ratePerDay, days: i.days, quantity: i.qty }));
-  const totals = rentalTotals(rentable); // { rental, downpayment, balance, payNow }
-  if (totals.payNow < 100) return NextResponse.json({ error: "Minimum online downpayment is ₱100." }, { status: 400 });
+  const totals = rentalTotals(rentable, balanceMethod); // { rental, discount, net, downpayment, balance, payNow }
+  if (totals.payNow < 100) return NextResponse.json({ error: "Minimum online payment is ₱100." }, { status: 400 });
 
   // Pending order row (an auto-agreed rental; docs are generated on payment).
   const id = `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  // Human-friendly sequential service order number (SO-0001…). Atomic via the
+  // next_order_no() DB function; if it's unavailable we fall back to the id so
+  // checkout never blocks on numbering.
+  let orderNo: string | null = null;
+  try {
+    const seq = await supabaseAdmin()!.rpc("next_order_no");
+    if (!seq.error && typeof seq.data === "string") orderNo = seq.data;
+  } catch { /* fall back to id below */ }
+
+  // Best-effort capture of where the order came from (never blocks checkout).
+  const clientIp = clientIpFromHeaders(req.headers);
+  const clientLocation = await lookupLocation(clientIp);
+
   const row = {
     id, name, email, phone, project,
     company: str(b.company, 200),
     date_from: dateFrom, date_to: dateTo,
     notes, items,
-    est_total: totals.rental,
+    est_total: totals.net,
     status: "pending",
     channel: "rent",
+    balance_method: balanceMethod,
     fulfillment_status: "pending_payment",
     delivery_address: deliveryAddress,
+    order_no: orderNo,
+    client_ip: clientIp,
+    client_location: clientLocation,
   };
   let insert = await supabaseAdmin()!.from(TABLE).insert(row).select("id").maybeSingle();
-  if (insert.error && /channel|column/i.test(insert.error.message)) {
-    const { channel: _c, ...rest } = row;
+  if (insert.error && /channel|balance_method|order_no|client_ip|client_location|column/i.test(insert.error.message)) {
+    // Older schemas may lack the optional columns — retry without them.
+    const { channel: _c, balance_method: _bm, order_no: _on, client_ip: _ip, client_location: _loc, ...rest } = row;
     insert = await supabaseAdmin()!.from(TABLE).insert(rest).select("id").maybeSingle();
   }
   if (insert.error) return NextResponse.json({ error: insert.error.message }, { status: 500 });
 
-  // PayMongo charges the downpayment now; the balance is settled later.
+  // PayMongo charges payNow now: the full discounted rental for "full", otherwise
+  // the reservation downpayment (balance settled later / by PDC).
   const base = req.nextUrl.origin;
   const pct = Math.round(DOWNPAYMENT_RATE * 100);
-  const lines = [{ name: `Rental downpayment (${pct}%) — order ${id}`, amount: totals.downpayment, quantity: 1 }];
+  const displayNo = displayRentalOrderId(id, orderNo); // what the customer sees on the PayMongo page
+  const lineName = balanceMethod === "full"
+    ? `Rental — paid in full — order ${displayNo}`
+    : `Rental downpayment (${pct}%) — order ${displayNo}`;
+  const lines = [{ name: lineName, amount: totals.payNow, quantity: 1 }];
 
   try {
     const session = await createCheckoutSession({
       lines,
-      description: `VissionLink rental ${id}`,
-      referenceNumber: id,
+      description: `VissionLink rental ${displayNo}`,
+      referenceNumber: displayNo,
       customer: { name, email, phone: phone || undefined },
       successUrl: `${base}/checkout/success?order=${id}`,
       cancelUrl: `${base}/checkout?cancelled=1`,

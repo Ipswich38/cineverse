@@ -12,7 +12,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 const GREETING: Msg = {
   role: "assistant",
-  content: `Hi! I'm the ${COMPANY.brand} assistant. Ask about gear, rates, payment, or how renting works — or pick a topic below.`,
+  content: `Hi! I'm Ask Us, the ${COMPANY.brand} assistant. I can help you find gear and answer almost anything — rates, payments (incl. full-payment & PDC discounts), IDs, deposits, cancellation, delivery, and how renting works. Ask away, or pick a topic below.`,
 };
 
 export default function ChatWidget() {
@@ -88,8 +88,8 @@ export default function ChatWidget() {
           }}
         >
           <div style={{ background: "#f5c518", color: "#15130f", padding: "13px 16px" }}>
-            <div style={{ fontFamily: '"Jost", sans-serif', fontWeight: 800, fontSize: 16 }}>{COMPANY.brand} assistant</div>
-            <div style={{ fontSize: 11.5, color: "rgba(21,19,15,0.65)" }}>Gear · rates · how renting works</div>
+            <div style={{ fontFamily: '"Jost", sans-serif', fontWeight: 800, fontSize: 16 }}>Ask Us · {COMPANY.brand}</div>
+            <div style={{ fontSize: 11.5, color: "rgba(21,19,15,0.65)" }}>Gear · rates · payments · policies · renting</div>
           </div>
 
           <div ref={scroller} style={{ flex: 1, overflowY: "auto", padding: 14, display: "grid", gap: 10, alignContent: "start" }}>

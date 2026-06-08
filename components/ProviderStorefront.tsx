@@ -6,7 +6,6 @@ import { useStore } from "@/app/providers";
 import EquipmentCard from "@/components/EquipmentCard";
 import PackagesCatalog from "@/components/PackagesCatalog";
 import type { ProviderProfile } from "@/lib/providers";
-import { PACKAGE_OFFERS } from "@/lib/package-offers";
 
 // Shared, data-driven provider storefront. Renders any ProviderProfile as a
 // branded "store page": full-bleed brand banner up top, then the provider's
@@ -14,7 +13,7 @@ import { PACKAGE_OFFERS } from "@/lib/package-offers";
 // mark / name / accent come from the profile so each store has its own identity
 // while staying aligned to the site UI.
 export default function ProviderStorefront({ profile }: { profile: ProviderProfile }) {
-  const { catalog } = useStore();
+  const { catalog, packages } = useStore();
 
   const items = catalog.filter((item) => profile.ownerMatches.includes(item.owner));
   const featured = items.filter((item) => item.featured);
@@ -50,7 +49,7 @@ export default function ProviderStorefront({ profile }: { profile: ProviderProfi
 
           <div className="pstore-stats">
             <span><b>{items.length}</b> listed items</span>
-            {profile.hasPackages && <span><b>{PACKAGE_OFFERS.length}</b> package offers</span>}
+            {profile.hasPackages && <span><b>{packages.length}</b> package offers</span>}
             {locations.length > 0 && (
               <span className="pstore-stat-loc"><MapPin size={13} /> {locations.join(" · ")}</span>
             )}

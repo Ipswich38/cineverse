@@ -5,12 +5,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { CartItem, EquipmentItem } from "@/lib/catalog";
 import { INITIAL_CATALOG } from "@/lib/catalog";
 import type { PackageOffer } from "@/lib/package-offers";
+import { PACKAGE_OFFERS } from "@/lib/package-offers";
 import { rentalTotals } from "@/lib/rental-pricing";
 
 type StoreContextValue = {
   catalog: EquipmentItem[];
   catalogLoading: boolean;
   refreshCatalog: () => Promise<void>;
+  packages: PackageOffer[];
+  packagesLoading: boolean;
+  refreshPackages: () => Promise<void>;
   cart: CartItem[];
   addToCart: (item: EquipmentItem, days: number, quantity?: number) => void;
   addPackageToCart: (offer: PackageOffer, days: number, image: string, quantity?: number) => void;
@@ -36,6 +40,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // server. If the API/DB is unavailable, the seed remains as a graceful fallback.
   const [catalog, setCatalog] = useState<EquipmentItem[]>(INITIAL_CATALOG);
   const [catalogLoading, setCatalogLoading] = useState(true);
+  // Packages mirror the catalog: bundled seed for instant first paint, then the
+  // DB-backed /api/packages feed hydrates them so admin price edits show through.
+  const [packages, setPackages] = useState<PackageOffer[]>(PACKAGE_OFFERS);
+  const [packagesLoading, setPackagesLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -52,6 +60,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshPackages = useCallback(async () => {
+    try {
+      const res = await fetch("/api/packages", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as PackageOffer[];
+      if (Array.isArray(data) && data.length > 0) setPackages(data);
+    } catch {
+      // keep current packages (seed or last good) on network error
+    } finally {
+      setPackagesLoading(false);
+    }
+  }, []);
+
   // Load cart from localStorage; fetch catalog from the cached API.
   useEffect(() => {
     try {
@@ -63,7 +84,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setReady(true);
     }
     void refreshCatalog();
-  }, [refreshCatalog]);
+    void refreshPackages();
+  }, [refreshCatalog, refreshPackages]);
 
   useEffect(() => {
     if (!ready) return;
@@ -136,6 +158,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     catalog,
     catalogLoading,
     refreshCatalog,
+    packages,
+    packagesLoading,
+    refreshPackages,
     cart,
     addToCart,
     addPackageToCart,

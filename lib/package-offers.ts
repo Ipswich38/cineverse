@@ -14,6 +14,8 @@ export type PackageOffer = {
   bestFor: string;
   reviewNotes: string[];
   relatedItemSlugs: string[];
+  /** Storefront ordering (lower = earlier). Set by the admin; optional on the seed. */
+  sortOrder?: number;
 };
 
 export const PACKAGE_OFFERS: PackageOffer[] = [

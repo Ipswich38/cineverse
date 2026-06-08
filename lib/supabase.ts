@@ -7,6 +7,7 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const EQUIPMENT_TABLE = "vissionlink_equipment";
+export const PACKAGES_TABLE = "vissionlink_packages";
 
 export function hasSupabase() {
   return Boolean(url && serviceKey);

@@ -32,10 +32,10 @@ export default function TermsPage() {
 
       <h2>3. Reservations &amp; Bookings</h2>
       <ul>
-        <li>Submitting a reservation request is an offer to rent; it is not confirmed until VissionLink verifies availability.</li>
-        <li>After availability is confirmed, a <strong>30% reservation downpayment</strong> is required to secure the booking.</li>
-        <li>The remaining balance and any security deposit are settled before or upon handover, as advised at confirmation.</li>
-        <li>Rental rates are quoted per day. Final amounts may include logistics/delivery fees and operator fees where applicable.</li>
+        <li>Submitting a reservation request is an offer to rent; it is confirmed once the downpayment is received and the rental agreement is accepted.</li>
+        <li>A <strong>15% reservation downpayment</strong> is paid online to secure the booking.</li>
+        <li>The balance is settled per the method chosen at checkout — before/upon handover, in full online (with a full-payment discount), or by post-dated cheque (with a PDC discount). Any security deposit is settled on release.</li>
+        <li>Rental rates are quoted per day (one rental day = 24 hours). Final amounts may include logistics/delivery, out-of-town surcharge (15% outside Metro Manila), and operator/crew fees where applicable.</li>
       </ul>
 
       <h2>4. Payments</h2>

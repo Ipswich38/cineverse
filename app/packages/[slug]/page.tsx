@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Check, Clock, ShieldCheck } from "lucide-react";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import { PackageQuoteButton, PackageRentButton } from "@/components/PackageQuoteModal";
-import { PACKAGE_OFFERS, packageBySlug } from "@/lib/package-offers";
+import { PACKAGE_OFFERS } from "@/lib/package-offers";
+import { getPackagesCached } from "@/lib/packages-data";
 import { peso } from "@/lib/rental-pricing";
 
 export function generateStaticParams() {
@@ -12,7 +13,9 @@ export function generateStaticParams() {
 
 export default async function PackageDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const offer = packageBySlug(slug);
+  // Live, DB-backed packages so admin price/inclusion edits show on the detail page.
+  const packages = await getPackagesCached();
+  const offer = packages.find((o) => o.slug === slug);
   if (!offer) notFound();
 
   return (

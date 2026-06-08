@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth } from "../_auth";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
 import { generateDraft } from "@/lib/quotation";
-import { PACKAGE_OFFERS } from "@/lib/package-offers";
+import { getPackagesCached } from "@/lib/packages-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!hasSupabase()) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
   const db = supabaseAdmin()!;
-  const { data, error } = await db.from(TABLE).select("*").order("created_at", { ascending: false }).limit(100);
+  const { data, error } = await db.from(TABLE).select("*").order("created_at", { ascending: false }).limit(500);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data ?? []);
 }
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (!isEmail(email)) return NextResponse.json({ error: "Please enter a valid client email." }, { status: 400 });
 
   const packageSlug = str(body.packageSlug, 120);
-  const offer = packageSlug ? PACKAGE_OFFERS.find((o) => o.slug === packageSlug) : undefined;
+  const offer = packageSlug ? (await getPackagesCached()).find((o) => o.slug === packageSlug) : undefined;
   const items = offer ? [{ type: "package", slug: offer.slug, name: offer.name, priceRange: offer.priceRange }] : [];
 
   const id = `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

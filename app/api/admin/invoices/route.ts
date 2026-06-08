@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth } from "../_auth";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
-import { type QuotationDoc } from "@/lib/quotation";
+import { generateDraft, type QuotationDoc, type QuotationLine } from "@/lib/quotation";
 import { computeInvoiceMoney, generateInvoice, invoiceReadyToSend, type InvoiceDoc } from "@/lib/invoice";
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
 import { sendDocumentEmail } from "@/lib/contact-mail";
@@ -21,6 +21,13 @@ type Row = {
   invoice_status?: string | null;
   invoice_pdf_path?: string | null;
   invoice_sent_at?: string | null;
+  name?: string | null;
+  company?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  project?: string | null;
+  notes?: string | null;
+  items?: { id?: string; slug?: string; name?: string; qty?: number; days?: number; ratePerDay?: number }[] | null;
 };
 
 async function loadRow(id: string): Promise<Row | null> {
@@ -32,6 +39,21 @@ async function loadRow(id: string): Promise<Row | null> {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+function sourcePricing(row: Row): QuotationDoc | null {
+  if (row.quotation) return row.quotation;
+  const items = Array.isArray(row.items) ? row.items : [];
+  if (!items.length) return null;
+  const draft = generateDraft({ ...row, items: items.map((item) => ({ slug: item.slug ?? item.id, name: item.name })) });
+  const lines: QuotationLine[] = items.map((item, i) => ({
+    id: `ln-${row.id}-${i}`,
+    description: item.name ?? item.slug ?? item.id ?? "Equipment rental",
+    qty: Math.max(1, Math.floor(Number(item.qty) || 1)),
+    days: Math.max(1, Math.floor(Number(item.days) || 1)),
+    unitRate: Number(item.ratePerDay) || 0,
+  }));
+  return { ...draft, lines, signedBy: draft.signedBy || "Benito M. Remulta Jr.", signedDate: draft.signedDate || today() };
+}
+
 // GET ?requestId=… — saved invoice, or a fresh draft from the agreed quotation.
 // ?format=pdf streams the PDF.
 export async function GET(req: NextRequest) {
@@ -42,16 +64,17 @@ export async function GET(req: NextRequest) {
 
   const row = await loadRow(id);
   if (!row) return NextResponse.json({ error: "Request not found." }, { status: 404 });
-  if (!row.quotation) return NextResponse.json({ error: "Build the quotation first." }, { status: 400 });
+  const quotation = sourcePricing(row);
+  if (!quotation) return NextResponse.json({ error: "Save source pricing first." }, { status: 400 });
 
   // Prefill loyalty discount + required deposit from the client's standing/tier.
   let doc: InvoiceDoc;
   if (row.invoice) {
     doc = row.invoice;
   } else {
-    const client = await getClient(row.quotation.client.email);
+    const client = await getClient(quotation.client.email);
     const policy = policyFor(client);
-    doc = generateInvoice(row.quotation, { issueDate: today(), loyaltyRate: policy.loyaltyRate, depositRate: policy.depositRate });
+    doc = generateInvoice(quotation, { issueDate: today(), loyaltyRate: policy.loyaltyRate, depositRate: policy.depositRate });
   }
 
   if (req.nextUrl.searchParams.get("format") === "pdf") {

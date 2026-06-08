@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth } from "../_auth";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
-import { generateDraft, quotationReadyToSend, type QuotationDoc, type QuoteRequestInput } from "@/lib/quotation";
+import { generateDraft, quotationReadyToSend, type QuotationDoc, type QuotationLine, type QuoteRequestInput } from "@/lib/quotation";
 import { renderQuotationPdf } from "@/lib/quotation-pdf";
 import { sendQuotationEmail } from "@/lib/contact-mail";
 
@@ -12,12 +12,14 @@ const TABLE = "vissionlink_quote_requests";
 // Private bucket holding the sent quotation PDFs — record copies, not public.
 const BUCKET = "quotations";
 
-type RequestRow = QuoteRequestInput & {
+type RequestItem = { id?: string; slug?: string; name?: string; qty?: number; days?: number; ratePerDay?: number; type?: string; providerName?: string };
+type RequestRow = Omit<QuoteRequestInput, "items"> & {
   status?: string;
   quotation?: QuotationDoc | null;
   quotation_status?: string | null;
   quotation_pdf_path?: string | null;
   quotation_sent_at?: string | null;
+  items?: RequestItem[] | null;
 };
 
 async function loadRequest(id: string): Promise<RequestRow | null> {
@@ -25,6 +27,21 @@ async function loadRequest(id: string): Promise<RequestRow | null> {
   const { data, error } = await db.from(TABLE).select("*").eq("id", id).maybeSingle();
   if (error || !data) return null;
   return data as RequestRow;
+}
+
+function sourceDraft(row: RequestRow): QuotationDoc {
+  if (row.quotation) return row.quotation;
+  const items = Array.isArray(row.items) ? row.items : [];
+  const draft = generateDraft({ ...row, items: items.map((item) => ({ slug: item.slug ?? item.id, name: item.name })) });
+  if (!items.some((item) => item.ratePerDay != null || item.qty != null || item.days != null)) return draft;
+  const lines: QuotationLine[] = items.map((item, i) => ({
+    id: `ln-${row.id}-${i}`,
+    description: item.name ?? item.slug ?? item.id ?? "Equipment rental",
+    qty: Math.max(1, Math.floor(Number(item.qty) || 1)),
+    days: Math.max(1, Math.floor(Number(item.days) || 1)),
+    unitRate: Number(item.ratePerDay) || 0,
+  }));
+  return { ...draft, lines };
 }
 
 // GET ?requestId=… — return the saved quotation, or a fresh draft generated from
@@ -39,7 +56,7 @@ export async function GET(req: NextRequest) {
   const row = await loadRequest(id);
   if (!row) return NextResponse.json({ error: "Quote request not found." }, { status: 404 });
 
-  const doc: QuotationDoc = row.quotation ?? generateDraft(row);
+  const doc: QuotationDoc = sourceDraft(row);
 
   if (req.nextUrl.searchParams.get("format") === "pdf") {
     try {

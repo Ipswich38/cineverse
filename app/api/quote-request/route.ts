@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendQuoteRequestEmail } from "@/lib/contact-mail";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
-import { PACKAGE_OFFERS } from "@/lib/package-offers";
+import { getPackagesCached } from "@/lib/packages-data";
 import { INITIAL_CATALOG } from "@/lib/catalog";
 import { providerBySlug } from "@/lib/providers";
 import { generateDraft } from "@/lib/quotation";
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   // Quote target is now a rental SET (catalog); fall back to a legacy curated
   // package slug for any old links still in flight.
   const set = INITIAL_CATALOG.find((s) => s.slug === packageSlug);
-  const legacy = PACKAGE_OFFERS.find((o) => o.slug === packageSlug);
+  const legacy = set ? undefined : (await getPackagesCached()).find((o) => o.slug === packageSlug);
   const offer = set
     ? { slug: set.slug, name: set.name, priceRange: `${peso(set.ratePerDay)}/day` }
     : legacy

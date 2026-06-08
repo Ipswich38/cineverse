@@ -4,19 +4,22 @@ import Link from "next/link";
 import { Check, Clock, Send } from "lucide-react";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import { PackageQuoteButton } from "@/components/PackageQuoteModal";
-import { PACKAGE_OFFERS } from "@/lib/package-offers";
+import { useStore } from "@/app/providers";
 
 // The full production-package catalog (cards + price range + inclusions + the
 // "Ask a quotation" flow). Lives inside the BMR provider storefront; the old
 // standalone /packages page was retired. Self-contained styles include the quote
 // modal so the dialog renders correctly wherever this is mounted.
 export default function PackagesCatalog() {
+  // Live, DB-backed packages (admin price edits reflect here). Falls back to the
+  // bundled seed via the store provider until the /api/packages feed hydrates.
+  const { packages } = useStore();
   return (
     <div className="packages-catalog">
       <style>{CSS}</style>
 
       <section className="package-grid" aria-label="Production packages">
-        {PACKAGE_OFFERS.map((offer) => (
+        {packages.map((offer) => (
           <article className="package-card" key={offer.id}>
             <Link href={`/packages/${offer.slug}`} className="package-image-link" aria-label={`View ${offer.name}`}>
               <GearImagePlaceholder name={offer.name} />

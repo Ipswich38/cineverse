@@ -4,6 +4,8 @@
 // payment server-side. Server-only (Node runtime — uses crypto + Buffer).
 //
 // Env: PAYMONGO_SECRET_KEY (sk_live_… or sk_test_…), PAYMONGO_WEBHOOK_SECRET.
+//      PAYMONGO_METHODS (optional) — comma list to pin payment methods, e.g.
+//      "gcash,card". Unset = serve whatever's activated in the PayMongo dashboard.
 import crypto from "crypto";
 
 const BASE = "https://api.paymongo.com/v1";
@@ -35,11 +37,18 @@ export async function createCheckoutSession(opts: CreateCheckoutInput): Promise<
     .filter((l) => l.amount > 0 && l.quantity > 0)
     .map((l) => ({ currency: "PHP", amount: Math.round(l.amount * 100), name: l.name.slice(0, 255), quantity: Math.max(1, Math.round(l.quantity)) }));
 
+  // Payment methods: by default we DON'T pin a list — PayMongo then serves
+  // exactly what's activated on the account, so newly-approved methods appear
+  // at checkout with no redeploy. Set PAYMONGO_METHODS (comma-separated, e.g.
+  // "gcash,card") to force a specific subset.
+  const methodOverride = (process.env.PAYMONGO_METHODS ?? "")
+    .split(",").map((s) => s.trim()).filter(Boolean);
+
   const body = {
     data: {
       attributes: {
         line_items,
-        payment_method_types: ["card", "gcash", "paymaya", "grab_pay"],
+        ...(methodOverride.length ? { payment_method_types: methodOverride } : {}),
         success_url: opts.successUrl,
         cancel_url: opts.cancelUrl,
         description: opts.description.slice(0, 255),
@@ -75,11 +84,64 @@ export async function getCheckoutSession(id: string): Promise<Record<string, unk
   return json.data ?? null;
 }
 
+// Issue a refund against a settled payment. `paymentId` is the pay_… id stored on
+// the order; `amount` is in pesos (partial refunds allowed). Returns the refund id
+// + status, or throws so the caller can fall back to a manual/offline refund.
+export async function createRefund(opts: { paymentId: string; amount: number; reason?: string; notes?: string }): Promise<{ id: string; status: string }> {
+  const body = {
+    data: {
+      attributes: {
+        amount: Math.round(opts.amount * 100),
+        payment_id: opts.paymentId,
+        reason: opts.reason ?? "requested_by_customer", // PayMongo enum: duplicate|fraudulent|requested_by_customer|others
+        ...(opts.notes ? { notes: opts.notes.slice(0, 255) } : {}),
+      },
+    },
+  };
+  const res = await fetch(`${BASE}/refunds`, {
+    method: "POST",
+    headers: { Authorization: authHeader(), "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let json: { data?: { id: string; attributes?: { status?: string } }; errors?: { detail?: string }[] } = {};
+  try { json = JSON.parse(text); } catch { /* non-JSON body */ }
+  if (!res.ok) {
+    const detail = json?.errors?.[0]?.detail || text.slice(0, 300) || "no body";
+    throw new Error(`PayMongo refund HTTP ${res.status}: ${detail}`);
+  }
+  return { id: json.data?.id ?? "", status: json.data?.attributes?.status ?? "pending" };
+}
+
 // True once at least one payment on the session has settled.
 export function sessionIsPaid(session: Record<string, unknown> | null): boolean {
   const attrs = (session as { attributes?: Record<string, unknown> } | null)?.attributes;
   const payments = (attrs?.payments as { attributes?: { status?: string } }[] | undefined) ?? [];
   return payments.some((p) => p?.attributes?.status === "paid");
+}
+
+export type PaymentInfo = {
+  method: string | null; // e.g. "gcash", "card", "paymaya", "grab_pay"
+  reference: string | null; // the PayMongo payment id (pay_…)
+  amount: number | null; // pesos actually collected
+  paidAt: string | null; // ISO timestamp of settlement
+};
+
+// Pull the real channel/reference/amount from the settled payment on a session,
+// so we record HOW the customer actually paid (not just "paymongo").
+export function extractPaymentInfo(session: Record<string, unknown> | null): PaymentInfo {
+  const attrs = (session as { attributes?: Record<string, unknown> } | null)?.attributes;
+  type Pay = { id?: string; attributes?: { status?: string; amount?: number; paid_at?: number; payment_method_used?: string; source?: { type?: string } } };
+  const payments = (attrs?.payments as Pay[] | undefined) ?? [];
+  const paid = payments.find((p) => p?.attributes?.status === "paid") ?? payments[0];
+  if (!paid) return { method: null, reference: null, amount: null, paidAt: null };
+  const a = paid.attributes ?? {};
+  return {
+    method: a.source?.type ?? a.payment_method_used ?? null,
+    reference: paid.id ?? null,
+    amount: typeof a.amount === "number" ? Math.round(a.amount) / 100 : null,
+    paidAt: typeof a.paid_at === "number" ? new Date(a.paid_at * 1000).toISOString() : null,
+  };
 }
 
 // Verify the Paymongo-Signature header: HMAC-SHA256 over `${t}.${rawBody}` with
