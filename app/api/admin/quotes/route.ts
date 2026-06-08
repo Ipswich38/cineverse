@@ -3,6 +3,7 @@ import { checkAdminAuth } from "../_auth";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
 import { generateDraft } from "@/lib/quotation";
 import { getPackagesCached } from "@/lib/packages-data";
+import { releaseUnits } from "@/lib/rental-finalize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,6 +92,9 @@ export async function PATCH(req: NextRequest) {
     if (STAMP[next]) patch[STAMP[next]] = new Date().toISOString();
     const { error } = await db.from(TABLE).update(patch).eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Gear is physically back once an order is returned/settled — check its units
+    // back into inventory (available) so they can be re-rented. Idempotent.
+    if (next === "returned" || next === "settled") await releaseUnits(id);
     return NextResponse.json({ ok: true });
   }
 
