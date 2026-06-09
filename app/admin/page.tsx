@@ -2250,7 +2250,9 @@ function InventoryPanel({ authCode }: { authCode: string }) {
       const e = map.get(k) ?? { total: 0, available: 0, rented: 0, maintenance: 0, retired: 0 };
       e.total++; e[u.status]++; map.set(k, e);
     }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    // Surface what's out: rows with units rented float to the top (most rented
+    // first), then the rest alphabetically.
+    return [...map.entries()].sort((a, b) => b[1].rented - a[1].rented || a[0].localeCompare(b[0]));
   }, [units]);
   const totals = useMemo(() => units.reduce((a, u) => { a.total++; a[u.status]++; return a; }, { total: 0, available: 0, rented: 0, maintenance: 0, retired: 0 } as Record<string, number>), [units]);
 
@@ -2273,15 +2275,22 @@ function InventoryPanel({ authCode }: { authCode: string }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 80px 90px", gap: 8, fontSize: 11, color: "#6c675f", fontWeight: 700 }}>
               <span>Type</span><span style={{ textAlign: "right" }}>Total</span><span style={{ textAlign: "right" }}>Available</span><span style={{ textAlign: "right" }}>Rented</span><span style={{ textAlign: "right" }}>Maint.</span>
             </div>
-            {byType.map(([name, e]) => (
-              <div key={name} style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 80px 90px", gap: 8, fontSize: 13, borderBottom: "1px solid rgba(17,17,17,0.08)", paddingBottom: 6 }}>
-                <span>{name}</span>
-                <span style={{ textAlign: "right" }}>{e.total}</span>
-                <span style={{ textAlign: "right", color: "#2f6b46", fontWeight: 700 }}>{e.available}</span>
-                <span style={{ textAlign: "right", color: "#b06a00" }}>{e.rented}</span>
-                <span style={{ textAlign: "right" }}>{e.maintenance}</span>
-              </div>
-            ))}
+            {byType.map(([name, e]) => {
+              const out = e.rented > 0;
+              return (
+                <div key={name} style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 80px 90px", gap: 8, fontSize: 13, borderBottom: "1px solid rgba(17,17,17,0.08)", paddingBottom: 6, alignItems: "center", background: out ? "rgba(176,106,0,0.08)" : undefined, borderLeft: out ? "3px solid #b06a00" : "3px solid transparent", paddingLeft: 8, marginLeft: -8, borderRadius: out ? 4 : 0 }}>
+                  <span style={{ fontWeight: out ? 700 : 400 }}>{name}</span>
+                  <span style={{ textAlign: "right" }}>{e.total}</span>
+                  <span style={{ textAlign: "right", color: "#2f6b46", fontWeight: 700 }}>{e.available}</span>
+                  <span style={{ textAlign: "right" }}>
+                    {out
+                      ? <span style={{ background: "#b06a00", color: "#fff", fontWeight: 800, borderRadius: 999, padding: "1px 9px" }}>{e.rented}</span>
+                      : <span style={{ color: "#b8b2a6" }}>0</span>}
+                  </span>
+                  <span style={{ textAlign: "right" }}>{e.maintenance || <span style={{ color: "#b8b2a6" }}>0</span>}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
