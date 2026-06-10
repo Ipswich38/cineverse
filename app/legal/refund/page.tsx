@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import LegalShell from "@/components/LegalShell";
 import { COMPANY } from "@/lib/company";
+import { DOWNPAYMENT_RATE } from "@/lib/rental-pricing";
+
+const dpPct = Math.round(DOWNPAYMENT_RATE * 100);
 
 export const metadata: Metadata = {
   title: "Refund & Cancellation Policy — VissionLink",
@@ -18,16 +21,15 @@ export default function RefundPage() {
 
       <h2>1. Reservation Downpayment</h2>
       <p>
-        Bookings are secured with a <strong>30% reservation downpayment</strong> after availability is confirmed. The
-        downpayment holds the equipment and schedule for your rental window.
+        Bookings are secured with a <strong>{dpPct}% reservation downpayment</strong> paid online at checkout (or in full,
+        if you choose the full-payment option). The downpayment holds the equipment and schedule for your rental window.
       </p>
 
       <h2>2. Cancellation by the Renter</h2>
       <ul>
-        <li><strong>Before availability is confirmed:</strong> no charge; any amount paid is fully refunded.</li>
-        <li><strong>After confirmation, 7+ days before the rental start:</strong> the downpayment is refundable less any non-recoverable transaction fees.</li>
-        <li><strong>Within 7 days of the rental start:</strong> the downpayment may be forfeited, in whole or in part, to compensate the Owner for the held schedule.</li>
-        <li><strong>No-show or same-day cancellation:</strong> the downpayment is non-refundable.</li>
+        <li><strong>More than 12 hours before the scheduled release:</strong> amounts paid are refundable, less any non-recoverable transaction fees.</li>
+        <li><strong>Within 12 hours of the scheduled release:</strong> a <strong>20% cancellation fee</strong> applies; the reservation downpayment may be applied against it.</li>
+        <li><strong>After the equipment has been picked up or dispatched:</strong> a <strong>50% fee</strong> applies.</li>
       </ul>
 
       <h2>3. Cancellation by VissionLink or the Owner</h2>
@@ -39,8 +41,9 @@ export default function RefundPage() {
 
       <h2>4. Security Deposit</h2>
       <p>
-        Any security deposit is refundable after the equipment is returned and inspected, less deductions for loss, damage,
-        late return, or missing accessories.
+        No security deposit is collected at online checkout. Where a refundable deposit is required for a specific release,
+        the amount is stated on your quotation or rental contract; it is refundable after the equipment is returned and
+        inspected, less deductions for loss, damage, late return, or missing accessories.
       </p>
 
       <h2>5. How Refunds Are Processed</h2>

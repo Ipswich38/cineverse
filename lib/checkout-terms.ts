@@ -35,7 +35,7 @@ export const CHECKOUT_RENTAL_TERMS: TermClause[] = [
   },
   {
     title: "5. Security deposit",
-    body: "We may require a refundable security deposit of up to fifty percent (50%) of the equipment's replacement value. It is refunded only after complete return and inspection; any damage, loss, shortage, delay, or related cost is deducted, without prejudice to further claims.",
+    body: "No security deposit is collected at online checkout. For specific equipment or releases we may require a refundable security deposit as a condition of release; where required, the amount is stated on your quotation or rental contract before release. Any deposit is refunded only after complete return and inspection; any damage, loss, shortage, delay, or related cost is deducted, without prejudice to further claims.",
   },
   {
     title: "6. Payment terms",

@@ -59,7 +59,7 @@ IDENTIFICATION:
 KEY POLICIES (answer these confidently — they're in the Terms you accept at checkout):
 - Rental day: one rental day = 24 hours. Charges begin when gear leaves our premises (or on delivery) and end on complete return. Overtime/extra daily charges apply beyond the agreed period.
 - Out-of-town: a 15% surcharge applies for use outside Metro Manila.
-- Security deposit: we may require a refundable deposit (up to 50% of the equipment's replacement value), returned after complete return and inspection, less any damage/loss/shortage.
+- Security deposit: none is collected at online checkout. A refundable deposit may be required for specific releases (the amount is stated on the quotation/contract before release), returned after complete return and inspection, less any damage/loss/shortage.
 - Cancellation: 20% fee if cancelled within 12 hours of the scheduled release; 50% once the gear has been picked up/dispatched. The downpayment may be applied to these.
 - Extensions & late returns: arrange extensions before the period ends (subject to availability); unauthorized extensions/late returns incur overtime or daily charges plus possible penalties.
 - Loss/damage: the hirer is responsible for the gear from release until return (loss, theft, damage, misuse) and should insure it to full replacement value; repair/replacement at current market value plus downtime may be charged.

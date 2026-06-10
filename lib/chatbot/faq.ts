@@ -43,7 +43,7 @@ export function faqAnswer(question: string, catalog: EquipmentItem[]): string {
     return `On release, the hirer presents at least one (1) original valid government-issued photo ID — e.g. Driver's License, Passport, UMID/SSS/GSIS, PhilID (National ID), PRC, or Postal/Voter's ID. It's verified and photo-documented for security.`;
   }
   if (has("cancel", "refund", "deposit", "security")) {
-    return `Cancellation: 20% fee within 12 hours of the scheduled release, 50% once gear is picked up/dispatched (your downpayment may be applied). A refundable security deposit may be required (up to 50% of replacement value), returned after return and inspection less any damage/loss. See the Cancellation & Refund policy for details.`;
+    return `Cancellation: 20% fee within 12 hours of the scheduled release, 50% once gear is picked up/dispatched (your downpayment may be applied). No security deposit is collected at online checkout — if one is required for a specific release, the amount is stated on your quotation/contract and it's refunded after return and inspection less any damage/loss. See the Cancellation & Refund policy for details.`;
   }
   if (has("late", "extend", "extension", "overtime", "return")) {
     return `One rental day = 24 hours. Need more time? Arrange an extension before your period ends (subject to availability). Unauthorized extensions or late returns incur overtime/daily charges and possible penalties. Please return the gear complete and on time so any deposit is refunded after inspection.`;
