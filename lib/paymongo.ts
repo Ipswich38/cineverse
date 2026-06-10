@@ -5,7 +5,7 @@
 //
 // Env: PAYMONGO_SECRET_KEY (sk_live_… or sk_test_…), PAYMONGO_WEBHOOK_SECRET.
 //      PAYMONGO_METHODS (optional) — comma list to pin payment methods, e.g.
-//      "gcash,card". Unset = serve whatever's activated in the PayMongo dashboard.
+//      "gcash,card". Unset = default set (card, gcash, paymaya, grab_pay).
 import crypto from "crypto";
 
 const BASE = "https://api.paymongo.com/v1";
@@ -37,18 +37,19 @@ export async function createCheckoutSession(opts: CreateCheckoutInput): Promise<
     .filter((l) => l.amount > 0 && l.quantity > 0)
     .map((l) => ({ currency: "PHP", amount: Math.round(l.amount * 100), name: l.name.slice(0, 255), quantity: Math.max(1, Math.round(l.quantity)) }));
 
-  // Payment methods: by default we DON'T pin a list — PayMongo then serves
-  // exactly what's activated on the account, so newly-approved methods appear
-  // at checkout with no redeploy. Set PAYMONGO_METHODS (comma-separated, e.g.
-  // "gcash,card") to force a specific subset.
+  // Payment methods: PayMongo REQUIRES payment_method_types on checkout
+  // sessions (omitting it is a 400, regardless of what's activated on the
+  // account). Default to the known-good set; set PAYMONGO_METHODS
+  // (comma-separated, e.g. "gcash,card") to override without a code change.
   const methodOverride = (process.env.PAYMONGO_METHODS ?? "")
     .split(",").map((s) => s.trim()).filter(Boolean);
+  const paymentMethodTypes = methodOverride.length ? methodOverride : ["card", "gcash", "paymaya", "grab_pay"];
 
   const body = {
     data: {
       attributes: {
         line_items,
-        ...(methodOverride.length ? { payment_method_types: methodOverride } : {}),
+        payment_method_types: paymentMethodTypes,
         success_url: opts.successUrl,
         cancel_url: opts.cancelUrl,
         description: opts.description.slice(0, 255),
