@@ -137,27 +137,6 @@ function CheckoutContent() {
             <p style={{ fontSize: 11.5, color: "#6c675f", lineHeight: 1.55, margin: "4px 0 0" }}>Accepted: {ACCEPTED_IDS.join(" · ")}.</p>
           </div>
 
-          {/* ── Rental terms — must be scrolled through before agreeing ────── */}
-          <div style={{ border: `1px solid ${readTerms ? "rgba(31,122,69,0.45)" : "rgba(180,120,0,0.45)"}`, borderRadius: 10, background: "#fffdf8" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 14px" }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: "#15130f" }}>Rental terms &amp; conditions</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: readTerms ? "#1f7a45" : "#9a6b00" }}>
-                {readTerms ? "✓ Read" : "Please scroll to read ↓"}
-              </span>
-            </div>
-            <div ref={termsRef} onScroll={onTermsScroll} style={{ maxHeight: 220, overflowY: "auto", padding: "0 14px 12px", display: "grid", gap: 9, borderTop: "1px solid rgba(17,17,17,0.08)" }}>
-              {CHECKOUT_RENTAL_TERMS.map((t) => (
-                <div key={t.title}>
-                  <p style={{ fontSize: 12, fontWeight: 800, color: "#15130f", margin: "0 0 2px" }}>{t.title}</p>
-                  <p style={{ fontSize: 11.5, color: "#6c675f", lineHeight: 1.55, margin: 0 }}>{t.body}</p>
-                </div>
-              ))}
-              <p style={{ fontSize: 11, color: "#8a8378", margin: "2px 0 0" }}>
-                Full policies: <Link href="/legal/terms" target="_blank">Terms</Link> · <Link href="/legal/refund" target="_blank">Cancellation &amp; Refund</Link> · <Link href="/legal/privacy" target="_blank">Privacy</Link>.
-              </p>
-            </div>
-          </div>
-
           {/* ── What to expect after the downpayment ──────────────────────── */}
           <div style={{ padding: "12px 14px", background: "#eef4f0", border: "1px solid rgba(31,122,69,0.22)", borderRadius: 10 }}>
             <p style={{ fontSize: 12, fontWeight: 800, color: "#1f5a3a", margin: 0 }}>What happens after you pay the downpayment</p>
@@ -168,14 +147,6 @@ function CheckoutContent() {
             </ol>
           </div>
 
-          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "#3a362f", lineHeight: 1.5, opacity: readTerms ? 1 : 0.55, cursor: readTerms ? "pointer" : "not-allowed" }}>
-            <input type="checkbox" checked={agree} disabled={!readTerms} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 3 }} />
-            <span>
-              I have read and agree to the rental terms &amp; conditions above and the <Link href="/legal/terms" target="_blank">full terms</Link>. I authorise the {Math.round(DOWNPAYMENT_RATE * 100)}% downpayment now to reserve the gear
-              {method === "full" ? ", paying the full discounted rental online." : method === "pdc" ? ", settling the balance by post-dated cheque per the PDC arrangement." : ", settling the balance before or upon handover."}
-              {!readTerms && <em style={{ color: "#9a6b00", fontStyle: "normal", fontWeight: 700 }}> — please scroll through the terms above to enable this.</em>}
-            </span>
-          </label>
         </div>
 
         <aside style={{ padding: 16, border: "1px solid rgba(17,17,17,0.12)", background: "#fffdf8", height: "fit-content" }}>
@@ -204,6 +175,36 @@ function CheckoutContent() {
           )}
           <div style={{ height: 1, background: "rgba(17,17,17,0.12)", margin: "10px 0" }} />
           <Row label="Pay now" value={peso(totals.payNow)} bold />
+
+          {/* ── Rental terms — must be scrolled through before agreeing ────── */}
+          <div style={{ marginTop: 14, border: `1px solid ${readTerms ? "rgba(31,122,69,0.45)" : "rgba(180,120,0,0.45)"}`, borderRadius: 10, background: "#fffdf8" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 13px" }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#15130f" }}>Rental terms &amp; conditions</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: readTerms ? "#1f7a45" : "#9a6b00" }}>
+                {readTerms ? "✓ Read" : "Please scroll to read ↓"}
+              </span>
+            </div>
+            <div ref={termsRef} onScroll={onTermsScroll} style={{ maxHeight: 190, overflowY: "auto", padding: "0 13px 11px", display: "grid", gap: 9, borderTop: "1px solid rgba(17,17,17,0.08)" }}>
+              {CHECKOUT_RENTAL_TERMS.map((t) => (
+                <div key={t.title}>
+                  <p style={{ fontSize: 12, fontWeight: 800, color: "#15130f", margin: "0 0 2px" }}>{t.title}</p>
+                  <p style={{ fontSize: 11.5, color: "#6c675f", lineHeight: 1.55, margin: 0 }}>{t.body}</p>
+                </div>
+              ))}
+              <p style={{ fontSize: 11, color: "#8a8378", margin: "2px 0 0" }}>
+                Full policies: <Link href="/legal/terms" target="_blank">Terms</Link> · <Link href="/legal/refund" target="_blank">Cancellation &amp; Refund</Link> · <Link href="/legal/privacy" target="_blank">Privacy</Link>.
+              </p>
+            </div>
+          </div>
+
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 12.5, color: "#3a362f", lineHeight: 1.5, marginTop: 12, opacity: readTerms ? 1 : 0.55, cursor: readTerms ? "pointer" : "not-allowed" }}>
+            <input type="checkbox" checked={agree} disabled={!readTerms} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 3 }} />
+            <span>
+              I have read and agree to the rental terms &amp; conditions above and the <Link href="/legal/terms" target="_blank">full terms</Link>. I authorise the {Math.round(DOWNPAYMENT_RATE * 100)}% downpayment now to reserve the gear
+              {method === "full" ? ", paying the full discounted rental online." : method === "pdc" ? ", settling the balance by post-dated cheque per the PDC arrangement." : ", settling the balance before or upon handover."}
+              {!readTerms && <em style={{ color: "#9a6b00", fontStyle: "normal", fontWeight: 700 }}> — please scroll through the terms above to enable this.</em>}
+            </span>
+          </label>
 
           {error && <p style={{ color: "#c0392b", fontSize: 13, margin: "12px 0 0" }}>{error}</p>}
 
