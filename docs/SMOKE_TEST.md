@@ -29,4 +29,7 @@ PayMongo redirect unless you intend a real ₱ charge.
     (exercises the fragile pdfkit packaging); admin Inbox tab shows recent
     Zoho mail.
 
-Last verified: 2026-06-11 (steps 1–4, 8, 9 after audit deploy).
+Last verified: 2026-06-11, post-audit deploy — steps 1, 2, 8, 9 at API level
+(home 200; 19 live catalog items; chat source=ai with real price; admin 401
+without/with wrong code, 200 with correct code; webhook rejects bad signature).
+Steps 3–7, 10 need a manual browser pass.

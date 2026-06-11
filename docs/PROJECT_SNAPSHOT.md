@@ -1,6 +1,15 @@
 # PROJECT SNAPSHOT — VissionLink
 
-> Generated 2026-06-11 (read-only audit, Step 1). Live at **vissionlink.com** (Vercel project `cineversestore`).
+> Generated 2026-06-11 (audit Step 1); updated same day after stabilization (Step 5). Live at **vissionlink.com** (Vercel project `cineversestore`), version **v0.6.0**.
+
+## Stabilization changes (2026-06-11, deployed)
+
+- **Code is off the laptop**: local `main` pushed to `origin/vissionlink` (github.com/Ipswich38/vissionlink) + tag `v0.6.0`. `origin/main` remains an unrelated old lineage — never force-push it.
+- **Admin auth fails closed**: hardcoded `'vissionlink-admin'` fallback removed (`app/api/admin/_auth.ts`); production verified — old default rejected (401), real `ADMIN_SECRET` works (200). Note: local `.env.local` ADMIN_SECRET differs from the Vercel (Sensitive-type) value.
+- **RLS verified ON for all 6 live tables** (5 deny-all, equipment public-read-active) and captured in `supabase/rls-harden.sql`; live-only schema captured in `supabase/packages.sql` + `supabase/orders-columns.sql`.
+- **Backups**: `npm run backup` dumps all six tables to gitignored `backups/<stamp>/` (first backup taken: 25 equipment, 5 orders, 181 units, 5 packages).
+- **Error alerting**: `lib/report-error.ts` (console + deduped email via Zoho) wired into the paid-order finalize failure path in the PayMongo webhook. Client-ledger writes (`lib/clients-db.ts`) now log their errors.
+- **Docs**: `.env.example` (all 19 vars), `docs/SMOKE_TEST.md` (10 steps), `docs/BACKLOG.md` (living backlog; `HANDOFF.md` marked superseded).
 
 ## Purpose & features as built
 
@@ -52,15 +61,15 @@ All keys via `process.env`, set in **Vercel project env** (the local `.env.local
 `PAYMONGO_SECRET_KEY` + `PAYMONGO_WEBHOOK_SECRET` (live), `ZOHO_SMTP_*` / `ZOHO_IMAP_*` + `CONTACT_TO` + `MAIL_BCC`,
 `GROQ_API_KEY`/`GROQ_MODEL` (+ optional `GEMINI_*`), `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (+ anon key, unused in code),
 `ADMIN_SECRET` (admin passcode = API Bearer token), `CRON_SECRET` (Vercel cron → reminders), `PAYMONGO_METHODS`.
-**No `.env.example` exists.** Graceful degradation is designed in: no Supabase → seed catalog; no LLM key → keyword FAQ; chat always answers.
+All documented in **`.env.example`**. Graceful degradation is designed in: no Supabase → seed catalog; no LLM key → keyword FAQ; chat always answers.
 
-## Fragile / unusual
+## Fragile / unusual (post-stabilization)
 
-1. **Git topology**: local `main` (48 commits) is the real lineage. `origin/main` on github.com/Ipswich38/vissionlink is an **unrelated old lineage** (never force-push over it blindly); `origin/vissionlink` is the matching branch but is **33 commits behind** — a month of live production code exists only on this machine. No tags, version stuck at 0.1.0.
-2. **Admin auth fallback**: `app/api/admin/_auth.ts` defaults to hardcoded `'vissionlink-admin'` if `ADMIN_SECRET` is unset — a publicly-guessable passcode guarding all admin CRUD. (`ADMIN_SECRET` *is* set in `.env.local`; Vercel value unverified.)
-3. **Orders piggyback on `vissionlink_quote_requests`** — one wide table for two lifecycles; works, but every status machine (quotation/contract/invoice/fulfillment/cancel) shares a row.
-4. `app/admin/page.tsx` is **3,210 lines** — the entire admin UI in one client component.
-5. **Schema drift**: SQL files are run-once scripts, not migrations; `vissionlink_packages` and some columns exist only in the live DB. No DB backup routine beyond Supabase's own.
-6. **No tests, no README, no error tracking** (failures visible only in Vercel logs); `HANDOFF.md` predates the PayMongo go-live and is partially stale.
-7. Shared Supabase project with CineForce/Lakbay/BigAni — a bad migration here can touch sister apps' DB.
-8. pdfkit requires the `serverExternalPackages` + file-tracing workaround in `next.config.ts`; removing it silently breaks all PDF generation in production (ENOENT at runtime, not build time).
+1. **Git topology**: `origin/main` is an **unrelated old lineage** — the real branch is `origin/vissionlink`; never force-push `main`. Consider switching the GitHub default branch to `vissionlink`.
+2. **Orders piggyback on `vissionlink_quote_requests`** — one wide table for two lifecycles; works, but every status machine (quotation/contract/invoice/fulfillment/cancel) shares a row.
+3. `app/admin/page.tsx` is **3,210 lines** — split deferred to BACKLOG (do it tab-by-tab with the smoke test as the regression net).
+4. SQL files are run-once scripts, not migrations — rebuild order: vissionlink → quote-requests → quotations → quote-channel → contract-invoice → clients → admin-apps → packages → orders-columns → rls-harden.
+5. Shared Supabase project with CineForce/Lakbay/BigAni — a bad migration here can touch sister apps' DB. Run `npm run backup` before any schema change.
+6. pdfkit requires the `serverExternalPackages` + file-tracing workaround in `next.config.ts`; removing it silently breaks all PDF generation in production (ENOENT at runtime, not build time).
+7. Backups are manual (`npm run backup`) and live only on this machine — no offsite copy yet.
+8. Color palette still untokenized (hundreds of inline hex values in TSX) — cosmetic, tracked in BACKLOG.
