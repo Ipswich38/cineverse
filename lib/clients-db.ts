@@ -4,10 +4,17 @@ import { applyCleanRental, type ClientRecord } from "./clients";
 // Server-side access to the client ledger (vissionlink_clients). Keyed by email.
 const TABLE = "vissionlink_clients";
 
+// Ledger writes are best-effort (a failure must not block an order), but they
+// must never be invisible — log so it surfaces in Vercel function logs.
+function logDbError(op: string, email: string, error: { message: string } | null) {
+  if (error) console.error(`[clients-db] ${op} failed for ${email}: ${error.message}`);
+}
+
 export async function getClient(email: string): Promise<ClientRecord | null> {
   const db = supabaseAdmin();
   if (!db || !email) return null;
-  const { data } = await db.from(TABLE).select("*").eq("email", email.toLowerCase()).maybeSingle();
+  const { data, error } = await db.from(TABLE).select("*").eq("email", email.toLowerCase()).maybeSingle();
+  logDbError("get", email, error);
   return (data as ClientRecord) ?? null;
 }
 
@@ -21,7 +28,10 @@ export async function ensureClient(email: string, fields: Partial<ClientRecord> 
   if (existing) {
     const patch: Partial<ClientRecord> = {};
     for (const k of ["name", "company", "phone"] as const) if (fields[k] && !existing[k]) patch[k] = fields[k] as string;
-    if (Object.keys(patch).length) await db.from(TABLE).update({ ...patch, updated_at: new Date().toISOString() }).eq("email", key);
+    if (Object.keys(patch).length) {
+      const { error } = await db.from(TABLE).update({ ...patch, updated_at: new Date().toISOString() }).eq("email", key);
+      logDbError("refresh", key, error);
+    }
     return { ...existing, ...patch };
   }
   const row: ClientRecord & { email: string } = {
@@ -36,14 +46,16 @@ export async function ensureClient(email: string, fields: Partial<ClientRecord> 
     late_count: 0,
     notes: null,
   };
-  await db.from(TABLE).insert(row);
+  const { error } = await db.from(TABLE).insert(row);
+  logDbError("insert", key, error);
   return row;
 }
 
 export async function updateClient(email: string, patch: Partial<ClientRecord>): Promise<void> {
   const db = supabaseAdmin();
   if (!db || !email) return;
-  await db.from(TABLE).update({ ...patch, updated_at: new Date().toISOString() }).eq("email", email.toLowerCase());
+  const { error } = await db.from(TABLE).update({ ...patch, updated_at: new Date().toISOString() }).eq("email", email.toLowerCase());
+  logDbError("update", email, error);
 }
 
 // Advance the ledger for a clean, fully-paid rental (idempotency is the caller's
