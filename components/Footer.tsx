@@ -10,6 +10,7 @@ const columns: { title: string; links: FooterLink[] }[] = [
     title: "Marketplace",
     links: [
       { href: "/store", label: "Browse Gear" },
+      { href: "/my-orders", label: "My Orders" },
       { href: "/contact", label: "List Your Gear" },
       // Hidden for now (per client) — re-enable when the crew cross-link returns.
       // { href: "https://cineforce.vissionlink.com", label: "Need A Crew", external: true },
