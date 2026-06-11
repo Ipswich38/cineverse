@@ -1,5 +1,8 @@
 # Ecosystem Handoff — paste this at the start of a new session
 
+> **SUPERSEDED 2026-06-11** — kept for history only. Current state lives in
+> `docs/PROJECT_SNAPSHOT.md`; open work lives in `docs/BACKLOG.md`.
+
 > Snapshot date: 2026-06-02. Your persistent memory has the deep detail; this is the fast path.
 
 ## VissionLink Current Session Handoff
