@@ -31,4 +31,11 @@
 
 - VAT shift: `TAX_CLAUSE` switch is in place (commit 9497660) — flip when BMR
   registers as VAT.
-- GPS hardware tags for units (lat/lng columns ready, manual check-in today).
+- **GPS tracking for equipment** (client roadmap): `vissionlink_units` already
+  has `lat`/`lng`/`last_seen` + the monitoring board reads them — the build is
+  hardware tags (or a courier phone app) POSTing to a check-in endpoint.
+  Until then, return monitoring = daily return-reminder cron (owners BCC'd)
+  + Availability board.
+- Customer accounts: decided AGAINST (2026-06-11) — guest checkout + email-keyed
+  ledger + magic-link /my-orders cover the need at current volume. Revisit only
+  if customers ask for self-service history at scale.

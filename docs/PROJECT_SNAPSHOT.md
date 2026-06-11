@@ -16,11 +16,13 @@
 Film/production gear **rental marketplace** for the Philippine market, legally operated by BMR
 Cinema Operation Services (sole prop, Non-VAT). Customer side: browse catalog of rentable camera
 SETS (`/store`, `/gear/[slug]`, `/packages`), cart → checkout with PayMongo (15% downpayment model,
-GCash/Maya/cards), scroll-gated T&C, order tracking + cancellation requests (`/order/[id]`), AI chat
-assistant (Groq, catalog-grounded, FAQ fallback), contact/quote forms. Admin side (passcode-gated
+GCash/Maya/cards), scroll-gated T&C, order tracking + cancellation requests (`/order/[id]`), passwordless
+order history via emailed magic link (`/my-orders`, HMAC-signed, 7-day TTL — no customer accounts
+by design), AI chat assistant (Groq, catalog-grounded, FAQ fallback), contact/quote forms. Admin side (passcode-gated
 `/admin`): quote→quotation→contract→invoice pipeline with generated PDFs, emailed documents, client
 ledger (loyalty/delinquency), expenses/P&L, inventory units with auto-assignment + availability,
-credit memos/refunds, Zoho inbox mirror, payment reminders (daily Vercel cron), admin AI co-pilot.
+credit memos/refunds, Zoho inbox mirror, payment + equipment-return reminders (daily Vercel cron:
+balance at T-3/due/T+1/T+7 on invoice due date; return at T-1/due/T+1 on `date_to`, owners BCC'd), admin AI co-pilot.
 
 ## Stack
 
