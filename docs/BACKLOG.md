@@ -31,11 +31,13 @@
 
 - VAT shift: `TAX_CLAUSE` switch is in place (commit 9497660) — flip when BMR
   registers as VAT.
-- **GPS tracking for equipment** (client roadmap): `vissionlink_units` already
-  has `lat`/`lng`/`last_seen` + the monitoring board reads them — the build is
-  hardware tags (or a courier phone app) POSTing to a check-in endpoint.
-  Until then, return monitoring = daily return-reminder cron (owners BCC'd)
-  + Availability board.
+- **GPS tracking — Phase 3 (hardware)**: Phases 1–2 SHIPPED in v0.7.0 (status
+  lifecycle, courier check-in links, MapLibre fleet map). Remaining = BMR buys
+  SIM GPS trackers (₱1–3k/device + data plan) → configure them to POST
+  `{unitId,lat,lng}` to `/api/track` with `Authorization: Bearer $TRACK_DEVICE_TOKEN`
+  (env var to set when devices arrive). Then optionally: geofence automation
+  (auto-mark arrived/left_premises from position vs delivery address) and
+  position-history trail (needs a `vissionlink_unit_pings` table).
 - Customer accounts: decided AGAINST (2026-06-11) — guest checkout + email-keyed
   ledger + magic-link /my-orders cover the need at current volume. Revisit only
   if customers ask for self-service history at scale.

@@ -23,6 +23,11 @@ by design), AI chat assistant (Groq, catalog-grounded, FAQ fallback), contact/qu
 ledger (loyalty/delinquency), expenses/P&L, inventory units with auto-assignment + availability,
 credit memos/refunds, Zoho inbox mirror, payment + equipment-return reminders (daily Vercel cron:
 balance at T-3/due/T+1/T+7 on invoice due date; return at T-1/due/T+1 on `date_to`, owners BCC'd), admin AI co-pilot.
+**Equipment tracking (v0.7.0):** delivery lifecycle `paid → shipped → arrived → left_premises → returned → settled`
+(each stamped); MapLibre fleet map + active-deliveries board in admin Equipment Monitoring
+(`components/AdminFleetMap.tsx`, OSM tiles, 30s refresh); per-order signed courier links (`/track`, 14-day,
+GPS check-in + arrived/left-premises only) minted from the admin board; `POST /api/track` also accepts a
+`TRACK_DEVICE_TOKEN` bearer for future SIM GPS trackers — hardware plugs in with zero code changes.
 
 ## Stack
 
