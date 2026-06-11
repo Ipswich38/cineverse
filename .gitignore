@@ -8,6 +8,10 @@
 
 # env files (contain secrets — never commit)
 .env*
+!.env.example
+
+# database backups (contain client PII — never commit)
+/backups/
 
 # vercel
 .vercel
