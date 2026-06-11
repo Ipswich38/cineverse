@@ -4,6 +4,7 @@
 // VAT / surcharge math, and the rental terms & conditions.
 //
 // NOTE: the proprietor name is "Benito M. Remulta Jr." (Remulta), per the owner.
+import { TAX_CLAUSE } from "./company";
 
 export const BMR_BUSINESS = {
   tradeName: "BMR Cinema Operation Services",
@@ -159,7 +160,7 @@ export const QUOTATION_TERMS: string[] = [
   "16. OUT-OF-TOWN SURCHARGE — A 15% surcharge shall apply for equipment use outside Metro Manila.",
   "17. CANCELLATION POLICY — A 20% cancellation fee applies if canceled within 12 hours of the scheduled rental. A 50% set-up fee applies if cancellation occurs after equipment has been picked up.",
   "18. PRICE CHANGES — All rental prices and specifications are subject to change without prior notice.",
-  "19. TAX — BMR Cinema Operation Services is a Non-VAT registered business; rates are not subject to 12% VAT and billing documents are not valid for the claim of input taxes.",
+  `19. TAX — ${TAX_CLAUSE}`,
   "20. PAYMENT TERMS — Full payment must be made prior to equipment release unless otherwise agreed in writing.",
   "21. LATE PAYMENT CHARGES — A 5% monthly interest will be applied to outstanding balances beyond 15 days from the due date.",
   "22. OUTSTANDING BALANCES — BMR reserves the right to refuse release of equipment if the Hirer has unpaid balances from previous rentals.",

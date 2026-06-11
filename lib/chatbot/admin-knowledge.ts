@@ -34,8 +34,8 @@ You can switch between these "desks" — say which lens you're using when releva
 
 ═══ 2. ACCOUNTING & TAX (Philippines) ═══
 ${COMPANY.legalName} is a sole proprietorship, BIR-registered ${COMPANY.taxType}, TIN ${COMPANY.tin}.
-- VAT status: Non-VAT means NO 12% VAT added to rentals. The VAT-registration threshold is ₱3,000,000 gross sales in 12 months — watch annual gross; crossing it forces VAT registration (and lets you claim input VAT, but adds 12% to invoices).
-- As Non-VAT, the business pays PERCENTAGE TAX (currently 3% of gross receipts) via BIR Form 2551Q each quarter — UNLESS it elects the 8% option.
+- VAT status: currently ${COMPANY.taxType}. NOTE — the accountant is processing a shift to VAT registration (as of June 2026); until the BIR registration actually completes, documents stay Non-VAT. Once VAT-registered: add 12% output VAT to invoices, claim input VAT on purchases, file 2550Q quarterly, and percentage tax (2551Q) no longer applies.
+- While Non-VAT: NO 12% VAT is added to rentals (the VAT-registration threshold is ₱3,000,000 gross sales in 12 months), and the business pays PERCENTAGE TAX (currently 3% of gross receipts) via BIR Form 2551Q each quarter — UNLESS it elects the 8% option.
 - 8% OPTION: a sole prop may elect to be taxed 8% on gross sales/receipts in excess of ₱250,000, IN LIEU OF both graduated income tax AND the 3% percentage tax. Simplest if expenses are low/margins high. Must elect on the 1st quarter return (or upon registration). If not elected → graduated income-tax rates apply PLUS the 3% percentage tax.
 - Graduated route: itemized deductions OR Optional Standard Deduction (OSD = 40% of gross). OSD is simple and often beneficial when you can't substantiate many expenses; itemized wins when real, documented expenses exceed 40%.
 - Filing cadence (typical): Income tax — 1701Q quarterly (May 15 / Aug 15 / Nov 15) + 1701A annual (Apr 15). Percentage tax — 2551Q quarterly. Annual registration fee 0605 was repealed (no longer required since 2024).

@@ -5,7 +5,7 @@
 // bot resolves the same questions with or without the LLM.
 import type { EquipmentItem } from "@/lib/catalog";
 import { peso, DOWNPAYMENT_RATE, FULL_PAYMENT_DISCOUNT_RATE, PDC_DISCOUNT_RATE } from "@/lib/rental-pricing";
-import { COMPANY } from "@/lib/company";
+import { COMPANY, TAX_CLAUSE } from "@/lib/company";
 
 export const QUICK_TOPICS = [
   "Help me find gear",
@@ -55,7 +55,7 @@ export function faqAnswer(question: string, catalog: EquipmentItem[]): string {
     return `Specified sets are released with a designated operator/crew (waivers are at our discretion). Unless agreed otherwise, the customer provides equipment transport and, for crew, adequate meals/drinks and — for overnight or extended shoots — safe accommodation.`;
   }
   if (has("receipt", "vat", "invoice", "tax", "official")) {
-    return `${COMPANY.legalName} is ${COMPANY.taxType}-registered, so documents aren't valid for input-tax claims; the official receipt is issued per our BIR registration. After payment, your invoice and rental contract are emailed to you automatically.`;
+    return `${TAX_CLAUSE} The official receipt is issued per our BIR registration. After payment, your invoice and rental contract are emailed to you automatically.`;
   }
   if (has("deliver", "pickup", "pick up", "ship", "handover", "transport")) {
     return `Pickup or delivery is arranged for your rental dates. Transport is the customer's arrangement unless agreed otherwise. Gear is handed over as a complete, checked set, and you can test it before accepting.`;

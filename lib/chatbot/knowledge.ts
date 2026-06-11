@@ -4,7 +4,7 @@
 // Small enough to fit in context — no vector DB / RAG needed.
 import type { EquipmentItem } from "@/lib/catalog";
 import { peso, DOWNPAYMENT_RATE, FULL_PAYMENT_DISCOUNT_RATE, PDC_DISCOUNT_RATE } from "@/lib/rental-pricing";
-import { COMPANY } from "@/lib/company";
+import { COMPANY, TAX_CLAUSE } from "@/lib/company";
 
 export function buildKnowledgeBase(catalog: EquipmentItem[]): string {
   const pct = Math.round(DOWNPAYMENT_RATE * 100);
@@ -65,7 +65,7 @@ KEY POLICIES (answer these confidently — they're in the Terms you accept at ch
 - Loss/damage: the hirer is responsible for the gear from release until return (loss, theft, damage, misuse) and should insure it to full replacement value; repair/replacement at current market value plus downtime may be charged.
 - Crew & logistics: specified rentals include a designated operator/crew (waivers at our discretion). Unless agreed, the customer provides equipment transport and, for crew, adequate meals/drinks and — for overnight/extended shoots — safe accommodation.
 - Late payment: outstanding balances accrue 5% interest per month; we may suspend or refuse release for unpaid balances.
-- Receipts/tax: ${COMPANY.legalName} is ${COMPANY.taxType}-registered; documents are not valid for input-tax claims. The official receipt is issued per our BIR registration.
+- Receipts/tax: ${TAX_CLAUSE} The official receipt is issued per our BIR registration.
 - Data/media: storage media are erased/reformatted on return unless otherwise agreed — back up your data; we're not liable for data loss.
 - Sub-renting/modifying the gear or unauthorized use is not allowed without written consent. All gear remains our property.
 

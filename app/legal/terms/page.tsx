@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import LegalShell from "@/components/LegalShell";
-import { COMPANY } from "@/lib/company";
+import { COMPANY, TAX_CLAUSE } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions — VissionLink",
@@ -41,8 +41,8 @@ export default function TermsPage() {
       <h2>4. Payments</h2>
       <p>
         Payments are processed by our third-party payment provider (PayMongo) via card, GCash, Maya, or other supported
-        methods. VissionLink does not store full card details. As a {COMPANY.taxType} business, our documents are not valid
-        for the claim of input taxes. The official receipt issued for any payment is governed by Section 8 below.
+        methods. VissionLink does not store full card details. {TAX_CLAUSE} The official receipt issued for any payment is
+        governed by Section 8 below.
       </p>
 
       <h2>5. Use &amp; Care of Equipment</h2>

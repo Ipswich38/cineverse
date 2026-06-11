@@ -5,7 +5,7 @@
 // Non-VAT) — adapted from a standard PH equipment-rental T&C, not copied from
 // any other rental house. Keep this the single source so the UI and the docs
 // never drift.
-import { COMPANY } from "./company";
+import { COMPANY, TAX_CLAUSE } from "./company";
 import { DOWNPAYMENT_RATE, FULL_PAYMENT_DISCOUNT_RATE, PDC_DISCOUNT_RATE, type BalanceMethod } from "./rental-pricing";
 
 const dpPct = Math.round(DOWNPAYMENT_RATE * 100);
@@ -39,7 +39,7 @@ export const CHECKOUT_RENTAL_TERMS: TermClause[] = [
   },
   {
     title: "6. Payment terms",
-    body: `Payments are made to ${COMPANY.legalName}. The ${dpPct}% downpayment is paid online to reserve; the balance is settled per the method you select at checkout (before/upon handover, in full online, or by post-dated cheque). As a ${COMPANY.taxType} business, our documents are not valid for input-tax claims. Outstanding balances accrue 5% interest per month until paid; we may suspend or refuse release for unpaid balances.`,
+    body: `Payments are made to ${COMPANY.legalName}. The ${dpPct}% downpayment is paid online to reserve; the balance is settled per the method you select at checkout (before/upon handover, in full online, or by post-dated cheque). ${TAX_CLAUSE} Outstanding balances accrue 5% interest per month until paid; we may suspend or refuse release for unpaid balances.`,
   },
   {
     title: "7. Cancellation",
