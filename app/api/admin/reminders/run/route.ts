@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAdminAuth } from "../../_auth";
 import { hasSupabase, supabaseAdmin } from "@/lib/supabase";
 import { computeInvoiceMoney, todayISO, type InvoiceDoc } from "@/lib/invoice";
-import { sendReminderEmail } from "@/lib/contact-mail";
+import { sendReminderEmail, sendReturnReminderEmail } from "@/lib/contact-mail";
+import { displayRentalOrderId } from "@/lib/display-ids";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,11 @@ export const dynamic = "force-dynamic";
 const TABLE = "vissionlink_quote_requests";
 // Days relative to the due date on which a reminder fires (− = before due).
 const OFFSETS = [-3, 0, 1, 7];
+// Days relative to the rental end (date_to) on which a return reminder fires:
+// day before, due day, one late nudge. Owners get the BCC = admin monitoring.
+const RETURN_OFFSETS = [-1, 0, 1];
+// Gear is out with the client in these states; returned/settled stops reminders.
+const OUT_STATUSES = ["paid", "shipped"];
 
 function php(n: number): string {
   return "PHP " + (Number(n) || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -68,7 +74,41 @@ async function run(req: NextRequest) {
     results.push({ id: (row as { id: string }).id, to: doc.client.email, number: doc.number, balance: money.balance, offset, sent: r.ok && !r.skipped, skipped: r.skipped, error: r.error });
   }
 
-  return NextResponse.json({ ok: true, date: today, dry, scanned: data?.length ?? 0, reminders: results.length, results });
+  // Return-date reminders: rentals out with the client whose date_to is near.
+  const { data: outRows, error: outErr } = await db
+    .from(TABLE)
+    .select("id, order_no, name, email, date_to, fulfillment_status, cancel_status, items")
+    .in("fulfillment_status", OUT_STATUSES)
+    .not("date_to", "is", null)
+    .limit(1000);
+  if (outErr) return NextResponse.json({ error: outErr.message }, { status: 500 });
+
+  const returns: { id: string; to: string; orderNo: string; dateTo: string; offset: number; sent: boolean; skipped?: boolean; error?: string }[] = [];
+  for (const row of outRows ?? []) {
+    if (row.cancel_status === "approved" || !row.email || !row.date_to) continue;
+    const offset = daysBetween(row.date_to as string, today); // <0 upcoming, 0 due back today, >0 late
+    if (!RETURN_OFFSETS.includes(offset)) continue;
+
+    const orderNo = displayRentalOrderId(row.id as string, (row.order_no as string | null) ?? null);
+    if (dry) {
+      returns.push({ id: row.id as string, to: row.email as string, orderNo, dateTo: row.date_to as string, offset, sent: false });
+      continue;
+    }
+    const items = Array.isArray(row.items)
+      ? (row.items as { name?: string; qty?: number }[]).map((it) => `${it.name ?? "Equipment"} ×${it.qty ?? 1}`).join(", ")
+      : "Rented equipment";
+    const r = await sendReturnReminderEmail({
+      to: row.email as string,
+      clientName: (row.name as string | null) ?? "",
+      orderNo,
+      dateTo: row.date_to as string,
+      daysLeft: -offset,
+      items,
+    });
+    returns.push({ id: row.id as string, to: row.email as string, orderNo, dateTo: row.date_to as string, offset, sent: r.ok && !r.skipped, skipped: r.skipped, error: r.error });
+  }
+
+  return NextResponse.json({ ok: true, date: today, dry, scanned: data?.length ?? 0, reminders: results.length, results, returnsScanned: outRows?.length ?? 0, returnReminders: returns.length, returns });
 }
 
 export const GET = run; // Vercel cron calls GET

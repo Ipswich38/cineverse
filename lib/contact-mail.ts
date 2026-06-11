@@ -39,6 +39,84 @@ function transporter() {
   return cached
 }
 
+// Magic link to the customer's "My orders" page. NO BCC — the link is the
+// customer's private access token and must not be copied anywhere else.
+export async function sendMyOrdersLinkEmail(to: string, link: string): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  if (!hasContactMailConfig()) {
+    console.log('[my-orders:skipped] SMTP not configured. Link for ' + to + ': ' + link)
+    return { ok: true, skipped: true }
+  }
+  try {
+    await transporter().sendMail({
+      from: `Vissionlink Rentals <${process.env.ZOHO_SMTP_USER}>`,
+      to,
+      subject: 'Your VissionLink orders — secure link',
+      text:
+        `Hi,\n\n` +
+        `You (or someone using this email) asked to view your rental orders on vissionlink.com.\n\n` +
+        `Open your orders here (link works for 7 days):\n${link}\n\n` +
+        `If you didn't request this, you can ignore this email — nothing changes without this link.\n\n` +
+        `— Vissionlink Rentals / BMR Cinema Operation Services\n`,
+    })
+    return { ok: true }
+  } catch (err) {
+    console.error('[my-orders:error]', err)
+    return { ok: false, error: err instanceof Error ? err.message : 'send failed' }
+  }
+}
+
+export interface ReturnReminderInput {
+  to: string
+  clientName: string
+  orderNo: string
+  dateTo: string // human date the gear is due back
+  daysLeft: number // >0 = upcoming, 0 = due today, <0 = overdue
+  items: string // short summary, e.g. "KOMODO 6K (Body Kit) ×1"
+}
+
+// Return-date reminder, keyed to the rental end date (date_to on the order).
+// Sent by the daily reminders cron at T-1 / due day / T+1. Owners get the BCC
+// copy, which doubles as the admin's "due back" monitoring nudge.
+export async function sendReturnReminderEmail(input: ReturnReminderInput): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  const replyTo = process.env.CONTACT_TO || process.env.ZOHO_SMTP_USER || 'hello@vissionlink.com'
+  const late = input.daysLeft < 0
+  const subject = late
+    ? `Equipment return overdue — Order ${input.orderNo}`
+    : input.daysLeft === 0
+      ? `Equipment due back today — Order ${input.orderNo}`
+      : `Equipment due back tomorrow — Order ${input.orderNo}`
+  const lead = late
+    ? `Our records show the equipment on Order ${input.orderNo} was due back on ${input.dateTo} and has not yet been marked returned.`
+    : input.daysLeft === 0
+      ? `A friendly reminder that the equipment on Order ${input.orderNo} is due back today, ${input.dateTo}.`
+      : `A friendly reminder that the equipment on Order ${input.orderNo} is due back tomorrow, ${input.dateTo}.`
+  const text =
+    `Hi ${input.clientName || 'there'},\n\n` +
+    `${lead}\n\n` +
+    `Items: ${input.items}\n\n` +
+    `Please coordinate the return/pickup with us at ${replyTo}. Late returns are billed per the rental agreement, ` +
+    `and the security deposit is released after the gear is checked in.\n\n` +
+    `Thank you,\nVissionlink Rentals / BMR Cinema Operation Services\n`
+  if (!hasContactMailConfig()) {
+    console.log('[return-reminder:skipped] SMTP not configured.\n' + subject)
+    return { ok: true, skipped: true }
+  }
+  try {
+    await transporter().sendMail({
+      from: `Vissionlink Rentals <${process.env.ZOHO_SMTP_USER}>`,
+      to: input.to,
+      bcc: bccList(),
+      replyTo,
+      subject,
+      text,
+    })
+    return { ok: true }
+  } catch (err) {
+    console.error('[return-reminder:error]', err)
+    return { ok: false, error: err instanceof Error ? err.message : 'send failed' }
+  }
+}
+
 // Plain operational alert to the site owner (used by lib/report-error.ts).
 // No BCC, no reply-to — this is internal plumbing, not customer mail.
 export async function sendAlertEmail(subject: string, text: string): Promise<{ ok: boolean; skipped?: boolean }> {
