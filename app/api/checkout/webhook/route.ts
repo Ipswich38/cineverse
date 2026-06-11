@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyWebhookSignature, parseWebhookEvent } from "@/lib/paymongo";
 import { finalizeRentalOrder } from "@/lib/rental-finalize";
+import { reportError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,9 @@ export async function POST(req: NextRequest) {
 
   const result = await finalizeRentalOrder(orderId);
   if (!result.ok && !result.alreadyDone) {
+    // A PAID order failed to finalize — the customer was charged but got no
+    // confirmation/contract/invoice. Alert the owner; 500 makes PayMongo retry.
+    reportError("paid-order finalize failed", `Order ${orderId}: ${result.error || "unknown error"}`, orderId);
     return NextResponse.json({ error: result.error || "Finalize failed." }, { status: 500 });
   }
   return NextResponse.json({ ok: true });

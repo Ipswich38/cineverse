@@ -39,6 +39,25 @@ function transporter() {
   return cached
 }
 
+// Plain operational alert to the site owner (used by lib/report-error.ts).
+// No BCC, no reply-to — this is internal plumbing, not customer mail.
+export async function sendAlertEmail(subject: string, text: string): Promise<{ ok: boolean; skipped?: boolean }> {
+  if (!hasContactMailConfig()) return { ok: true, skipped: true }
+  const to = process.env.CONTACT_TO || process.env.ZOHO_SMTP_USER || 'hello@vissionlink.com'
+  try {
+    await transporter().sendMail({
+      from: `Vissionlink Alerts <${process.env.ZOHO_SMTP_USER}>`,
+      to,
+      subject,
+      text,
+    })
+    return { ok: true }
+  } catch (err) {
+    console.error('[alert:error]', err)
+    return { ok: false }
+  }
+}
+
 export interface ContactInput {
   name: string
   email: string
