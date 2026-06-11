@@ -8,6 +8,7 @@ import { currency, slugify, type EquipmentItem } from "@/lib/catalog";
 import { CATEGORY_FLAT, categoryName, normalizeCategory } from "@/lib/categories";
 import ProposalBuilder from "./ProposalBuilder";
 import AdminAssistant from "@/components/AdminAssistant";
+import AdminFleetMap from "@/components/AdminFleetMap";
 import { computeTotals, formatPHP, lineAmount, type QuotationDoc, type QuotationLine } from "@/lib/quotation";
 import { type ContractDoc } from "@/lib/contract";
 import { computeInvoiceMoney, CHANNEL_LABELS, ALL_CHANNELS, type InvoiceDoc, type PaymentChannel, type PaymentEntry, type Incident } from "@/lib/invoice";
@@ -526,7 +527,7 @@ type QuoteRequest = {
   contract_status?: "none" | "draft" | "sent" | "signed" | null;
   invoice_status?: "none" | "draft" | "sent" | null;
   channel?: "web" | "direct" | "rent" | null;
-  fulfillment_status?: "pending_payment" | "processing" | "paid" | "shipped" | "returned" | "settled" | "cancelled" | null;
+  fulfillment_status?: "pending_payment" | "processing" | "paid" | "shipped" | "arrived" | "left_premises" | "returned" | "settled" | "cancelled" | null;
   security_deposit?: number | string | null;
   delivery_address?: string | null;
   order_no?: string | null;
@@ -771,12 +772,18 @@ function EngagementCard({ q, updating, on, packages = [] }: { q: QuoteRequest; u
             <button onClick={() => on.setFulfillment(q.id, "shipped")} disabled={updating === q.id} style={{ ...cardBtnGhost, opacity: updating === q.id ? 0.6 : 1 }}><Truck size={14} /> Mark shipped</button>
           )}
           {q.fulfillment_status === "shipped" && (
+            <button onClick={() => on.setFulfillment(q.id, "arrived")} disabled={updating === q.id} style={{ ...cardBtnGhost, opacity: updating === q.id ? 0.6 : 1 }}><MapPin size={14} /> Mark arrived</button>
+          )}
+          {q.fulfillment_status === "arrived" && (
+            <button onClick={() => on.setFulfillment(q.id, "left_premises")} disabled={updating === q.id} style={{ ...cardBtnGhost, opacity: updating === q.id ? 0.6 : 1 }}><Truck size={14} /> Mark left premises</button>
+          )}
+          {(q.fulfillment_status === "shipped" || q.fulfillment_status === "arrived" || q.fulfillment_status === "left_premises") && (
             <button onClick={() => on.setFulfillment(q.id, "returned")} disabled={updating === q.id} style={{ ...cardBtnGhost, opacity: updating === q.id ? 0.6 : 1 }}><CornerUpLeft size={14} /> Mark returned</button>
           )}
           {q.fulfillment_status === "returned" && (
             <button onClick={() => { if (confirm("Settle this rental? Record any damage charges on the invoice first (the deposit absorbs them); the remaining deposit is then refunded off-app.")) void on.setFulfillment(q.id, "settled"); }} disabled={updating === q.id} style={{ ...cardBtnGreen, opacity: updating === q.id ? 0.6 : 1 }}><PackageCheck size={14} /> Settle</button>
           )}
-          {["paid", "shipped", "returned"].includes(q.fulfillment_status) && (
+          {["paid", "shipped", "arrived", "left_premises", "returned"].includes(q.fulfillment_status) && (
             <button onClick={() => on.openCancel(q)} disabled={updating === q.id} style={{ ...cardBtnText, color: "#c0392b" }}><X size={13} /> Cancel / refund</button>
           )}
           {q.fulfillment_status === "cancelled" && (
@@ -2483,6 +2490,7 @@ function MonitoringPanel({ authCode }: { authCode: string }) {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      <AdminFleetMap authCode={authCode} />
       <div className="surface" style={{ padding: 16, border: "1px solid rgba(17,17,17,0.1)" }}>
         <h3 style={{ fontFamily: 'Arial, Helvetica, sans-serif', margin: "0 0 4px" }}>Register a unit</h3>
         <p style={{ color: "#6c675f", fontSize: 12, marginTop: 0 }}>Each unit gets a QR (links to the unit) and a status. GPS lat/lng are last-known — wire physical tags later to auto-update location.</p>
