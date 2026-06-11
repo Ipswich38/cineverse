@@ -5,10 +5,12 @@
 
 alter table public.vissionlink_quote_requests
   -- Fulfilment after a paid PayMongo checkout (lib/rental-finalize.ts).
-  add column if not exists fulfillment_status text, -- pending_payment | processing | paid | shipped | returned | settled
+  add column if not exists fulfillment_status text, -- pending_payment | processing | paid | shipped | arrived | left_premises | returned | settled | cancelled
   add column if not exists payment_ref text,
   add column if not exists paid_at timestamptz,
   add column if not exists shipped_at timestamptz,
+  add column if not exists arrived_at timestamptz,        -- gear delivered to the renter's premises
+  add column if not exists left_premises_at timestamptz,  -- gear picked up from the renter, heading back
   add column if not exists returned_at timestamptz,
   add column if not exists settled_at timestamptz,
   add column if not exists security_deposit numeric,

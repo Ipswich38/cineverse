@@ -14,8 +14,9 @@ const OFFSETS = [-3, 0, 1, 7];
 // Days relative to the rental end (date_to) on which a return reminder fires:
 // day before, due day, one late nudge. Owners get the BCC = admin monitoring.
 const RETURN_OFFSETS = [-1, 0, 1];
-// Gear is out with the client in these states; returned/settled stops reminders.
-const OUT_STATUSES = ["paid", "shipped"];
+// Gear is out with the client in these states; left_premises (heading back),
+// returned and settled stop the reminders.
+const OUT_STATUSES = ["paid", "shipped", "arrived"];
 
 function php(n: number): string {
   return "PHP " + (Number(n) || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

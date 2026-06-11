@@ -82,10 +82,11 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Advance an instant-rent order's fulfillment: paid → shipped → returned →
-  // settled (security reconciled). Each stamps its own timestamp.
+  // Advance an instant-rent order's fulfillment: paid → shipped → arrived →
+  // left_premises → returned → settled (security reconciled). Each stamps its
+  // own timestamp. arrived/left_premises may also be set by the courier link.
   if (typeof body.fulfillment === "string") {
-    const STAMP: Record<string, string> = { shipped: "shipped_at", returned: "returned_at", settled: "settled_at" };
+    const STAMP: Record<string, string> = { shipped: "shipped_at", arrived: "arrived_at", left_premises: "left_premises_at", returned: "returned_at", settled: "settled_at" };
     const next = body.fulfillment;
     if (!STAMP[next] && next !== "cancelled") return NextResponse.json({ error: "Invalid fulfillment state." }, { status: 400 });
     const patch: Record<string, unknown> = { fulfillment_status: next };
