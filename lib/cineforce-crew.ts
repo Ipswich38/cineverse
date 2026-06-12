@@ -7,18 +7,24 @@
 // optional — or (b) waives the crew and signs the Equipment Rental Liability
 // Waiver (rendered at checkout and as a PDF with the contract).
 //
-// ⚠️ PLACEHOLDER RATES — like the early package prices, these day-rates are
-// reasonable stand-ins pending BMR's official crew rate card. Tune them here.
+// Rates: VissionLink charges a FLAT rate per position — deliberately separate
+// from what individual freelancers charge when hired directly on Cineforce.
+// The dailyRate below is the RECOMMENDED rate shown until Cineforce freelancer
+// listings go live; once positions are filled there, live per-position rates
+// flow into the vissionlink_crew_rates table (see lib/crew-rates.ts) and
+// automatically replace these at checkout. Tune the recommended rates here.
 
 export const CINEFORCE_URL = "https://cineforce.vissionlink.com";
 
 export type CrewDept = "Leadership" | "Camera Department" | "Lighting Department" | "Other";
 
+export type CrewRateSource = "recommended" | "cineforce";
+
 export type CrewPosition = {
   key: string;
   name: string;
   dept: CrewDept;
-  /** ₱ per rental day (PLACEHOLDER — confirm with BMR). */
+  /** ₱ per rental day — the RECOMMENDED flat rate, overridden by live Cineforce rates when available. */
   dailyRate: number;
   /** lead → eligible as the mandatory MAIN handler; support → as the ASSISTANT. */
   tier: "lead" | "support";
@@ -125,18 +131,20 @@ export type CrewLine = { id: string; name: string; qty: number; days: number; ra
 
 // Expands a validated selection into order line items. The `crew-` id prefix is
 // how the rest of the pipeline (finalize → contract labor schedule) recognises
-// crew lines among the equipment items.
-export function crewLineItems(sel: CrewSelection, days: number): CrewLine[] {
+// crew lines among the equipment items. `ratesByKey` lets callers price with
+// live Cineforce rates (lib/crew-rates.ts); the recommended rate is the fallback.
+export function crewLineItems(sel: CrewSelection, days: number, ratesByKey?: Record<string, number>): CrewLine[] {
   if (sel.mode !== "crew") return [];
   const d = Math.max(1, Math.floor(days) || 1);
+  const rate = (p: CrewPosition) => ratesByKey?.[p.key] ?? p.dailyRate;
   const lines: CrewLine[] = [];
   const main = CREW_BY_KEY[sel.mainKey ?? ""];
   const assistant = CREW_BY_KEY[sel.assistantKey ?? ""];
-  if (main) lines.push({ id: `crew-main-${main.key}`, name: `Crew — ${main.name} (equipment handler, main)`, qty: 1, days: d, ratePerDay: main.dailyRate });
-  if (assistant) lines.push({ id: `crew-assist-${assistant.key}`, name: `Crew — ${assistant.name} (equipment handler, assistant)`, qty: 1, days: d, ratePerDay: assistant.dailyRate });
+  if (main) lines.push({ id: `crew-main-${main.key}`, name: `Crew — ${main.name} (equipment handler, main)`, qty: 1, days: d, ratePerDay: rate(main) });
+  if (assistant) lines.push({ id: `crew-assist-${assistant.key}`, name: `Crew — ${assistant.name} (equipment handler, assistant)`, qty: 1, days: d, ratePerDay: rate(assistant) });
   for (const e of sel.extras ?? []) {
     const p = CREW_BY_KEY[e.key];
-    if (p) lines.push({ id: `crew-extra-${p.key}`, name: `Crew — ${p.name} (additional crew)`, qty: e.qty, days: d, ratePerDay: p.dailyRate });
+    if (p) lines.push({ id: `crew-extra-${p.key}`, name: `Crew — ${p.name} (additional crew)`, qty: e.qty, days: d, ratePerDay: rate(p) });
   }
   return lines;
 }

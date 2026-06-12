@@ -7,6 +7,7 @@ import { createCheckoutSession, hasPaymongo } from "@/lib/paymongo";
 import { clientIpFromHeaders, lookupLocation } from "@/lib/geo-ip";
 import { displayRentalOrderId } from "@/lib/display-ids";
 import { parseCrewSelection, crewLineItems, crewDaysFromRange } from "@/lib/cineforce-crew";
+import { getCrewRatesByKey } from "@/lib/crew-rates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,10 +68,12 @@ export async function POST(req: NextRequest) {
     items.push({ id: item.id, name: item.name, qty, days, ratePerDay: item.ratePerDay });
   }
 
-  // Crew lines are priced server-side from the Cineforce position rates and
-  // billed for the whole booked date range. They ride along in `items` (with a
-  // `crew-` id prefix) so totals, the contract, and the invoice all include them.
-  for (const c of crewLineItems(crew.value, crewDaysFromRange(dateFrom, dateTo))) {
+  // Crew lines are priced server-side — live Cineforce per-position rates when
+  // available, else the recommended flat rates — and billed for the whole booked
+  // date range. They ride along in `items` (with a `crew-` id prefix) so totals,
+  // the contract, and the invoice all include them.
+  const crewRates = await getCrewRatesByKey();
+  for (const c of crewLineItems(crew.value, crewDaysFromRange(dateFrom, dateTo), crewRates)) {
     items.push({ id: c.id, name: c.name, qty: c.qty, days: c.days, ratePerDay: c.ratePerDay });
   }
 

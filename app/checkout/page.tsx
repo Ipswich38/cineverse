@@ -8,8 +8,9 @@ import { useStore } from "../providers";
 import { peso, rentalTotals, DOWNPAYMENT_RATE, type BalanceMethod } from "@/lib/rental-pricing";
 import { CHECKOUT_RENTAL_TERMS, ACCEPTED_IDS, ID_POLICY, AFTER_DOWNPAYMENT, PAYMENT_METHODS } from "@/lib/checkout-terms";
 import {
-  CINEFORCE_URL, CREW_DEPARTMENTS, CREW_POSITIONS, MAIN_HANDLER_POSITIONS, ASSISTANT_POSITIONS,
-  crewLineItems, crewDaysFromRange, WAIVER_TITLE, WAIVER_PREAMBLE, WAIVER_CLAUSES, type CrewMode,
+  CINEFORCE_URL, CREW_DEPARTMENTS, CREW_POSITIONS,
+  crewLineItems, crewDaysFromRange, WAIVER_TITLE, WAIVER_PREAMBLE, WAIVER_CLAUSES,
+  type CrewMode, type CrewPosition, type CrewRateSource,
 } from "@/lib/cineforce-crew";
 
 export default function CheckoutPage() {
@@ -42,6 +43,23 @@ function CheckoutContent() {
   const [readWaiver, setReadWaiver] = useState(false); // unlocks only after the waiver is scrolled through
   const [waiverAccepted, setWaiverAccepted] = useState(false);
   const [waiverName, setWaiverName] = useState("");
+
+  // Positions start from the bundled recommended flat rates for an instant
+  // paint, then hydrate from /api/crew-rates — which serves live Cineforce
+  // per-position rates once freelancers have listed there.
+  const [positions, setPositions] = useState<(CrewPosition & { source?: CrewRateSource })[]>(CREW_POSITIONS);
+  useEffect(() => {
+    fetch("/api/crew-rates")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (Array.isArray(d) && d.length > 0) setPositions(d); })
+      .catch(() => { /* keep recommended rates on network error */ });
+  }, []);
+  const mainOptions = useMemo(() => positions.filter((p) => p.tier === "lead"), [positions]);
+  const assistantOptions = useMemo(() => positions.filter((p) => p.tier === "support"), [positions]);
+  const ratesByKey = useMemo(() => Object.fromEntries(positions.map((p) => [p.key, p.dailyRate])), [positions]);
+  const anyLiveRates = positions.some((p) => p.source === "cineforce");
+  const optionLabel = (p: CrewPosition & { source?: CrewRateSource }) =>
+    `${p.name} — ${peso(p.dailyRate)}/day${p.source === "cineforce" ? " · live" : ""}`;
 
   // Require the customer to actually scroll to the end of the terms before they
   // can tick "I agree". (If the box doesn't overflow on some viewport, treat it
@@ -76,8 +94,8 @@ function CheckoutContent() {
   }, [form.dateFrom, form.dateTo, cart]);
 
   const crewLines = useMemo(
-    () => crewLineItems({ mode: crewMode, mainKey, assistantKey, extras }, crewDays),
-    [crewMode, mainKey, assistantKey, extras, crewDays],
+    () => crewLineItems({ mode: crewMode, mainKey, assistantKey, extras }, crewDays, ratesByKey),
+    [crewMode, mainKey, assistantKey, extras, crewDays, ratesByKey],
   );
 
   const totals = useMemo(
@@ -208,16 +226,16 @@ function CheckoutContent() {
                   <Field label="Main handler *">
                     <select value={mainKey} onChange={(e) => setMainKey(e.target.value)} style={inp}>
                       <option value="">Select position…</option>
-                      {MAIN_HANDLER_POSITIONS.map((p) => (
-                        <option key={p.key} value={p.key}>{p.name} — {peso(p.dailyRate)}/day</option>
+                      {mainOptions.map((p) => (
+                        <option key={p.key} value={p.key}>{optionLabel(p)}</option>
                       ))}
                     </select>
                   </Field>
                   <Field label="Assistant *">
                     <select value={assistantKey} onChange={(e) => setAssistantKey(e.target.value)} style={inp}>
                       <option value="">Select position…</option>
-                      {ASSISTANT_POSITIONS.map((p) => (
-                        <option key={p.key} value={p.key}>{p.name} — {peso(p.dailyRate)}/day</option>
+                      {assistantOptions.map((p) => (
+                        <option key={p.key} value={p.key}>{optionLabel(p)}</option>
                       ))}
                     </select>
                   </Field>
@@ -236,8 +254,8 @@ function CheckoutContent() {
                       <option value="">Select position…</option>
                       {CREW_DEPARTMENTS.map((dept) => (
                         <optgroup key={dept} label={dept}>
-                          {CREW_POSITIONS.filter((p) => p.dept === dept).map((p) => (
-                            <option key={p.key} value={p.key}>{p.name} — {peso(p.dailyRate)}/day</option>
+                          {positions.filter((p) => p.dept === dept).map((p) => (
+                            <option key={p.key} value={p.key}>{optionLabel(p)}</option>
                           ))}
                         </optgroup>
                       ))}
@@ -255,6 +273,12 @@ function CheckoutContent() {
                 <button type="button" onClick={() => setExtras((prev) => [...prev, { key: "", qty: 1 }])} style={{ justifySelf: "start", background: "#fffdf8", border: "1px dashed rgba(17,17,17,0.3)", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 700, color: "#15130f", cursor: "pointer" }}>
                   + Add project crew
                 </button>
+
+                <p style={{ fontSize: 11, color: "#8a8378", lineHeight: 1.5, margin: 0 }}>
+                  {anyLiveRates
+                    ? "Positions marked “live” use current Cineforce rates; the rest are VissionLink's recommended flat rates per position."
+                    : "Rates shown are VissionLink's recommended flat rates per position. Once freelancers list on Cineforce, live position rates apply here automatically."}
+                </p>
               </div>
             )}
 
