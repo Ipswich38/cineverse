@@ -16,6 +16,14 @@ PayMongo redirect unless you intend a real ₱ charge.
 5. **Checkout** — fill checkout; T&C box must require scrolling before the agree
    checkbox enables; "Pay" redirects to a PayMongo checkout page (gcash/maya/
    cards visible). *(Test keys only: pay → success page shows order number.)*
+   - **Crew section**: "Hire crew" requires main + assistant dropdowns (rates
+     shown per position, from /api/crew-rates); "No crew" requires scrolling the
+     liability waiver, ticking accept, and typing a name to e-sign. Crew lines
+     appear in the order summary and raise the totals.
+   - API-level: POST /api/checkout/session without `crew` → 400; crew without
+     main/assistant → 400; waiver unaccepted/unsigned → 400. /api/crew-rates →
+     25 positions (source "recommended" until Cineforce listings feed
+     vissionlink_crew_rates).
 6. **Order emails** *(test payment only)* — customer receives confirmation +
    contract + invoice-proof from hello@vissionlink.com; owners get the BCC copy.
 7. **Order status page** — /order/[id] from the success page/email loads and
@@ -29,7 +37,11 @@ PayMongo redirect unless you intend a real ₱ charge.
     (exercises the fragile pdfkit packaging); admin Inbox tab shows recent
     Zoho mail.
 
-Last verified: 2026-06-11, post-audit deploy — steps 1, 2, 8, 9 at API level
-(home 200; 19 live catalog items; chat source=ai with real price; admin 401
-without/with wrong code, 200 with correct code; webhook rejects bad signature).
-Steps 3–7, 10 need a manual browser pass.
+Last verified: 2026-06-12, post crew-hire deploy (c276c0c) — steps 1, 2, 3, 5
+(crew gating), 8, 9 at API level: home 200 with hero/carousel/Cineforce promo;
+19 live catalog items; /gear/komodo-6k-body 200; /api/crew-rates 25 positions
+(14 lead / 11 support, all "recommended"); all four crew/waiver validation
+errors correct and a valid crew selection passes; chat source=ai with real
+price; admin Bearer 401 wrong / 200 right. Note: /api/admin/verify takes the
+code as a Bearer token, not a JSON body. Steps 4, 6, 7, 10 and the crew UI
+(dropdowns, waiver scroll-gate, summary lines) need a manual browser pass.
