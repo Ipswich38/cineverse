@@ -6,6 +6,7 @@ import { rentalTotals, DOWNPAYMENT_RATE, isBalanceMethod, type RentableLine, typ
 import { createCheckoutSession, hasPaymongo } from "@/lib/paymongo";
 import { clientIpFromHeaders, lookupLocation } from "@/lib/geo-ip";
 import { displayRentalOrderId } from "@/lib/display-ids";
+import { parseCrewSelection, crewLineItems, crewDaysFromRange } from "@/lib/cineforce-crew";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,10 @@ export async function POST(req: NextRequest) {
   if (!dateFrom || !dateTo) return NextResponse.json({ error: "Choose rental start and end dates." }, { status: 400 });
   if (incoming.length === 0) return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
 
+  // Crew hire (Cineforce) or signed liability waiver — one of the two is required.
+  const crew = parseCrewSelection(b.crew);
+  if (!crew.ok) return NextResponse.json({ error: crew.error }, { status: 400 });
+
   // Resolve every cart line against the catalog → authoritative price + deposit.
   const catalog = await getCatalogCached();
   const byId = new Map(catalog.map((c) => [c.id, c]));
@@ -60,6 +65,13 @@ export async function POST(req: NextRequest) {
     if (!item) return NextResponse.json({ error: "An item in your cart is no longer available." }, { status: 409 });
     if (item.stock > 0 && qty > item.stock) return NextResponse.json({ error: `Only ${item.stock} of ${item.name} in stock.` }, { status: 409 });
     items.push({ id: item.id, name: item.name, qty, days, ratePerDay: item.ratePerDay });
+  }
+
+  // Crew lines are priced server-side from the Cineforce position rates and
+  // billed for the whole booked date range. They ride along in `items` (with a
+  // `crew-` id prefix) so totals, the contract, and the invoice all include them.
+  for (const c of crewLineItems(crew.value, crewDaysFromRange(dateFrom, dateTo))) {
+    items.push({ id: c.id, name: c.name, qty: c.qty, days: c.days, ratePerDay: c.ratePerDay });
   }
 
   const rentable: RentableLine[] = items.map((i) => ({ ratePerDay: i.ratePerDay, days: i.days, quantity: i.qty }));
@@ -96,11 +108,13 @@ export async function POST(req: NextRequest) {
     order_no: orderNo,
     client_ip: clientIp,
     client_location: clientLocation,
+    crew_mode: crew.value.mode,
+    waiver_signed_name: crew.value.mode === "waiver" ? crew.value.waiverSignedName : null,
   };
   let insert = await supabaseAdmin()!.from(TABLE).insert(row).select("id").maybeSingle();
-  if (insert.error && /channel|balance_method|order_no|client_ip|client_location|column/i.test(insert.error.message)) {
+  if (insert.error && /channel|balance_method|order_no|client_ip|client_location|crew_mode|waiver_signed_name|column/i.test(insert.error.message)) {
     // Older schemas may lack the optional columns — retry without them.
-    const { channel: _c, balance_method: _bm, order_no: _on, client_ip: _ip, client_location: _loc, ...rest } = row;
+    const { channel: _c, balance_method: _bm, order_no: _on, client_ip: _ip, client_location: _loc, crew_mode: _cm, waiver_signed_name: _wn, ...rest } = row;
     insert = await supabaseAdmin()!.from(TABLE).insert(rest).select("id").maybeSingle();
   }
   if (insert.error) return NextResponse.json({ error: insert.error.message }, { status: 500 });

@@ -33,4 +33,8 @@ alter table public.vissionlink_quote_requests
   add column if not exists refund_ref text,
   add column if not exists refunded_at timestamptz,
   add column if not exists credit_memo_no text,
-  add column if not exists credit_memo_pdf_path text;
+  add column if not exists credit_memo_pdf_path text,
+  -- Cineforce crew hire vs liability waiver chosen at checkout (lib/cineforce-crew.ts).
+  add column if not exists crew_mode text, -- crew | waiver
+  add column if not exists waiver_signed_name text,
+  add column if not exists waiver_pdf_path text;

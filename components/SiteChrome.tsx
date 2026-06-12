@@ -25,8 +25,7 @@ const primaryLinks: { href: string; label: string; external?: boolean }[] = [
   { href: "/store", label: "Store" },
   // BMR's branded storefront. (Curated "packages" were retired — gear rents by set.)
   { href: "/providers", label: "Rentals" },
-  // Hidden for now (per client) — re-enable when the crew cross-link returns.
-  // { href: "https://cineforce.vissionlink.com", label: "Need A Crew", external: true },
+  { href: "https://cineforce.vissionlink.com", label: "Need A Crew", external: true },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];

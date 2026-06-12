@@ -19,6 +19,8 @@ import { DOWNPAYMENT_RATE, methodDiscountRate, isBalanceMethod, peso, type Balan
 import { BMR_BUSINESS, FINANCE, QUOTATION_TERMS } from "@/lib/bmr-rate-card";
 import { COMPANY } from "@/lib/company";
 import { displayRentalOrderId } from "@/lib/display-ids";
+import { isCrewItemId, waiverContractTerm } from "@/lib/cineforce-crew";
+import { renderWaiverPdf } from "@/lib/waiver-pdf";
 
 const TABLE = "vissionlink_quote_requests";
 const UNITS = "vissionlink_units";
@@ -73,13 +75,17 @@ function methodPlan(method: BalanceMethod, rentalTotal: number, handoverDate: st
 }
 
 function buildQuotation(row: Record<string, unknown>, items: OrderItem[], day: string, method: BalanceMethod): QuotationDoc {
-  const lines: QuotationLine[] = items.map((it, i) => ({
+  const toLine = (it: OrderItem, i: number): QuotationLine => ({
     id: `ln-${i}-${Math.random().toString(36).slice(2, 6)}`,
     description: String(it.name ?? "Equipment rental"),
     qty: Math.max(1, Math.floor(Number(it.qty) || 1)),
     days: Math.max(1, Math.floor(Number(it.days) || 1)),
     unitRate: Number(it.ratePerDay) || 0,
-  }));
+  });
+  // Cineforce crew hires (id `crew-…`) go on the contract's Labor / Personnel
+  // schedule; everything else is equipment (and gets unit-reserved).
+  const lines = items.filter((it) => !isCrewItemId(it.id)).map(toLine);
+  const laborLines = items.filter((it) => isCrewItemId(it.id)).map(toLine);
   const number = `BMR-Q-${day.replace(/-/g, "")}-${String(row.id).slice(-4).toUpperCase()}`;
   return {
     number,
@@ -93,7 +99,7 @@ function buildQuotation(row: Record<string, unknown>, items: OrderItem[], day: s
       project: String(row.project ?? ""),
     },
     lines,
-    laborLines: [],
+    laborLines,
     applySurcharge: false,
     surchargeRate: FINANCE.outOfTownSurchargeRate,
     specialDiscountRate: methodDiscountRate(method), // full-payment / PDC discount
@@ -156,6 +162,12 @@ export async function finalizeRentalOrder(orderId: string): Promise<FinalizeResu
     const plan = methodPlan(method, rentalTotal, handoverDate);
     quotation.paymentTerms = plan.paymentTerms;
     if (plan.extraTerm) quotation.terms = [...quotation.terms, plan.extraTerm];
+
+    // No-crew rental → the liability waiver e-signed at checkout becomes part of
+    // the contract terms and is rendered as its own PDF below.
+    const waiverSignedName = typeof row.waiver_signed_name === "string" ? row.waiver_signed_name.trim() : "";
+    const isWaiver = String(row.crew_mode ?? "") === "waiver" || (!!waiverSignedName && !items.some((it) => isCrewItemId(it.id)));
+    if (isWaiver) quotation.terms = [...quotation.terms, waiverContractTerm(waiverSignedName || String(row.name ?? ""), day)];
     // Read HOW the customer actually paid from the settled PayMongo session
     // (best-effort — falls back to the generic channel if the lookup fails).
     const sessionId = String(row.payment_ref ?? "");
@@ -179,6 +191,24 @@ export async function finalizeRentalOrder(orderId: string): Promise<FinalizeResu
     const contractPath = `${orderId}/${contract.number}.pdf`;
     const invoicePath = `${orderId}/${invoice.number}.pdf`;
     await Promise.all([storePdf("contracts", contractPath, contractPdf), storePdf("invoices", invoicePath, invoicePdf)]);
+
+    // Standalone waiver PDF (stored with the contract; best-effort — the waiver
+    // clause is already embedded in the contract terms either way).
+    if (isWaiver) {
+      try {
+        const waiverNumber = `BMR-W-${day.replace(/-/g, "")}-${String(orderId).slice(-4).toUpperCase()}`;
+        const waiverPdf = await renderWaiverPdf({
+          number: waiverNumber,
+          date: day,
+          client: quotation.client,
+          signedName: waiverSignedName || quotation.client.name,
+          equipment: quotation.lines.map((l) => l.description),
+        });
+        const waiverPath = `${orderId}/${waiverNumber}.pdf`;
+        await storePdf("contracts", waiverPath, waiverPdf);
+        await db.from(TABLE).update({ waiver_pdf_path: waiverPath }).eq("id", orderId); // tolerate missing column
+      } catch { /* non-fatal */ }
+    }
 
     // Customer communication: confirmation only. The contract and invoice are
     // generated as admin drafts below, then reviewed/sent from Clients & Orders.

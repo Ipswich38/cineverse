@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Package, Store } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Clapperboard, Package, Store, Users } from "lucide-react";
 import { useStore } from "./providers";
 import GearImagePlaceholder from "@/components/GearImagePlaceholder";
 import EquipmentCard from "@/components/EquipmentCard";
@@ -164,6 +164,27 @@ export default function HomePage() {
       </section>
 
       <WhyBmr />
+
+      {/* ── Cineforce — crew marketplace cross-promo ───────────────────────── */}
+      <section aria-labelledby="cineforce-promo-title" style={{ marginTop: 26, background: "#15130f", borderRadius: 16, padding: "clamp(22px, 4vw, 36px)", display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ maxWidth: 560 }}>
+          <p className="section-kicker" style={{ color: "#f5c518" }}>Cineforce</p>
+          <h2 id="cineforce-promo-title" style={{ fontFamily: '"Jost", sans-serif', fontSize: 26, letterSpacing: "-0.04em", margin: "6px 0 0", color: "#fffdf8" }}>
+            Need a film crew — or your next gig?
+          </h2>
+          <p style={{ margin: "10px 0 0", color: "rgba(255,253,248,0.7)", fontSize: 14, lineHeight: 1.6 }}>
+            Cineforce is VissionLink&apos;s crew network: DOPs, camera, lighting, and drone professionals ready for your shoot. Hire crew with your rental at checkout, or browse the full pool. Freelancers — list your position and get booked.
+          </p>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <a href="https://cineforce.vissionlink.com" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f5c518", color: "#15130f", fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "12px 20px", textDecoration: "none" }}>
+            <Users size={16} /> Hire a crew
+          </a>
+          <a href="https://cineforce.vissionlink.com" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: "#fffdf8", fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "12px 20px", border: "1px solid rgba(255,253,248,0.35)", textDecoration: "none" }}>
+            <Clapperboard size={16} /> Join as freelancer
+          </a>
+        </div>
+      </section>
 
       <section style={{ marginTop: 26 }}>
         <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>

@@ -3,10 +3,14 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, BadgePercent, IdCard, Loader2, Lock, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgePercent, Clapperboard, IdCard, Loader2, Lock, ShieldCheck, Users, X } from "lucide-react";
 import { useStore } from "../providers";
 import { peso, rentalTotals, DOWNPAYMENT_RATE, type BalanceMethod } from "@/lib/rental-pricing";
 import { CHECKOUT_RENTAL_TERMS, ACCEPTED_IDS, ID_POLICY, AFTER_DOWNPAYMENT, PAYMENT_METHODS } from "@/lib/checkout-terms";
+import {
+  CINEFORCE_URL, CREW_DEPARTMENTS, CREW_POSITIONS, MAIN_HANDLER_POSITIONS, ASSISTANT_POSITIONS,
+  crewLineItems, crewDaysFromRange, WAIVER_TITLE, WAIVER_PREAMBLE, WAIVER_CLAUSES, type CrewMode,
+} from "@/lib/cineforce-crew";
 
 export default function CheckoutPage() {
   return (
@@ -30,6 +34,15 @@ function CheckoutContent() {
   const [error, setError] = useState("");
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  // ── Crew (Cineforce): hire with the gear, or rent without crew + sign waiver ─
+  const [crewMode, setCrewMode] = useState<CrewMode>("crew");
+  const [mainKey, setMainKey] = useState("");
+  const [assistantKey, setAssistantKey] = useState("");
+  const [extras, setExtras] = useState<{ key: string; qty: number }[]>([]);
+  const [readWaiver, setReadWaiver] = useState(false); // unlocks only after the waiver is scrolled through
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
+  const [waiverName, setWaiverName] = useState("");
+
   // Require the customer to actually scroll to the end of the terms before they
   // can tick "I agree". (If the box doesn't overflow on some viewport, treat it
   // as already read so they're never stuck.)
@@ -43,23 +56,61 @@ function CheckoutContent() {
     if (el && el.scrollHeight <= el.clientHeight + 4) setReadTerms(true);
   }, []);
 
+  // Same scroll-to-read gate for the liability waiver (no-crew path).
+  const waiverRef = useRef<HTMLDivElement>(null);
+  const onWaiverScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 8) setReadWaiver(true);
+  };
+  useEffect(() => {
+    if (crewMode !== "waiver") return;
+    const el = waiverRef.current;
+    if (el && el.scrollHeight <= el.clientHeight + 4) setReadWaiver(true);
+  }, [crewMode]);
+
+  // Crew is billed for the whole booked period; before dates are chosen, mirror
+  // the longest cart line so the estimate is sensible.
+  const crewDays = useMemo(() => {
+    if (form.dateFrom && form.dateTo) return crewDaysFromRange(form.dateFrom, form.dateTo);
+    return cart.reduce((m, c) => Math.max(m, c.days), 1);
+  }, [form.dateFrom, form.dateTo, cart]);
+
+  const crewLines = useMemo(
+    () => crewLineItems({ mode: crewMode, mainKey, assistantKey, extras }, crewDays),
+    [crewMode, mainKey, assistantKey, extras, crewDays],
+  );
+
   const totals = useMemo(
-    () => rentalTotals(cart.map((c) => ({ ratePerDay: c.ratePerDay, days: c.days, quantity: c.quantity })), method),
-    [cart, method],
+    () =>
+      rentalTotals(
+        [
+          ...cart.map((c) => ({ ratePerDay: c.ratePerDay, days: c.days, quantity: c.quantity })),
+          ...crewLines.map((c) => ({ ratePerDay: c.ratePerDay, days: c.days, quantity: c.qty })),
+        ],
+        method,
+      ),
+    [cart, crewLines, method],
   );
 
   const submit = async () => {
     setError("");
     if (!form.name.trim() || !form.email.trim()) { setError("Name and email are required."); return; }
     if (!form.dateFrom || !form.dateTo) { setError("Choose rental start and end dates."); return; }
+    if (crewMode === "crew" && (!mainKey || !assistantKey)) { setError("Select the mandatory equipment-handling crew (main + assistant) — or choose the no-crew waiver option."); return; }
+    if (crewMode === "waiver" && !readWaiver) { setError("Please scroll through and read the liability waiver first."); return; }
+    if (crewMode === "waiver" && !waiverAccepted) { setError("Please accept the Equipment Rental Liability Waiver to continue."); return; }
+    if (crewMode === "waiver" && !(waiverName.trim() || form.name.trim())) { setError("Type your full name to e-sign the liability waiver."); return; }
     if (!readTerms) { setError("Please scroll through and read the rental terms first."); return; }
     if (!agree) { setError("Please accept the rental/lease terms to continue."); return; }
+    const crew = crewMode === "crew"
+      ? { mode: "crew", mainKey, assistantKey, extras }
+      : { mode: "waiver", waiverAccepted, waiverSignedName: (waiverName || form.name).trim() };
     setBusy(true);
     try {
       const res = await fetch("/api/checkout/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, agree, balanceMethod: method, cart: cart.map((c) => ({ itemId: c.itemId, days: c.days, quantity: c.quantity })) }),
+        body: JSON.stringify({ ...form, agree, balanceMethod: method, crew, cart: cart.map((c) => ({ itemId: c.itemId, days: c.days, quantity: c.quantity })) }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "Could not start checkout.");
@@ -128,6 +179,136 @@ function CheckoutContent() {
             })}
           </div>
 
+          {/* ── Crew: hire with the gear (Cineforce), or sign the waiver ──── */}
+          <div style={{ display: "grid", gap: 9 }}>
+            <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#15130f", margin: "4px 0 0" }}>
+              <Users size={14} /> Crew for this rental
+            </p>
+
+            {/* Option A — hire crew (mandatory handlers + optional project crew) */}
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "11px 13px", border: `1px solid ${crewMode === "crew" ? "rgba(180,140,0,0.55)" : "rgba(17,17,17,0.14)"}`, background: crewMode === "crew" ? "#fffae8" : "#fffdf8", borderRadius: 10, cursor: "pointer" }}>
+              <input type="radio" name="crewMode" checked={crewMode === "crew"} onChange={() => setCrewMode("crew")} style={{ marginTop: 3 }} />
+              <span style={{ display: "grid", gap: 3 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 800, color: "#15130f" }}>
+                  Hire crew with the equipment
+                  <span style={{ fontSize: 10.5, fontWeight: 800, background: "#1f7a45", color: "#fff", borderRadius: 999, padding: "2px 8px" }}>Recommended</span>
+                </span>
+                <span style={{ fontSize: 11.5, color: "#6c675f", lineHeight: 1.5 }}>
+                  BMR-designated crew handles the gear on set. One main handler and one assistant are part of the rental contract; add more project crew if your shoot needs it. Crew is billed per rental day and added to your total.
+                </span>
+              </span>
+            </label>
+
+            {crewMode === "crew" && (
+              <div style={{ display: "grid", gap: 12, padding: "13px 14px", border: "1px solid rgba(17,17,17,0.12)", background: "#fffdf8", borderRadius: 10 }}>
+                <p style={{ fontSize: 12, fontWeight: 800, color: "#15130f", margin: 0 }}>
+                  Mandatory equipment handlers <span style={{ fontWeight: 700, color: "#6c675f" }}>· billed × {crewDays} day{crewDays > 1 ? "s" : ""}</span>
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="Main handler *">
+                    <select value={mainKey} onChange={(e) => setMainKey(e.target.value)} style={inp}>
+                      <option value="">Select position…</option>
+                      {MAIN_HANDLER_POSITIONS.map((p) => (
+                        <option key={p.key} value={p.key}>{p.name} — {peso(p.dailyRate)}/day</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Assistant *">
+                    <select value={assistantKey} onChange={(e) => setAssistantKey(e.target.value)} style={inp}>
+                      <option value="">Select position…</option>
+                      {ASSISTANT_POSITIONS.map((p) => (
+                        <option key={p.key} value={p.key}>{p.name} — {peso(p.dailyRate)}/day</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+
+                <p style={{ fontSize: 12, fontWeight: 800, color: "#15130f", margin: "2px 0 0" }}>
+                  Additional crew <span style={{ fontWeight: 700, color: "#6c675f" }}>· optional — for your project, beyond the equipment</span>
+                </p>
+                {extras.map((ex, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <select
+                      value={ex.key}
+                      onChange={(e) => setExtras((prev) => prev.map((p, j) => (j === i ? { ...p, key: e.target.value } : p)))}
+                      style={{ ...inp, flex: 1 }}
+                    >
+                      <option value="">Select position…</option>
+                      {CREW_DEPARTMENTS.map((dept) => (
+                        <optgroup key={dept} label={dept}>
+                          {CREW_POSITIONS.filter((p) => p.dept === dept).map((p) => (
+                            <option key={p.key} value={p.key}>{p.name} — {peso(p.dailyRate)}/day</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <input
+                      type="number" min={1} max={20} value={ex.qty} aria-label="Headcount"
+                      onChange={(e) => setExtras((prev) => prev.map((p, j) => (j === i ? { ...p, qty: Math.max(1, Math.floor(Number(e.target.value) || 1)) } : p)))}
+                      style={{ ...inp, width: 64, flexShrink: 0 }}
+                    />
+                    <button type="button" aria-label="Remove crew row" onClick={() => setExtras((prev) => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#6c675f", padding: 4 }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setExtras((prev) => [...prev, { key: "", qty: 1 }])} style={{ justifySelf: "start", background: "#fffdf8", border: "1px dashed rgba(17,17,17,0.3)", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 700, color: "#15130f", cursor: "pointer" }}>
+                  + Add project crew
+                </button>
+              </div>
+            )}
+
+            {/* Option B — no crew, sign the liability waiver */}
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "11px 13px", border: `1px solid ${crewMode === "waiver" ? "rgba(180,140,0,0.55)" : "rgba(17,17,17,0.14)"}`, background: crewMode === "waiver" ? "#fffae8" : "#fffdf8", borderRadius: 10, cursor: "pointer" }}>
+              <input type="radio" name="crewMode" checked={crewMode === "waiver"} onChange={() => setCrewMode("waiver")} style={{ marginTop: 3 }} />
+              <span style={{ display: "grid", gap: 3 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 800, color: "#15130f" }}>No crew — I&apos;ll handle the equipment myself</span>
+                <span style={{ fontSize: 11.5, color: "#6c675f", lineHeight: 1.5 }}>
+                  Subject to approval, stricter ID and security requirements, and the Equipment Rental Liability Waiver below — you assume full responsibility for the gear from release to return.
+                </span>
+              </span>
+            </label>
+
+            {crewMode === "waiver" && (
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ border: `1px solid ${readWaiver ? "rgba(31,122,69,0.45)" : "rgba(180,120,0,0.45)"}`, borderRadius: 10, background: "#fffdf8" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 13px" }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "#15130f" }}>Equipment Rental Liability Waiver</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: readWaiver ? "#1f7a45" : "#9a6b00" }}>
+                      {readWaiver ? "✓ Read" : "Please scroll to read ↓"}
+                    </span>
+                  </div>
+                  <div ref={waiverRef} onScroll={onWaiverScroll} style={{ maxHeight: 190, overflowY: "auto", padding: "0 13px 11px", display: "grid", gap: 9, borderTop: "1px solid rgba(17,17,17,0.08)" }}>
+                    <p style={{ fontSize: 11.5, color: "#6c675f", lineHeight: 1.55, margin: 0 }}><b style={{ color: "#15130f" }}>{WAIVER_TITLE}.</b> {WAIVER_PREAMBLE}</p>
+                    {WAIVER_CLAUSES.map((t) => (
+                      <div key={t.title}>
+                        <p style={{ fontSize: 12, fontWeight: 800, color: "#15130f", margin: "0 0 2px" }}>{t.title}</p>
+                        <p style={{ fontSize: 11.5, color: "#6c675f", lineHeight: 1.55, margin: 0 }}>{t.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 12.5, color: "#3a362f", lineHeight: 1.5, opacity: readWaiver ? 1 : 0.55, cursor: readWaiver ? "pointer" : "not-allowed" }}>
+                  <input type="checkbox" checked={waiverAccepted} disabled={!readWaiver} onChange={(e) => setWaiverAccepted(e.target.checked)} style={{ marginTop: 3 }} />
+                  <span>I have read, understood, and agree to the Equipment Rental Liability Waiver and Responsibility Agreement above, and I assume full responsibility for the rented equipment and accessories.</span>
+                </label>
+                <Field label="Type your full name to e-sign the waiver *">
+                  <input value={waiverName} onChange={(e) => setWaiverName(e.target.value)} placeholder={form.name || "Full name"} style={inp} />
+                </Field>
+              </div>
+            )}
+
+            {/* Cineforce cross-promo — crew marketplace for freelancers & hirers */}
+            <a href={CINEFORCE_URL} target="_blank" rel="noreferrer" style={{ display: "flex", gap: 10, alignItems: "center", padding: "11px 13px", background: "#15130f", borderRadius: 10, textDecoration: "none" }}>
+              <Clapperboard size={18} color="#f5c518" style={{ flexShrink: 0 }} />
+              <span style={{ display: "grid", gap: 2 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: "#fffdf8" }}>Crew hiring is powered by Cineforce</span>
+                <span style={{ fontSize: 11.5, color: "rgba(255,253,248,0.7)", lineHeight: 1.5 }}>VissionLink&apos;s film-crew network — freelancers, list your position; hirers, browse the full crew pool.</span>
+              </span>
+              <ArrowRight size={15} color="#f5c518" style={{ marginLeft: "auto", flexShrink: 0 }} />
+            </a>
+          </div>
+
           {/* ── ID requirement ────────────────────────────────────────────── */}
           <div style={{ padding: "12px 14px", background: "#f7f5ef", border: "1px solid rgba(17,17,17,0.1)", borderRadius: 10 }}>
             <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#15130f", margin: 0 }}>
@@ -158,6 +339,18 @@ function CheckoutContent() {
                 <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{peso(c.ratePerDay * c.days * c.quantity)}</span>
               </div>
             ))}
+            {crewLines.map((c) => (
+              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
+                <span style={{ color: "#3a362f" }}>{c.name} · {c.days}d × {c.qty}</span>
+                <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{peso(c.ratePerDay * c.days * c.qty)}</span>
+              </div>
+            ))}
+            {crewMode === "waiver" && (
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
+                <span style={{ color: "#3a362f" }}>No crew — liability waiver{waiverAccepted ? " (e-signed)" : " (to e-sign)"}</span>
+                <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>₱0</span>
+              </div>
+            )}
           </div>
           <div style={{ height: 1, background: "rgba(17,17,17,0.12)", margin: "4px 0 12px" }} />
           <Row label="Rental subtotal" value={peso(totals.rental)} />
