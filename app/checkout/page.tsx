@@ -8,7 +8,7 @@ import { useStore } from "../providers";
 import { peso, rentalTotals, DOWNPAYMENT_RATE, type BalanceMethod } from "@/lib/rental-pricing";
 import { CHECKOUT_RENTAL_TERMS, ACCEPTED_IDS, ID_POLICY, AFTER_DOWNPAYMENT, PAYMENT_METHODS } from "@/lib/checkout-terms";
 import {
-  CINEFORCE_URL, CREW_DEPARTMENTS, CREW_POSITIONS,
+  CREW_DEPARTMENTS, CREW_POSITIONS,
   crewLineItems, crewDaysFromRange, WAIVER_TITLE, WAIVER_PREAMBLE, WAIVER_CLAUSES,
   type CrewMode, type CrewPosition, type CrewRateSource,
 } from "@/lib/cineforce-crew";
@@ -197,9 +197,11 @@ function CheckoutContent() {
             })}
           </div>
 
-          {/* ── Crew: hire with the gear (Cineforce), or sign the waiver ──── */}
-          <div style={{ display: "grid", gap: 9 }}>
-            <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#15130f", margin: "4px 0 0" }}>
+          {/* ── Crew: hire with the gear (Cineforce), or sign the waiver ────
+              Visually set apart from the rest of the form: yellow border +
+              soft tinted shadow so the crew decision can't be missed. */}
+          <div style={{ display: "grid", gap: 9, padding: "16px 15px", background: "#fffdf8", border: "1.5px solid #f5c518", borderRadius: 14, boxShadow: "0 10px 28px rgba(245,197,24,0.22), 0 2px 8px rgba(21,19,15,0.06)" }}>
+            <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#15130f", margin: 0 }}>
               <Users size={14} /> Crew for this rental
             </p>
 
@@ -322,15 +324,15 @@ function CheckoutContent() {
               </div>
             )}
 
-            {/* Cineforce cross-promo — crew marketplace for freelancers & hirers */}
-            <a href={CINEFORCE_URL} target="_blank" rel="noreferrer" style={{ display: "flex", gap: 10, alignItems: "center", padding: "11px 13px", background: "#15130f", borderRadius: 10, textDecoration: "none" }}>
+            {/* Cineforce partnership note — deliberately NOT a link so the
+                customer isn't pulled away from checkout. */}
+            <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "11px 13px", background: "#15130f", borderRadius: 10 }}>
               <Clapperboard size={18} color="#f5c518" style={{ flexShrink: 0 }} />
               <span style={{ display: "grid", gap: 2 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: "#fffdf8" }}>Crew hiring is powered by Cineforce</span>
-                <span style={{ fontSize: 11.5, color: "rgba(255,253,248,0.7)", lineHeight: 1.5 }}>VissionLink&apos;s film-crew network — freelancers, list your position; hirers, browse the full crew pool.</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: "#fffdf8" }}>Crew services in partnership with Cineforce</span>
+                <span style={{ fontSize: 11.5, color: "rgba(255,253,248,0.7)", lineHeight: 1.5 }}>Every position is filled from VissionLink&apos;s professional film-crew network.</span>
               </span>
-              <ArrowRight size={15} color="#f5c518" style={{ marginLeft: "auto", flexShrink: 0 }} />
-            </a>
+            </div>
           </div>
 
           {/* ── ID requirement ────────────────────────────────────────────── */}
